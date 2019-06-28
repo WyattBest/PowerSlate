@@ -1,2 +1,2 @@
-# powerslate
+# PowerSlate
 PowerSlate: An Integration
