@@ -1,18 +1,13 @@
-
-#%%
 import requests
-import json
 import copy
-import datetime
-import pyodbc
+import json
 import xml.etree.ElementTree as ET
-import traceback
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import urllib
+import pyodbc
+import datetime
 
 def init_config(x):
     # Loads configuration file and sets various parameters.
-    # Accepts the config file name as input (ex. SlaPowInt_config.json).
+    # Accepts the config file name as input.
     
     global pc_api_url
     global pc_api_cred
@@ -91,8 +86,6 @@ def init_config(x):
     cursor = cnxn.cursor()
     app_status_log_table = config['app_status_log_table']
     
-    # Schedule timer length and today's date
-    timer_seconds = int(config['timer_seconds'])
     today = datetime.datetime.date(datetime.datetime.now())
     
     # Print a test of connections
@@ -107,11 +100,7 @@ def de_init():
     # Clean up connections.
     cnxn.close() # SQL
     sq_actions_session.close() # HTTP session to Slate for scheduled actions
-    
-#init_config('SlaPowInt_config_dev.json') # Dev
 
-
-#%%
 def blank_to_null(x):
     # Converts empty string to None. Accepts dicts, lists, and tuples.
     # This function derived from radtek @ http://stackoverflow.com/a/37079737/4109658
@@ -288,8 +277,8 @@ def scan_status(x):
         row = cursor.fetchone()
         if row.PEOPLE_CODE_ID is not None:
             PEOPLE_CODE_ID = row.PEOPLE_CODE_ID
-            people_code = row.PEOPLE_CODE_ID[1:]
-            #PersonId = row.PersonId # Delete
+            # people_code = row.PEOPLE_CODE_ID[1:]
+            # PersonId = row.PersonId # Delete
         else:
             PEOPLE_CODE_ID = None
             people_code = None
@@ -436,7 +425,7 @@ def get_actions(x):
             counter += 1
             
         # Stuff them into a comma-separated string.
-        for k,v in enumerate(ql):
+        for k, v in enumerate(ql):
             qs += ql[k] + ','
 
         qs = qs[:-1] # Strip off the last comma
@@ -477,7 +466,7 @@ def get_credits(ApplicationNumber, year, term):
     if r.status_code == 200:
         sections = json.loads(r.text)
         
-        for k,v in enumerate(sections):
+        for k, v in enumerate(sections):
             if (sections[k]['academicYear'] == year and sections[k]['academicTerm'] == term
                 and sections[k]['studentStatus'] in ('Registered','Dropped pending advisor approval'
                                                      ,'Dropped Request Denied')):
@@ -513,199 +502,3 @@ def get_academic(PEOPLE_CODE_ID, year, term, session, program, degree, curriculu
             readmit = False
         
     return registered, credits, readmit
-
-
-#%%
-def main_sync(x, pid):
-    # Formerly the main context of this script. Now it's called from a timer loop in the main context.
-    # X is the name of the configuration file to use.
-    # pid is the specific application to sync.
-    
-    init_config(x)
-    
-    # Get applicants from Slate
-    r = requests.get(sq_apps_url, auth = sq_apps_cred, params = {'pid': pid})
-    r.raise_for_status()
-    slate_dict = json.loads(r.text) # Convert JSON response text to Python dict    
-    rec_formatted_list = trans_slate_to_rec(slate_dict) # Transform the data to Recruiter format
-    
-    if not rec_formatted_list:
-        return "No applications found. Perhaps the application(s) are not submitted or are missing required fields?"
-    
-    # Check each item in rec_formatted_list for status in PowerCampus.
-    rec_new_list = []
-    rec_existing_list = []
-
-    for k, v in enumerate(rec_formatted_list):
-        #ra_status, apl_status, computed_status, PEOPLE_CODE_ID, PersonId = scan_status(rec_formatted_list[k]) # Delete
-        ra_status, apl_status, computed_status, PEOPLE_CODE_ID = scan_status(rec_formatted_list[k]) # Delete
-
-        if ra_status is not None:
-
-            # If application exist but did not process, try it again.
-            if ra_status in (1, 2) and apl_status is None:
-                rec_new_list.append(rec_formatted_list[k])
-
-            # If application is in a good status, write to rec_existing_list for updating
-            if computed_status == 'Active':
-                rec_formatted_list[k]['PEOPLE_CODE_ID'] = PEOPLE_CODE_ID
-                rec_existing_list.append(rec_formatted_list[k])
-
-        # If application doesn't exist in PowerCampus, write record to rec_new_list.
-        else:
-            rec_new_list.append(rec_formatted_list[k])
-    
-    # POST any new items to PowerCampus Web API, then record the returned PEOPLE_CODE_ID or None
-    slate_upload_dict = {}
-    
-    for k, v in enumerate(rec_new_list):
-        PEOPLE_CODE_ID = post_to_pc(rec_new_list[k])
-        
-        # Add PEOPLE_CODE_ID to a dict to eventually send back to Slate
-        if PEOPLE_CODE_ID is not None:
-            slate_upload_dict.update({rec_new_list[k]['ApplicationNumber']: {'PEOPLE_CODE_ID': PEOPLE_CODE_ID,
-                                                                             'credits': 0, 'registered': False,
-                                                                             'readmit': None}})
-    
-    
-    # Update existing PowerCampus applications and get registration information
-    # First transform the dict to PowerCampus native format (like Campus6 instead of like Recruiter).
-    pc_existing_apps_list = trans_rec_to_pc(rec_existing_list)
-    
-    for k, v in enumerate(pc_existing_apps_list):
-        # Update Demographics
-        cursor.execute('execute [dbo].[MCNY_SlaPowInt_UpdDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
-            pc_existing_apps_list[k]['PEOPLE_CODE_ID'], 'SLATE', pc_existing_apps_list[k]['GENDER'],
-                       pc_existing_apps_list[k]['Ethnicity'], pc_existing_apps_list[k]['MARITALSTATUS'],
-                       pc_existing_apps_list[k]['VETERAN'], pc_existing_apps_list[k]['PRIMARYCITIZENSHIP'],
-                       pc_existing_apps_list[k]['SECONDARYCITIZENSHIP'], pc_existing_apps_list[k]['VISA'],
-                       pc_existing_apps_list[k]['RaceAfricanAmerican'], pc_existing_apps_list[k]['RaceAmericanIndian'],
-                       pc_existing_apps_list[k]['RaceAsian'], pc_existing_apps_list[k]['RaceNativeHawaiian'],
-                       pc_existing_apps_list[k]['RaceWhite'])
-        cnxn.commit()
-
-        # Update Status/Decision
-        cursor.execute('exec [dbo].[MCNY_SlaPowInt_UpdAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?',
-                       pc_existing_apps_list[k]['PEOPLE_CODE_ID'], pc_existing_apps_list[k]['ACADEMIC_YEAR'],
-                       pc_existing_apps_list[k]['ACADEMIC_TERM'], pc_existing_apps_list[k]['ACADEMIC_SESSION'],
-                       pc_existing_apps_list[k]['PROGRAM'], pc_existing_apps_list[k]['DEGREE'],
-                       pc_existing_apps_list[k]['CURRICULUM'], pc_existing_apps_list[k]['ProposedDecision'])
-        cnxn.commit()
-
-        # Update Address Hierarchy and Phone Primary Flag
-        # These defects should be fixed in Web API 8.8.0 and higher.
-        cursor.execute('exec [dbo].[MCNY_SlaPowInt_UpdContactPrimacy] ?, ?',
-                       pc_existing_apps_list[k]['PEOPLE_CODE_ID'],
-                      'SLATE')
-        cnxn.commit()
-    
-        # Get registration information to send back to Slate. (Newly-posted apps won't be registered yet.)
-        # First add keys to slate_upload_dict
-        if pc_existing_apps_list[k]['ApplicationNumber'] not in slate_upload_dict:
-            slate_upload_dict.update({pc_existing_apps_list[k]['ApplicationNumber']: {'PEOPLE_CODE_ID': None}})
-        
-        registered, credits, readmit = get_academic(pc_existing_apps_list[k]['PEOPLE_CODE_ID'],
-                                                    pc_existing_apps_list[k]['ACADEMIC_YEAR'],
-                                                    pc_existing_apps_list[k]['ACADEMIC_TERM'],
-                                                    pc_existing_apps_list[k]['ACADEMIC_SESSION'],
-                                                    pc_existing_apps_list[k]['PROGRAM'], pc_existing_apps_list[k]['DEGREE'],
-                                                    pc_existing_apps_list[k]['CURRICULUM'],)
-        # Update slate_upload_dict with registration information
-        slate_upload_dict[pc_existing_apps_list[k]['ApplicationNumber']].update({'credits': credits,
-                                                                                 'registered': registered,
-                                                                                 'readmit': readmit})
-    
-    # Update Scheduled Actions for existing PowerCampus applications
-    actions = get_actions(pc_existing_apps_list)
-    
-    for k, v in actions.items():
-        for kk, vv in enumerate(actions[k]['actions']):
-            cursor.execute('exec [dbo].[MCNY_SlaPowInt_UpdAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
-                           actions[k]['PEOPLE_CODE_ID'],
-                           'SLATE',
-                           actions[k]['actions'][kk]['action_id'],
-                           actions[k]['actions'][kk]['item'],
-                           actions[k]['actions'][kk]['completed'],
-                           actions[k]['actions'][kk]['create_datetime'], # Only the date portion is actually used.
-                           actions[k]['ACADEMIC_YEAR'],
-                           actions[k]['ACADEMIC_TERM'],
-                           actions[k]['ACADEMIC_SESSION'])
-            cnxn.commit()
-            
-    # Scan PowerCampus status for all apps and log to external db; capture PEOPLE_CODE_ID
-    for k, v in enumerate(rec_formatted_list):
-        #ra_status, apl_status, computed_status, PEOPLE_CODE_ID, PersonId = scan_status(rec_formatted_list[k]) # Delete
-        ra_status, apl_status, computed_status, PEOPLE_CODE_ID = scan_status(rec_formatted_list[k])
-
-        if PEOPLE_CODE_ID is not None and computed_status == 'Active':
-            slate_upload_dict[rec_formatted_list[k]['ApplicationNumber']].update({'PEOPLE_CODE_ID': PEOPLE_CODE_ID})
-    
-    
-    # Upload data back to Slate
-    # First, slate_upload_dict needs transformation. It was originally designed for a tab-separated file, and updating
-    # a dict piecemeal (as done above) is a lot easier that updating a list piecemeal. Room for improvement.
-    slate_upload_list = []
-    for k, v in slate_upload_dict.items():
-            slate_upload_list.append({'aid': k, 'PEOPLE_CODE_ID': slate_upload_dict[k]['PEOPLE_CODE_ID'],
-                                      'credits': str(slate_upload_dict[k]['credits']),
-                                      'registered': slate_upload_dict[k]['registered'],
-                                      'readmit': slate_upload_dict[k]['readmit']})
-    
-
-    # Slate must have a root element for some reason, so nest the dict inside another dict and list.
-    slate_upload_dict = {'row': slate_upload_list}
-    
-    r = requests.post(s_upload_url, json = slate_upload_dict, auth = s_upload_cred)
-    r.raise_for_status()
-    
-    de_init()
-        
-    print('Done at ' + str(datetime.datetime.now()))
-    return 'Done. Please check the SlaPowInt Report for more details.'
-
-
-#%%
-class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        # Send response status code
-        self.send_response(200)
- 
-        # Send headers
-        self.send_header('Content-type','text/html')
-        self.end_headers()
- 
-        # Send message back to client
-        q = urllib.parse.parse_qs(self.path[2:])
-        print(q) # Debug
-        
-        try:
-            if 'pid' in q:
-                message = main_sync('SlaPowInt_config_trigger_sample.json', q['pid'][0])
-            else:
-                message = 'Error: Record not found.'
-        except Exception:
-            message = ('Technical error. Please notify support with the following message: <br /><br />'
-                       + str(traceback.format_exc()))
-            
-        # Write content as utf-8 data
-        self.wfile.write(message.encode("utf8"))
-        return
-
-
-def run_server():
-    # Run the web server and idle indefinitely, listening for requests.
-    print('starting server...')
-
-    # Server settings
-    # Choose port 8080, for port 80, which is normally used for a http server, you need root access
-    # This is not a static IP. TODO
-    server_address = ('198.185.4.38', 8887)
-    httpd = HTTPServer(server_address, testHTTPServer_RequestHandler)
-    print('running server...')
-    httpd.serve_forever()
-
-
-#%%
-run_server()
-
-

@@ -17,7 +17,7 @@
 		"password": "astrongpassword"
 	},
 	"slate_upload": {
-		"url": "https://mcn.test.technolutions.net/manage/service/import?cmd=load&format=xxxx",
+		"url": "https://apply.mcny.edu/manage/service/import?cmd=load&format=xxxx",
 		"username": "service_user",
 		"password": "astrongpassword"
 	},
