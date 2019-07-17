@@ -14,7 +14,7 @@ Copy `config_sample.json` to a new file, then edit the values for your environme
 ### Timed sync
 Execute `sync_ondemand.py`. Pass the name of the configuration file as an argument. This can be used with an external task scheduler, such as Task Scheduler in Windows.
 
-Windows PowerShell example: `python.exe .\sync_ondemand.py config_sample.json`
+Example for Windows PowerShell : `python.exe .\sync_ondemand.py config_sample.json`
 
 ### Trigger Sync
 Execute `sync_http.py`. It will start a webserver on port 8887 that you can link to from within Slate.
