@@ -60,30 +60,10 @@ def main_sync():
     
     for k, v in enumerate(pc_existing_apps_list):
         # Update Demographics
-        pscore.cursor.execute('execute [dbo].[MCNY_SlaPowInt_UpdDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
-            pc_existing_apps_list[k]['PEOPLE_CODE_ID'], 'SLATE', pc_existing_apps_list[k]['GENDER'],
-                       pc_existing_apps_list[k]['Ethnicity'], pc_existing_apps_list[k]['MARITALSTATUS'],
-                       pc_existing_apps_list[k]['VETERAN'], pc_existing_apps_list[k]['PRIMARYCITIZENSHIP'],
-                       pc_existing_apps_list[k]['SECONDARYCITIZENSHIP'], pc_existing_apps_list[k]['VISA'],
-                       pc_existing_apps_list[k]['RaceAfricanAmerican'], pc_existing_apps_list[k]['RaceAmericanIndian'],
-                       pc_existing_apps_list[k]['RaceAsian'], pc_existing_apps_list[k]['RaceNativeHawaiian'],
-                       pc_existing_apps_list[k]['RaceWhite'])
-        pscore.cnxn.commit()
+        pscore.pc_update_demographics(pc_existing_apps_list[k])
 
         # Update Status/Decision
-        pscore.cursor.execute('exec [dbo].[MCNY_SlaPowInt_UpdAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?',
-                       pc_existing_apps_list[k]['PEOPLE_CODE_ID'], pc_existing_apps_list[k]['ACADEMIC_YEAR'],
-                       pc_existing_apps_list[k]['ACADEMIC_TERM'], pc_existing_apps_list[k]['ACADEMIC_SESSION'],
-                       pc_existing_apps_list[k]['PROGRAM'], pc_existing_apps_list[k]['DEGREE'],
-                       pc_existing_apps_list[k]['CURRICULUM'], pc_existing_apps_list[k]['ProposedDecision'])
-        pscore.cnxn.commit()
-
-        # Update Address Hierarchy and Phone Primary Flag
-        # These defects should be fixed in Web API 8.8.0 and higher.
-        pscore.cursor.execute('exec [dbo].[MCNY_SlaPowInt_UpdContactPrimacy] ?, ?',
-                       pc_existing_apps_list[k]['PEOPLE_CODE_ID'],
-                      'SLATE')
-        pscore.cnxn.commit()
+        pscore.pc_update_statusdecision(pc_existing_apps_list[k])
     
         # Get registration information to send back to Slate. (Newly-posted apps won't be registered yet.)
         # First add keys to slate_upload_dict
@@ -137,7 +117,7 @@ def main_sync():
                                       'readmit': slate_upload_dict[k]['readmit']})
     
 
-    # Slate must have a root element for some reason, so nest the dict inside another dict and list.
+    # Slate requires JSON to be convertable to XML
     slate_upload_dict = {'row': slate_upload_list}
     
     r = requests.post(pscore.s_upload_url, json = slate_upload_dict, auth = pscore.s_upload_cred)
@@ -150,9 +130,8 @@ def main_sync():
 # Attempt a sync; send failure email with traceback if error.
 try:
     print('Start sync at ' + str(datetime.datetime.now()))
-    pscore.init_config(sys.argv[1]) # Name of configuration file to use passed via command-line
-    # pscore.init_config('config_dev.json') # For debugging
-    print(pscore.smtp_config)
+    #pscore.init_config(sys.argv[1]) # Name of configuration file to use passed via command-line
+    pscore.init_config('config_dev.json') # For debugging
     main_sync()
 except Exception as e:
     # Send a failure email with traceback on exceptions

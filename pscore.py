@@ -502,3 +502,34 @@ def get_academic(PEOPLE_CODE_ID, year, term, session, program, degree, curriculu
             readmit = False
         
     return registered, credits, readmit
+
+    def pc_update_demographics(app):
+    cursor.execute('execute [dbo].[MCNY_SlaPowInt_UpdDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+                   app['PEOPLE_CODE_ID'],
+                   'SLATE',
+                   app['GENDER'],
+                   app['Ethnicity'],
+                   app['MARITALSTATUS'],
+                   app['VETERAN'],
+                   app['PRIMARYCITIZENSHIP'],
+                   app['SECONDARYCITIZENSHIP'],
+                   app['VISA'],
+                   app['RaceAfricanAmerican'],
+                   app['RaceAmericanIndian'],
+                   app['RaceAsian'],
+                   app['RaceNativeHawaiian'],
+                   app['RaceWhite'])
+    cnxn.commit()
+
+
+def pc_update_statusdecision(app):
+    cursor.execute('exec [dbo].[MCNY_SlaPowInt_UpdAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?',
+                          app['PEOPLE_CODE_ID'],
+                          app['ACADEMIC_YEAR'],
+                          app['ACADEMIC_TERM'],
+                          app['ACADEMIC_SESSION'],
+                          app['PROGRAM'],
+                          app['DEGREE'],
+                          app['CURRICULUM'],
+                          app['ProposedDecision'])
+    cnxn.commit()
