@@ -1,14 +1,16 @@
-USE [Campus6_train]
+USE [Campus6];
 
---Sample of how to obtain ProgramOfStudyId
-select ProgramOfStudyId
-from ProgramOfStudy pos
-	inner join dbo.CODE_PROGRAM cp
-		on cp.ProgramId = pos.PROGRAM
-		and cp.CODE_VALUE = 'UNDER'
-	inner join dbo.CODE_DEGREE cd
-		on cd.DegreeId = pos.DEGREE
-		and cd.CODE_VALUE = 'AA'
-	inner join dbo.CODE_CURRICULUM cc
-		on cc.CurriculumId = pos.CURRICULUM
-		and cc.CODE_VALUE = 'HS2010'
+SELECT CP.LONG_DESC
+	,CD.LONG_DESC
+	,CC.LONG_DESC
+	,CP.CODE_VALUE_KEY
+	,CD.CODE_VALUE_KEY
+	,CC.CODE_VALUE_KEY
+	,ProgramOfStudyId
+FROM PROGRAMOFSTUDY POS
+LEFT JOIN CODE_PROGRAM CP
+	ON CP.ProgramId = POS.Program
+LEFT JOIN CODE_DEGREE CD
+	ON CD.DegreeId = POS.Degree
+LEFT JOIN CODE_CURRICULUM CC
+	ON CC.CurriculumId = POS.Curriculum
