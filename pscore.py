@@ -528,7 +528,7 @@ def get_academic(PEOPLE_CODE_ID, year, term, session, program, degree, curriculu
 
     return registered, credits, readmit
 
-    def pc_update_demographics(app):
+def pc_update_demographics(app):
     cursor.execute('execute [dbo].[MCNY_SlaPowInt_UpdDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    'SLATE',
