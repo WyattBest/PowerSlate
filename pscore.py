@@ -20,7 +20,6 @@ def init_config(x):
     global s_upload_cred
     global rm_mapping
     global smtp_config
-    global timer_seconds
     global cnxn
     global cursor
     global app_status_log_table
@@ -471,34 +470,6 @@ def get_actions(x):
         app_dict[actions_list[k]['aid']]['actions'].append(actions_list[k])
 
     return app_dict
-
-
-# DEPRICATED because the Web API can only get information from terms which have registration open.
-def get_credits(ApplicationNumber, year, term):
-    # Fetches number of registered credits for a particular year and term
-    # Also returns a True/False "registered" flag
-    credits = 0
-    registered = False
-    PersonId = None
-
-    cursor.execute('EXEC MCNY_SlaPowInt_GetStatus \'' +
-                   ApplicationNumber + '\'')
-    row = cursor.fetchone()
-    PersonId = row.PersonId
-
-    r = requests.get(pc_api_url + 'api/students/' + str(PersonId) +
-                     '/registration-sections/', auth=pc_api_cred)
-
-    if r.status_code == 200:
-        sections = json.loads(r.text)
-
-        for k, v in enumerate(sections):
-            if (sections[k]['academicYear'] == year and sections[k]['academicTerm'] == term
-                    and sections[k]['studentStatus'] in ('Registered', 'Dropped pending advisor approval', 'Dropped Request Denied')):
-                credits += sections[k]['credits']
-                registered = True
-
-    return credits, registered
 
 
 def get_academic(PEOPLE_CODE_ID, year, term, session, program, degree, curriculum):
