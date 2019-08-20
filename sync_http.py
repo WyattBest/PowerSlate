@@ -8,6 +8,7 @@ import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib
 import pscore
+import socket
 
 
 def main_sync(x, pid):
@@ -169,7 +170,8 @@ def run_server():
     # Server settings
     # Choose port 8080, for port 80, which is normally used for a http server, you need root access
     # This is not a static IP. TODO
-    server_address = ('198.185.4.38', 8887)
+    local_ip = socket.gethostbyname(socket.gethostname())
+    server_address = (local_ip, 8887)
     httpd = HTTPServer(server_address, testHTTPServer_RequestHandler)
     print('running server...')
     httpd.serve_forever()
