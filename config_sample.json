@@ -4,7 +4,7 @@
 		"username": "username",
 		"password": "astrongpassword"
 	},
-	"pc_database_string": "DSN=something;UID=username;database=Campus6;PWD=astrongpassword",
+	"pc_database_string": "Driver={ODBC Driver 17 for SQL Server};Server=servername;Database=campus6;Trusted_Connection=yes;ServerSPN=MSSQLSvc/servername.local.domain.edu;",
 	"mapping_file_location": "\\\\servername\\PowerCampus Mapper\\recruiterMapping.xml",
 	"slate_query_apps": {
 		"url": "https://apply.mcny.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
