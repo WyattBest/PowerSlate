@@ -426,12 +426,29 @@ def trans_rec_to_pc(x):
     return pl
 
 
-def get_actions(x):
-    # Fetches "scheduled actions" (Slate Checklist) for a list of applications.
-    # Returns the list of applications as a dict with nested dicts of actions
-    # The Slate query parameter is a long, comma-separated string of ID's. They must be queried in batches of 48
-    # or else we will exceed the size limit on GET requests. Uses a specific HTTP session to reduce network overhead.
-    pl = copy.deepcopy(x)  # Local version of x (i.e. pc_existing_apps_list)
+def get_actions(apps_list):
+    """Fetches "scheduled actions" (Slate Checklist) for a list of applications.
+
+    Keyword arguments:
+    apps_list -- list of ApplicationNumbers to fetch actions for
+
+    Returns:
+    app_dict -- list of applications as a dict with nested dicts of actions. Example:
+        {'ApplicationNumber': {'ACADEMIC_SESSION': '01',
+            'ACADEMIC_TERM': 'SUMMER',
+            'ACADEMIC_YEAR': '2019',
+            'PEOPLE_CODE_ID': 'P000164949',
+            'actions': [{'action_id': 'ADRFLTR',
+                'aid': 'ApplicationNumber',
+                'completed': 'Y',
+                'create_datetime': '2019-01-15T14:17:20',
+                'item': 'Gregory Smith, Prinicpal'}]}}
+
+    Uses its own HTTP session to reduce overhead and queries Slate with batches of 48 comma-separated ID's.
+    48 was chosen to avoid exceeding max GET request.
+    """
+
+    pl = copy.deepcopy(apps_list)
     actions_list = []  # Main list of actions that will be appended to
     # Dict of applications with nested actions that will be returned.
     app_dict = {}
@@ -447,23 +464,21 @@ def get_actions(x):
             ql.append(pl.pop()['ApplicationNumber'])
             counter += 1
 
-        # Stuff them into a comma-separated string.
-        for k, v in enumerate(ql):
-            qs += ql[k] + ','
+        # # Stuff them into a comma-separated string.
+        qs = ",".join(str(item) for item in ql)
 
-        qs = qs[:-1]  # Strip off the last comma
         r = sq_actions_session.post(sq_actions_url, params={'aids': qs})
         r.raise_for_status()
-        al = json.loads(r.text)  # Convert JSON response text to Python dict
+        al = json.loads(r.text)
         actions_list.extend(al['row'])
         # if len(al['row']) > 1: # Delete. I don't think an application could ever have zero actions.
 
     # Rebuild the list of applications with the actions nested
-    for k, v in enumerate(x):
-        app_dict.update({x[k]['ApplicationNumber']: {'PEOPLE_CODE_ID': x[k]['PEOPLE_CODE_ID'],
-                                                     'ACADEMIC_YEAR': x[k]['ACADEMIC_YEAR'],
-                                                     'ACADEMIC_TERM': x[k]['ACADEMIC_TERM'],
-                                                     'ACADEMIC_SESSION': x[k]['ACADEMIC_SESSION'],
+    for k, v in enumerate(apps_list):
+        app_dict.update({apps_list[k]['ApplicationNumber']: {'PEOPLE_CODE_ID': apps_list[k]['PEOPLE_CODE_ID'],
+                                                     'ACADEMIC_YEAR': apps_list[k]['ACADEMIC_YEAR'],
+                                                     'ACADEMIC_TERM': apps_list[k]['ACADEMIC_TERM'],
+                                                     'ACADEMIC_SESSION': apps_list[k]['ACADEMIC_SESSION'],
                                                      'actions': []}})
 
     for k, v in enumerate(actions_list):
@@ -498,6 +513,7 @@ def get_academic(PEOPLE_CODE_ID, year, term, session, program, degree, curriculu
             readmit = False
 
     return registered, credits, readmit
+
 
 def pc_update_demographics(app):
     cursor.execute('execute [dbo].[MCNY_SlaPowInt_UpdDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
