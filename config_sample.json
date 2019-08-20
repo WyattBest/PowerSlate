@@ -29,6 +29,5 @@
 		"username": "sender@mcny.edu",
 		"password": "astrongpassword"
 	},
-	"app_status_log_table": "[SomeDatabase].[dbo].[SlaPowInt_AppStatus_Log]",
-	"timer_seconds": "43200"
+	"app_status_log_table": "[SomeDatabase].[dbo].[SlaPowInt_AppStatus_Log]"
 }
