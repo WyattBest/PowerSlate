@@ -7,8 +7,7 @@ import datetime
 
 
 def init_config(x):
-    # Loads configuration file and sets various parameters.
-    # Accepts the config file name as input.
+    """Opens input filename and inits config variables from it. Returns SMTP config for crash handling."""
 
     global pc_api_url
     global pc_api_cred
@@ -19,7 +18,6 @@ def init_config(x):
     global s_upload_url
     global s_upload_cred
     global rm_mapping
-    global smtp_config
     global cnxn
     global cursor
     global app_status_log_table
@@ -100,6 +98,8 @@ def init_config(x):
     print(r.text)
     r.raise_for_status()
     print(cnxn.getinfo(pyodbc.SQL_DATABASE_NAME))
+
+    return smtp_config
 
 
 def de_init():

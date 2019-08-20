@@ -130,19 +130,19 @@ def main_sync():
 # Attempt a sync; send failure email with traceback if error.
 try:
     print('Start sync at ' + str(datetime.datetime.now()))
-    #pscore.init_config(sys.argv[1]) # Name of configuration file to use passed via command-line
-    pscore.init_config('config_dev.json') # For debugging
+    smtp_config = pscore.init_config(sys.argv[1]) # Name of configuration file passed via command-line
+    # smtp_config = pscore.init_config('config_dev.json') # For debugging
     main_sync()
 except Exception as e:
     # Send a failure email with traceback on exceptions
     print('Exception at ' + str(datetime.datetime.now()) + '! Check notification email.')
     msg = MIMEText('Sync failed at ' + str(datetime.datetime.now()) + '\n\nError: '
                     + str(traceback.format_exc()))
-    msg['Subject'] = pscore.smtp_config['subject']
-    msg['From'] = pscore.smtp_config['from']
-    msg['To'] = pscore.smtp_config['to']
+    msg['Subject'] = smtp_config['subject']
+    msg['From'] = smtp_config['from']
+    msg['To'] = smtp_config['to']
     
-    with smtplib.SMTP(pscore.smtp_config['server']) as smtp:
+    with smtplib.SMTP(smtp_config['server']) as smtp:
         smtp.starttls()
-        smtp.login(pscore.smtp_config['username'], pscore.smtp_config['password'])
+        smtp.login(smtp_config['username'], smtp_config['password'])
         smtp.send_message(msg)
