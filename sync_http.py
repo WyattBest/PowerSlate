@@ -1,3 +1,4 @@
+import sys
 import requests
 import json
 import copy
@@ -148,10 +149,11 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         # Send message back to client
         q = urllib.parse.parse_qs(self.path[2:])
         print(q) # Debug
-        
+
+        # Check for expected HTTP parameter, then sync using first command-line parameter as config file
         try:
             if 'pid' in q:
-                message = main_sync('config_sample.json', q['pid'][0])
+                message = main_sync(sys.argv[1], q['pid'][0])
             else:
                 message = 'Error: Record not found.'
         except Exception:
