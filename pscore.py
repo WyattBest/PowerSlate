@@ -476,10 +476,10 @@ def get_actions(apps_list):
     # Rebuild the list of applications with the actions nested
     for k, v in enumerate(apps_list):
         app_dict.update({apps_list[k]['ApplicationNumber']: {'PEOPLE_CODE_ID': apps_list[k]['PEOPLE_CODE_ID'],
-                                                     'ACADEMIC_YEAR': apps_list[k]['ACADEMIC_YEAR'],
-                                                     'ACADEMIC_TERM': apps_list[k]['ACADEMIC_TERM'],
-                                                     'ACADEMIC_SESSION': apps_list[k]['ACADEMIC_SESSION'],
-                                                     'actions': []}})
+                                                             'ACADEMIC_YEAR': apps_list[k]['ACADEMIC_YEAR'],
+                                                             'ACADEMIC_TERM': apps_list[k]['ACADEMIC_TERM'],
+                                                             'ACADEMIC_SESSION': apps_list[k]['ACADEMIC_SESSION'],
+                                                             'actions': []}})
 
     for k, v in enumerate(actions_list):
         app_dict[actions_list[k]['aid']]['actions'].append(actions_list[k])
@@ -488,9 +488,14 @@ def get_actions(apps_list):
 
 
 def get_academic(PEOPLE_CODE_ID, year, term, session, program, degree, curriculum):
-    # Fetches number of registered credits for a particular ACADEMIC row.
-    # Returns -1 credits if the ACADEMIC row is not found.
-    # Also returns a True/False "registered" flag and a True/False readmit flag.
+    '''Fetches data from ACADEMIC row. Returns -1 credits if the row is not found.
+
+
+     Returns:
+     registered -- True/False
+     credits -- real
+     readmit -- True/False
+    '''
     credits = -1
     registered = False
     readmit = None
@@ -544,4 +549,12 @@ def pc_update_statusdecision(app):
                    app['DEGREE'],
                    app['CURRICULUM'],
                    app['ProposedDecision'])
+    cnxn.commit()
+
+
+def pc_update_smsoptin(app):
+    cursor.execute('exec [custom].[PS_updSMSOptIn] ?, ?, ?',
+                   app['PEOPLE_CODE_ID'],
+                   'SLATE',
+                   app['SMSOptIn'])
     cnxn.commit()
