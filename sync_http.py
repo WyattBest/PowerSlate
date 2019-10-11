@@ -70,6 +70,9 @@ def main_sync(x, pid):
         # Update Demographics
         pscore.pc_update_demographics(pc_existing_apps_list[k])
 
+        # Update SMS Opt-In
+        pscore.pc_update_smsoptin(pc_existing_apps_list[k])
+
         # Update Status/Decision
         pscore.pc_update_statusdecision(pc_existing_apps_list[k])
     
