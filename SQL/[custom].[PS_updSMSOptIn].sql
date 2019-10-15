@@ -14,7 +14,8 @@ GO
 -- Description:	Initially populates or updates SMS Opt-In status from Slate.
 --				If initial import, call custom.defaultSMSOpts to update other departments.
 -- =============================================
-CREATE PROCEDURE [custom].[PS_updSMSOptIn] @PCID NVARCHAR(10)
+CREATE PROCEDURE [custom].[PS_updSMSOptIn]
+	@PCID NVARCHAR(10)
 	,@Opid NVARCHAR(8)
 	,@AdmSMSOptBit BIT
 AS
