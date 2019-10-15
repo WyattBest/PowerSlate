@@ -47,27 +47,27 @@ BEGIN
 		IF (@RaceAfricanAmerican = 1
 			AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
 				FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 4))
-			EXEC [dbo].[MCNY_SlaPowInt_InsPersonEthnicity] @PersonId, @Opid, @Today, @Now, 4;
+			EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 4;
 		IF (@RaceAmericanIndian = 1
 			AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
 				FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 2))
-			EXEC [dbo].[MCNY_SlaPowInt_InsPersonEthnicity] @PersonId, @Opid, @Today, @Now, 2;
+			EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 2;
 		IF (@RaceAsian = 1
 			AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
 				FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 3))
-			EXEC [dbo].[MCNY_SlaPowInt_InsPersonEthnicity] @PersonId, @Opid, @Today, @Now, 3;
+			EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 3;
 		IF (@RaceNativeHawaiian = 1
 			AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
 				FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 5))
-			EXEC [dbo].[MCNY_SlaPowInt_InsPersonEthnicity] @PersonId, @Opid, @Today, @Now, 5;
+			EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 5;
 		IF (@RaceWhite = 1
 			AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
 				FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 6))
-			EXEC [dbo].[MCNY_SlaPowInt_InsPersonEthnicity] @PersonId, @Opid, @Today, @Now, 6;
+			EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 6;
 		IF (@Ethnicity = 1 --Hispanic
 			AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
 				FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 1))
-			EXEC [dbo].[MCNY_SlaPowInt_InsPersonEthnicity] @PersonId, @Opid, @Today, @Now, 1;
+			EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 1;
 
 		execute [WebServices].[spSetDemographics] @PersonId, @Opid, '001', @Gender, null, @MaritalStatus, null
 			, @Veteran, null, @PrimaryCitizenship, @SecondaryCitizenship, @Visa, null, null, null, null
