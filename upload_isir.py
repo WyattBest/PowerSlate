@@ -67,7 +67,7 @@ def doit(config_file):
 
     # Execute SQL stored precedure for each id and add result to list to be uploaded back to Slate.
     for k, v in enumerate(x):
-        cursor.execute('MCNY_SlaPowInt_GetIsir ?', x[k]['govid'])
+        cursor.execute('EXEC [custom].[PS_selISIR] ?', x[k]['govid'])
         row = cursor.fetchone()
 
         # If the stored procedure returns something, append that to new list
