@@ -1,7 +1,8 @@
 USE [Campus6]
-GRANT EXEC ON [DBO].[MCNY_SlaPowInt_GetIsir] TO SLAPOWINT
-GRANT EXEC ON [DBO].[MCNY_SlaPowInt_UpdDemographics] TO SLAPOWINT
-GRANT EXEC ON [DBO].[MCNY_SlaPowInt_UpdAcademicAppInfo] TO SLAPOWINT
-GRANT EXEC ON [dbo].[MCNY_SlaPowInt_UpdAction] to SLAPOWINT
-GRANT EXEC ON [dbo].[MCNY_SlaPowInt_GetAcademic] to SLAPOWINT
-GRANT EXEC ON [custom].[PS_updSMSOptIn] to SLAPOWINT
+GRANT EXEC ON [custom].[PS_selISIR] TO PowerSlate
+GRANT EXEC ON [custom].[PS_updDemographics] TO PowerSlate
+GRANT EXEC ON [custom].[PS_updAcademicAppInfo] TO PowerSlate
+GRANT EXEC ON [custom].[PS_updAction] to PowerSlate
+GRANT EXEC ON [custom].[PS_selAcademic] to PowerSlate
+GRANT EXEC ON [custom].[PS_selRAStatus] to PowerSlate
+GRANT EXEC ON [custom].[PS_updSMSOptIn] to PowerSlate

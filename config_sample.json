@@ -22,12 +22,12 @@
 		"password": "astrongpassword"
 	},
 	"smtp": {
-		"subject": "SlaPowInt Notification",
+		"subject": "PowerSlate Notification",
 		"from": "sender@mcny.edu",
 		"to": "recipient@mcny.edu",
 		"server": "smtp.office365.com",
 		"username": "sender@mcny.edu",
 		"password": "astrongpassword"
 	},
-	"app_status_log_table": "[SomeDatabase].[dbo].[SlaPowInt_AppStatus_Log]"
+	"app_status_log_table": "[SomeDatabase].[dbo].[PowerSlate_AppStatus_Log]"
 }
