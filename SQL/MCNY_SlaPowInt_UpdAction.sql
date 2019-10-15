@@ -1,4 +1,4 @@
-USE [Campus6_train]
+USE [Campus6]
 GO
 
 /****** Object:  StoredProcedure [dbo].[MCNY_SlaPowInt_UpdAction]   ******/
@@ -16,11 +16,12 @@ GO
 --				
 -- Dependencies:	MCNY_SP_insert_action
 --
--- 2017-10-11 Wyatt Best:	Changed WAIVED_REASON from SLATE to ADMIS.
+--	2017-10-11 Wyatt Best:	Changed WAIVED_REASON from SLATE to ADMIS.
 --							Fixed the 'updated waived after inserting new' section.
+--  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
 -- =============================================
 
-CREATE PROCEDURE [dbo].[MCNY_SlaPowInt_UpdAction]
+CREATE PROCEDURE [custom].[PS_updAction]
 	@PCID nvarchar(10)
 	,@Opid nvarchar(8)
 	,@action_id nvarchar(8)

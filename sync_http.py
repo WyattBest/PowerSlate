@@ -97,7 +97,7 @@ def main_sync(x, pid):
     
     for k, v in actions.items():
         for kk, vv in enumerate(actions[k]['actions']):
-            pscore.cursor.execute('exec [dbo].[MCNY_SlaPowInt_UpdAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
+            pscore.cursor.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
                            actions[k]['PEOPLE_CODE_ID'],
                            'SLATE',
                            actions[k]['actions'][kk]['action_id'],

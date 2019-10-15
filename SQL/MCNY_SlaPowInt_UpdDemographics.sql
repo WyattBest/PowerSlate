@@ -1,7 +1,6 @@
-USE [Campus6_train]
+USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [dbo].[MCNY_SlaPowInt_UpdDemographics]   ******/
 SET ANSI_NULLS ON
 GO
 
@@ -14,9 +13,11 @@ GO
 -- Create date: 2016-11-17
 -- Description:	Updates a number of fields that the PowerCampus WebAPI has issues with. Common case is an application
 --				went to HandleInquries.
+--
+--  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
 -- =============================================
 
-CREATE PROCEDURE [dbo].[MCNY_SlaPowInt_UpdDemographics]
+CREATE PROCEDURE [custom].[PS_updDemographics]
 	@PCID nvarchar(10)
 	,@Opid nvarchar(8)
 	,@Gender tinyint

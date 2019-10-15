@@ -297,7 +297,7 @@ def scan_status(x):
     # If application exists in PowerCampus, execute SP to look for existing PCID.
     # Log PCID and status.
     if 'applicationNumber' in r_dict:
-        cursor.execute('EXEC MCNY_SlaPowInt_GetStatus \'' +
+        cursor.execute('EXEC [custom].[PS_selRAStatus] \'' +
                        x['ApplicationNumber'] + '\'')
         row = cursor.fetchone()
         if row.PEOPLE_CODE_ID is not None:
@@ -500,7 +500,7 @@ def get_academic(PEOPLE_CODE_ID, year, term, session, program, degree, curriculu
     registered = False
     readmit = None
 
-    cursor.execute('EXEC [dbo].[MCNY_SlaPowInt_GetAcademic] ?,?,?,?,?,?,?',
+    cursor.execute('EXEC [custom].[PS_selAcademic] ?,?,?,?,?,?,?',
                    PEOPLE_CODE_ID, year, term, session, program, degree, curriculum)
     row = cursor.fetchone()
 
@@ -521,7 +521,7 @@ def get_academic(PEOPLE_CODE_ID, year, term, session, program, degree, curriculu
 
 
 def pc_update_demographics(app):
-    cursor.execute('execute [dbo].[MCNY_SlaPowInt_UpdDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    cursor.execute('execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    'SLATE',
                    app['GENDER'],
@@ -540,7 +540,7 @@ def pc_update_demographics(app):
 
 
 def pc_update_statusdecision(app):
-    cursor.execute('exec [dbo].[MCNY_SlaPowInt_UpdAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?',
+    cursor.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    app['ACADEMIC_YEAR'],
                    app['ACADEMIC_TERM'],

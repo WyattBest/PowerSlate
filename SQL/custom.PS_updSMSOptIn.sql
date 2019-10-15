@@ -1,4 +1,4 @@
-USE [Campus6_train]
+USE [Campus6]
 GO
 
 SET ANSI_NULLS ON
@@ -6,6 +6,7 @@ GO
 
 SET QUOTED_IDENTIFIER ON
 GO
+
 
 -- =============================================
 -- Author:		Wyatt Best

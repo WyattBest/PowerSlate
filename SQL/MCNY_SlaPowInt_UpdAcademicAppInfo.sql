@@ -1,15 +1,11 @@
-USE [Campus6_train]
+USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [dbo].[MCNY_SlaPowInt_UpdAcademicAppInfo]    Script Date: 2017-08-16 12:10:58 PM ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
-
-
-
 
 
 -- =============================================
@@ -24,9 +20,10 @@ GO
 --	2017-01-09	Wyatt Best: Added code to set PRIMARY_FLAG. Assuming that a current admissions application should be the primary activity.
 --	2017-01-10	Wyatt Best: Added 'Withdraw' ProposedDecision type.
 --	2017-08-16	Wyatt Best:	Added 'Deny' ProposedDecision type.
+--  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
 -- =============================================
 
-CREATE PROCEDURE [dbo].[MCNY_SlaPowInt_UpdAcademicAppInfo]
+CREATE PROCEDURE [custom].[PS_updAcademicAppInfo]
 	@PCID nvarchar(10)
 	,@Year nvarchar(4)
 	,@Term nvarchar(10)

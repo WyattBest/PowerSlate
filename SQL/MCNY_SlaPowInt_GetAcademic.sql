@@ -1,15 +1,11 @@
-USE [Campus6_train]
+USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [dbo].[MCNY_SlaPowInt_GetRegistration]    Script Date: 2017-08-16 12:10:58 PM ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
-
-
-
 
 
 -- =============================================
@@ -18,10 +14,11 @@ GO
 -- Description:	Returns information for an ACADEMIC row, such as registration and readmit flag.
 --				This sp is also used to detect changed primary keys (YTSPDC) and invalid COLLEGE_ATTEND values.
 --
--- 2017-11-03 Wyatt Best:	Updated to better handle multiple apps. Gave up on a generic method of handling CASAC.
+--	2017-11-03 Wyatt Best:	Updated to better handle multiple apps. Gave up on a generic method of handling CASAC.
+--  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
 -- =============================================
 
-CREATE PROCEDURE [dbo].[MCNY_SlaPowInt_GetAcademic]
+CREATE PROCEDURE [custom].[PS_selAcademic]
 	@PCID nvarchar(10)
 	,@Year nvarchar(4)
 	,@Term nvarchar(10)

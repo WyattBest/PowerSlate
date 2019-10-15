@@ -81,3 +81,4 @@ venv.bak/
 
 # Other
 config_dev.json
+.vscode/
