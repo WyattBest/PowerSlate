@@ -553,6 +553,10 @@ def pc_update_statusdecision(app):
 
 
 def pc_update_smsoptin(app):
+    if 'SMSOptIn' not in app:
+        raise ValueError('SMSOptIn is missing from application ' +
+                         app['PEOPLE_CODE_ID'] + ', ' + app['ACADEMIC_YEAR'] + '/' + app['ACADEMIC_TERM'])
+
     cursor.execute('exec [custom].[PS_updSMSOptIn] ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    'SLATE',
