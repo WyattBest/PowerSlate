@@ -540,7 +540,7 @@ def pc_update_demographics(app):
 
 
 def pc_update_statusdecision(app):
-    cursor.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?',
+    cursor.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    app['ACADEMIC_YEAR'],
                    app['ACADEMIC_TERM'],
@@ -548,7 +548,8 @@ def pc_update_statusdecision(app):
                    app['PROGRAM'],
                    app['DEGREE'],
                    app['CURRICULUM'],
-                   app['ProposedDecision'])
+                   app['ProposedDecision'],
+                   app['CreateDateTime'])
     cnxn.commit()
 
 

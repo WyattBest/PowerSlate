@@ -21,6 +21,7 @@ GO
 --	2017-01-10	Wyatt Best: Added 'Withdraw' ProposedDecision type.
 --	2017-08-16	Wyatt Best:	Added 'Deny' ProposedDecision type.
 --  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
+--	2019-12-09	Wyatt Best: Added UPDATE for APPLICATION_DATE
 -- =============================================
 
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo]
@@ -32,6 +33,7 @@ CREATE PROCEDURE [custom].[PS_updAcademicAppInfo]
 	,@Degree nvarchar(6)
 	,@Curriculum nvarchar(6)
 	,@ProposedDecision nvarchar(max) --Slate data field; translation will happen in this sp
+	,@CreateDateTime datetime --Application creation date
 
 AS
 BEGIN
@@ -130,12 +132,19 @@ BEGIN
 				AND ACADEMIC_SESSION = @Session
 				AND APPLICATION_FLAG = 'Y';
 
+		--Set APPLICATION_DATE if needed
+		UPDATE ACADEMIC
+		SET APPLICATION_DATE = dbo.fnMakeDate(@CreateDateTime)
+		WHERE PEOPLE_CODE_ID = @PCID
+			AND ACADEMIC_YEAR = @Year
+			AND ACADEMIC_TERM = @Term
+			AND ACADEMIC_SESSION = @Session
+			AND APPLICATION_FLAG = 'Y'
+			AND APPLICATION_DATE <> dbo.fnMakeDate(@CreateDateTime);
+
 	COMMIT
 	
 END
-
-
-
 
 
 GO
