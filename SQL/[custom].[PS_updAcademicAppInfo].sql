@@ -22,6 +22,7 @@ GO
 --	2017-08-16	Wyatt Best:	Added 'Deny' ProposedDecision type.
 --  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
 --	2019-12-09	Wyatt Best: Added UPDATE for APPLICATION_DATE
+--	2019-12-28	Wyatt Best: Added COALESCE() on APPLICATION_DATE update.
 -- =============================================
 
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo]
@@ -140,7 +141,7 @@ BEGIN
 			AND ACADEMIC_TERM = @Term
 			AND ACADEMIC_SESSION = @Session
 			AND APPLICATION_FLAG = 'Y'
-			AND APPLICATION_DATE <> dbo.fnMakeDate(@CreateDateTime);
+			AND COALESCE(APPLICATION_DATE, '') <> dbo.fnMakeDate(@CreateDateTime);
 
 	COMMIT
 	
