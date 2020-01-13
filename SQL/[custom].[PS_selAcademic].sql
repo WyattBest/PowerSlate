@@ -7,7 +7,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-
 -- =============================================
 -- Author:		Wyatt Best
 -- Create date: 2017-10-16
@@ -16,32 +15,45 @@ GO
 --
 --	2017-11-03 Wyatt Best:	Updated to better handle multiple apps. Gave up on a generic method of handling CASAC.
 --  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
+--	2020-01-13	Wyatt Best: Get credits from rollup record instead of session.
 -- =============================================
-
-CREATE PROCEDURE [custom].[PS_selAcademic]
-	@PCID nvarchar(10)
-	,@Year nvarchar(4)
-	,@Term nvarchar(10)
-	,@Session nvarchar(10)
-	,@Program nvarchar(6)
-	,@Degree nvarchar(6)
-	,@Curriculum nvarchar(6)
-
+CREATE PROCEDURE [custom].[PS_selAcademic] @PCID NVARCHAR(10)
+	,@Year NVARCHAR(4)
+	,@Term NVARCHAR(10)
+	,@Session NVARCHAR(10)
+	,@Program NVARCHAR(6)
+	,@Degree NVARCHAR(6)
+	,@Curriculum NVARCHAR(6)
 AS
 BEGIN
 	SET NOCOUNT ON;
+
+	--Select credits from rollup to avoid duplicate hits to table
+	DECLARE @Credits numeric(6,2) = (
+			SELECT CREDITS
+			FROM ACADEMIC A
+			WHERE PEOPLE_CODE_ID = @PCID
+				AND ACADEMIC_YEAR = @Year
+				AND ACADEMIC_TERM = @Term
+				AND ACADEMIC_SESSION = ''
+				AND PROGRAM = @Program
+				AND DEGREE = @Degree
+				AND CURRICULUM = @Curriculum
+			)
 
 	--I tried hard to make this not specific to MCNY, but ultimately gave in.
 	--If someone has multiple apps for a YTS with different PDC, they will be in the same transcript sequence,
 	--and TranscriptDetail doesn't have PDC. I ultimately can't tell which TranscriptDetail goes with with Academic record without custom logic.
 	--Filtering by credits would be fine except that we have a non-credit certificate, CASAC. Thus the CASE statement.
-	SELECT
-		CASE WHEN PROGRAM = 'CERT' AND @Program= 'NON' AND @Curriculum = 'CASAC'
+	SELECT CASE 
+			WHEN PROGRAM = 'CERT'
+				AND @Program = 'NON'
+				AND @Curriculum = 'CASAC'
 				AND EXISTS (
 					SELECT TD.PEOPLE_ID
 					FROM TRANSCRIPTDETAIL TD
-						INNER JOIN ACADEMIC A --No PDC columns in TD.
-							ON A.PEOPLE_CODE_ID = TD.PEOPLE_CODE_ID
+					INNER JOIN ACADEMIC A --No PDC columns in TD.
+						ON A.PEOPLE_CODE_ID = TD.PEOPLE_CODE_ID
 							AND A.ACADEMIC_YEAR = TD.ACADEMIC_YEAR
 							AND A.ACADEMIC_TERM = TD.ACADEMIC_TERM
 							AND A.ACADEMIC_SESSION = TD.ACADEMIC_SESSION
@@ -56,24 +68,29 @@ BEGIN
 						AND TD.ACADEMIC_TERM = @Term
 						AND TD.ACADEMIC_SESSION = @Session
 						AND TD.ADD_DROP_WAIT = 'A'
-					) THEN 'Y'
-				WHEN A.CREDITS > 0 THEN 'Y'
-				ELSE 'N' END AS 'Registered'
-		,A.CREDITS
+					)
+				THEN 'Y'
+			WHEN @Credits > 0
+				THEN 'Y'
+			ELSE 'N'
+			END AS 'Registered'
+		,@Credits AS CREDITS
 		,A.COLLEGE_ATTEND
-		FROM ACADEMIC A
-		WHERE PEOPLE_CODE_ID = @PCID
-			AND ACADEMIC_YEAR = @Year
-			AND ACADEMIC_TERM = @Term
-			AND ACADEMIC_SESSION = @Session
-			AND PROGRAM = @Program
-			AND DEGREE = @Degree
-			AND CURRICULUM = @Curriculum
-			AND APPLICATION_FLAG = 'Y' --Ought to be an application, or there's a problem somewhere.
-			--AND ACADEMIC_FLAG = 'Y' --We want to expose issues where someone is registered without being accepted.
-			AND (COLLEGE_ATTEND IS NULL --Returning and continuing students should not have applications.
-				OR COLLEGE_ATTEND IN ('NEW','READ'))
-
+	FROM ACADEMIC A
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
+		AND APPLICATION_FLAG = 'Y' --Ought to be an application, or there's a problem somewhere.
+		--AND ACADEMIC_FLAG = 'Y' --We want to expose issues where someone is registered without being accepted.
+		AND (
+			COLLEGE_ATTEND IS NULL --Returning and continuing students should not have applications.
+			OR COLLEGE_ATTEND IN ('NEW', 'READ')
+			)
+	
 	--The older, more generic approach.
 	--SELECT
 	--	CASE WHEN EXISTS (
@@ -99,14 +116,7 @@ BEGIN
 	--		--AND ACADEMIC_FLAG = 'Y' --We want to expose issues where someone is registered without being accepted.
 	--		AND (COLLEGE_ATTEND IS NULL --Returning and continuing students should not have applications.
 	--			OR COLLEGE_ATTEND IN ('NEW','READ'))
-	
 END
-
-
-
-
-
-
 GO
 
 
