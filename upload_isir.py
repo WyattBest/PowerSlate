@@ -1,3 +1,4 @@
+import sys
 import requests
 import json
 import datetime
@@ -17,7 +18,6 @@ def init_config(x):
     global s_upload_url
     global s_upload_cred
     global smtp_config
-    global timer_seconds
     global cnxn
     global cursor
     global today
@@ -42,10 +42,6 @@ def init_config(x):
     cnxn = pyodbc.connect(config['pf_database_string'])
     cursor = cnxn.cursor()
 
-    # Schedule timer length and today's date
-    timer_seconds = int(config['timer_seconds'])
-    today = datetime.datetime.date(datetime.datetime.now())
-
 
 def de_init():
     # Clean up connections.
@@ -53,7 +49,7 @@ def de_init():
 
 
 def doit(config_file):
-    # Main body of the program that will be run on a timer.
+    # Main body of the program
     init_config(config_file)
 
     # Get list of government Id's from Slate
@@ -87,15 +83,13 @@ def doit(config_file):
 # Attempt a sync; send failure email with traceback if error.
 try:
     print('Start sync at ' + str(datetime.datetime.now()))
-    doit('SlaPowInt_ISIR_Status_config_prod.json')
+    doit(sys.argv[1])
 except Exception as e:
     # Send a failure email with traceback on exceptions
     print('Exception at ' + str(datetime.datetime.now()) +
           '! Check notification email.')
     msg = MIMEText('Sync failed at ' + str(datetime.datetime.now()) + '\n\nError: '
-                   + str(traceback.format_exc()) +
-                   ' \n\nSync will be attempted again in '
-                   + str(timer_seconds / 3600) + ' hours.')
+                    + str(traceback.format_exc()))
     msg['Subject'] = smtp_config['subject']
     msg['From'] = smtp_config['from']
     msg['To'] = smtp_config['to']
