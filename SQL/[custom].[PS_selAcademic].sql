@@ -16,8 +16,9 @@ GO
 --	2017-11-03 Wyatt Best:	Updated to better handle multiple apps. Gave up on a generic method of handling CASAC.
 --  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
 --	2020-01-13	Wyatt Best: Get credits from rollup record instead of session.
+--	0220-04-10	Wyatt Best: Added Withdrawn and CampusEmail.
 -- =============================================
-CREATE PROCEDURE [custom].[PS_selAcademic] @PCID NVARCHAR(10)
+CREATE PROCEDURE [custom].[PS_selProfile] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
 	,@Term NVARCHAR(10)
 	,@Session NVARCHAR(10)
@@ -29,7 +30,7 @@ BEGIN
 	SET NOCOUNT ON;
 
 	--Select credits from rollup to avoid duplicate hits to table
-	DECLARE @Credits numeric(6,2) = (
+	DECLARE @Credits NUMERIC(6, 2) = (
 			SELECT CREDITS
 			FROM ACADEMIC A
 			WHERE PEOPLE_CODE_ID = @PCID
@@ -76,7 +77,22 @@ BEGIN
 			END AS 'Registered'
 		,@Credits AS CREDITS
 		,A.COLLEGE_ATTEND
+		,(
+			SELECT REQUIRE_SEPDATE
+			FROM CODE_ENROLLMENT
+			WHERE CODE_VALUE_KEY = A.ENROLL_SEPARATION
+			) AS Withdrawn
+		,oE.Email AS CampusEmail
 	FROM ACADEMIC A
+	OUTER APPLY (
+		SELECT TOP 1 Email
+		FROM EmailAddress E
+		WHERE E.PeopleOrgCodeId = A.PEOPLE_CODE_ID
+			AND E.EmailType = 'Campus'
+			AND E.IsActive = 1
+		ORDER BY E.REVISION_DATE DESC
+			,REVISION_TIME DESC
+		) oE
 	WHERE PEOPLE_CODE_ID = @PCID
 		AND ACADEMIC_YEAR = @Year
 		AND ACADEMIC_TERM = @Term
@@ -90,6 +106,7 @@ BEGIN
 			COLLEGE_ATTEND IS NULL --Returning and continuing students should not have applications.
 			OR COLLEGE_ATTEND IN ('NEW', 'READ')
 			)
+
 	
 	--The older, more generic approach.
 	--SELECT

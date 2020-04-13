@@ -251,9 +251,12 @@ def trans_slate_to_rec(x):
 
 
 def post_to_pc(x):
-    # Posts an application to PowerCampus. Accepts a dict as input.
-    # Returns PEOPLE_CODE_ID if application was automatically accepted.
-    # Returns None for all other conditions.
+    """Post an application to PowerCampus.
+    Return  PEOPLE_CODE_ID if application was automatically accepted or None for all other conditions.
+
+    Keyword arguments:
+    x -- an application dict
+    """
 
     r = requests.post(pc_api_url + 'api/applications',
                       json=x, auth=pc_api_cred)
@@ -487,37 +490,44 @@ def get_actions(apps_list):
     return app_dict
 
 
-def get_academic(PEOPLE_CODE_ID, year, term, session, program, degree, curriculum):
-    '''Fetches data from ACADEMIC row. Returns -1 credits if the row is not found.
-
+def get_pc_profile(PEOPLE_CODE_ID, year, term, session, program, degree, curriculum):
+    '''Fetch ACADEMIC row data and email address from PowerCampus.
 
      Returns:
+     found -- True/False (entire row)
      registered -- True/False
-     credits -- real
      readmit -- True/False
+     withdrawn -- True/False
+     credits -- string
+     campus_email -- string (None of not registered)
     '''
-    credits = -1
-    registered = False
-    readmit = None
 
-    cursor.execute('EXEC [custom].[PS_selAcademic] ?,?,?,?,?,?,?',
+    found = False
+    registered = False
+    readmit = False
+    withdrawn = False
+    credits = 0
+    campus_email = None
+
+    cursor.execute('EXEC [custom].[PS_selProfile] ?,?,?,?,?,?,?',
                    PEOPLE_CODE_ID, year, term, session, program, degree, curriculum)
     row = cursor.fetchone()
 
     if row is not None:
+        found = True
 
         if row.Registered == 'Y':
             registered = True
-            credits = row.CREDITS
-        else:
-            credits = 0
+            credits = str(row.CREDITS)
+            campus_email = row.CampusEmail
 
         if row.COLLEGE_ATTEND == 'READ':
             readmit = True
-        elif row.COLLEGE_ATTEND == 'NEW':
-            readmit = False
 
-    return registered, credits, readmit
+        if row.Withdrawn == 'Y':
+            withdrawn = True
+
+    return found, registered, readmit, withdrawn, credits, campus_email
 
 
 def pc_update_demographics(app):
