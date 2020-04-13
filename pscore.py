@@ -343,8 +343,8 @@ def scan_status(x):
 
 
 def trans_rec_to_pc(x):
-    # Converts a list (with its nested objects) from Recruiter format to PowerCampus mappings using recruiterMapping.xml
-    pl = copy.deepcopy(x)  # local version of pc_existing_apps_list
+    """Return applications list remapped to PowerCampus format according to recruiterMapping.xml"""
+    pl = copy.deepcopy(x)
 
     # Transform and remap the input list, saving results to local list pl
     # Use all-caps key names to help keep track of what has been mapped
@@ -430,7 +430,7 @@ def trans_rec_to_pc(x):
 
 
 def get_actions(apps_list):
-    """Fetches "scheduled actions" (Slate Checklist) for a list of applications.
+    """Fetch 'Scheduled Actions' (Slate Checklist) for a list of applications.
 
     Keyword arguments:
     apps_list -- list of ApplicationNumbers to fetch actions for
