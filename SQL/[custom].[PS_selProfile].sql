@@ -45,11 +45,11 @@ BEGIN
 	--I tried hard to make this not specific to MCNY, but ultimately gave in.
 	--If someone has multiple apps for a YTS with different PDC, they will be in the same transcript sequence,
 	--and TranscriptDetail doesn't have PDC. I ultimately can't tell which TranscriptDetail goes with with Academic record without custom logic.
-	--Filtering by credits would be fine except that we have a non-credit certificate, CASAC. Thus the CASE statement.
+	--Filtering by credits would be fine except that we have non-credit certificates. Thus the CASE statement.
 	SELECT CASE 
 			WHEN PROGRAM = 'CERT'
-				AND @Program = 'NON'
-				AND @Curriculum = 'CASAC'
+				-- AND @Degree = 'NON'
+				-- AND @Curriculum = 'CASAC'
 				AND EXISTS (
 					SELECT TD.PEOPLE_ID
 					FROM TRANSCRIPTDETAIL TD
