@@ -16,7 +16,8 @@ GO
 --	2017-11-03 Wyatt Best:	Updated to better handle multiple apps. Gave up on a generic method of handling CASAC.
 --  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
 --	2020-01-13	Wyatt Best: Get credits from rollup record instead of session.
---	0220-04-10	Wyatt Best: Added Withdrawn and CampusEmail.
+--	2020-04-10	Wyatt Best: Added Withdrawn and CampusEmail.
+--	2020-04-21	Wyatt Best: Registration check only considers PROGRAM = CERT instead of full PDC. Allows noncredit programs besides CASAC.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_selProfile] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
