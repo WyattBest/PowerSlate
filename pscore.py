@@ -496,6 +496,7 @@ def get_pc_profile(PEOPLE_CODE_ID, year, term, session, program, degree, curricu
      Returns:
      found -- True/False (entire row)
      registered -- True/False
+     reg_date -- Date
      readmit -- True/False
      withdrawn -- True/False
      credits -- string
@@ -504,6 +505,7 @@ def get_pc_profile(PEOPLE_CODE_ID, year, term, session, program, degree, curricu
 
     found = False
     registered = False
+    reg_date = None
     readmit = False
     withdrawn = False
     credits = 0
@@ -518,6 +520,7 @@ def get_pc_profile(PEOPLE_CODE_ID, year, term, session, program, degree, curricu
 
         if row.Registered == 'Y':
             registered = True
+            reg_date = str(row.REG_VAL_DATE)
             credits = str(row.CREDITS)
             campus_email = row.CampusEmail
 
@@ -527,7 +530,7 @@ def get_pc_profile(PEOPLE_CODE_ID, year, term, session, program, degree, curricu
         if row.Withdrawn == 'Y':
             withdrawn = True
 
-    return found, registered, readmit, withdrawn, credits, campus_email
+    return found, registered, reg_date, readmit, withdrawn, credits, campus_email
 
 
 def pc_update_demographics(app):

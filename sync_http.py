@@ -87,7 +87,7 @@ def main_sync(x, pid):
             slate_upload_dict.update(
                 {pc_existing_apps_list[k]['ApplicationNumber']: {'PEOPLE_CODE_ID': None}})
 
-        found, registered, readmit, withdrawn, credits, campus_email = pscore.get_pc_profile(
+        found, registered, reg_date, readmit, withdrawn, credits, campus_email = pscore.get_pc_profile(
             pc_existing_apps_list[k]['PEOPLE_CODE_ID'],
             pc_existing_apps_list[k]['ACADEMIC_YEAR'],
             pc_existing_apps_list[k]['ACADEMIC_TERM'],
@@ -99,6 +99,7 @@ def main_sync(x, pid):
         # Update slate_upload_dict with registration information
         slate_upload_dict[pc_existing_apps_list[k]['ApplicationNumber']].update({'found': found,
                                                                             'registered': registered,
+                                                                            'reg_date': reg_date,
                                                                             'readmit': readmit,
                                                                             'withdrawn': withdrawn,
                                                                             'credits': credits,
