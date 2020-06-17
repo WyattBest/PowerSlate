@@ -19,6 +19,7 @@ GO
 --	2020-04-10	Wyatt Best: Added Withdrawn and CampusEmail.
 --	2020-04-21	Wyatt Best: Registration check only considers PROGRAM = CERT instead of full PDC. Allows noncredit programs besides CASAC.
 --	2020-05-18	Wyatt Best:	Added REG_VAL_DATE.
+--	2020-06-17	Wyatt Best: Coalesce PREREG_VAL_DATE, REG_VAL_DATE.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_selProfile] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -77,7 +78,7 @@ BEGIN
 				THEN 'Y'
 			ELSE 'N'
 			END AS 'Registered'
-		,CAST(REG_VAL_DATE AS DATE) [REG_VAL_DATE]
+		,CAST(COALESCE(PREREG_VAL_DATE, REG_VAL_DATE) AS DATE) [REG_VAL_DATE]
 		,@Credits AS CREDITS
 		,A.COLLEGE_ATTEND
 		,(
