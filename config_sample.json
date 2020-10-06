@@ -33,6 +33,14 @@
 			"password": "astrongpassword"
 		}
 	},
+	"finaid": {
+		"enabled": true,
+		"slate_post": {
+			"url": "https://apply.mcny.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
+			"username": "username",
+			"password": "astrongpassword"
+		}
+	},
 	"error_strings": {
 		"no_apps": "No applications found. Perhaps the application(s) are not submitted or are missing required fields?"
 	}

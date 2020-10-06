@@ -19,6 +19,7 @@ def init_config(config_path):
     global cursor
     global app_status_log_table
     global today
+    global finaid_config
     global error_strings
 
     # Read config file and convert to dict
@@ -75,6 +76,7 @@ def init_config(config_path):
 
     # Config dicts
     smtp_config = config['smtp']
+    finaid_config = config['finaid']
     error_strings = config['error_strings']
 
     # Print a test of connections
@@ -559,6 +561,15 @@ def pc_update_smsoptin(app):
         cursor.execute('exec [custom].[PS_updSMSOptIn] ?, ?, ?',
                        app['PEOPLE_CODE_ID'], 'SLATE', app['SMSOptIn'])
         cnxn.commit()
+
+
+def pf_get_fachecklist(pcid, year, term, session):
+    """Return the PowerFAIDS missing docs list for uploading to Financial Aid Checklist."""
+    cursor.execute(
+        'exec [custom].[PS_selPFChecklist] ?, ?, ?, ?', pcid, year, term, session)
+    rows = cursor.fetchall()
+
+    return rows
 
 
 def main_sync(pid=None):
