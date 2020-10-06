@@ -84,3 +84,4 @@ config_dev.json
 .vscode/
 config_15_prod.json
 config_http_prod.json
+PowerSlate.code-workspace

@@ -6,27 +6,25 @@ import pyodbc
 import datetime
 
 
-def init_config(x):
-    """Opens input filename and inits config variables from it. Returns SMTP config for crash handling."""
+def init_config(config_path):
+    """Reads config file to global 'config' dict. Many frequently-used variables are copied to their own globals for convenince.
 
+    Returns SMTP config dict for crash handling."""
+    global config
     global pc_api_url
     global pc_api_cred
-    global sq_apps_url
-    global sq_apps_cred
-    global sq_actions_url
-    global sq_actions_session
-    global s_upload_url
-    global s_upload_cred
+    global http_session_sched_acts
     global rm_mapping
     global cnxn
     global cursor
     global app_status_log_table
     global today
+    global error_strings
 
     # Read config file and convert to dict
-    with open(x) as config_file:
-        config = json.loads(config_file.read())
-        # print(json.dumps(config, indent = 4, sort_keys = True)) # Debug: print config object
+    with open(config_path) as config_path:
+        config = json.loads(config_path.read())
+        print(config)  # Debug: print config object
 
     # We will use recruiterMapping.xml to translate Recruiter values to PowerCampus values for direct SQL operations.
     # The file path can be local or remote. Obviously, a remote file must have proper network share and permissions set up.
@@ -57,40 +55,27 @@ def init_config(x):
                 rm_mapping[child.tag][fn2].update(
                     {row.get('RCCodeValue'): row.get(fn2)})
 
-    # The following sections are not strictly necessary. We could just make the config dict a global object
-    # and access it directly, but cuts down on repetitive code.
-    # I make exception for smtp_config dict - it's rarely used and would require a lot of globals to replace.
-
     # PowerCampus Web API connection
     pc_api_url = config['pc_api']['url']
     pc_api_cred = (config['pc_api']['username'], config['pc_api']['password'])
 
-    # Slate web service connections
-    # At the time of this writing, Slate limits web services to 300 seconds processing time per database
-    # in a 5-minute rolling window. Large sync jobs may require sleep timers. (2017-10-10)
-    sq_apps_url = config['slate_query_apps']['url']
-    sq_apps_cred = (config['slate_query_apps']['username'],
-                    config['slate_query_apps']['password'])
-    sq_actions_url = config['slate_query_actions']['url']
-    s_upload_url = config['slate_upload']['url']
-    s_upload_cred = (config['slate_upload']['username'],
-                     config['slate_upload']['password'])
-
     # Set up an HTTP session to be used for updating scheduled actions. It's initialized here because it will be used
     # inside a loop. Other web service calls will use the top-level requests functions (i.e. their own, automatic sessions).
-    sq_actions_session = requests.Session()
-    sq_actions_session.auth = (
-        config['slate_query_actions']['username'], config['slate_query_actions']['password'])
+    if config['scheduled_actions']['enabled'] == True:
+        http_session_sched_acts = requests.Session()
+        http_session_sched_acts.auth = (
+            config['scheduled_actions']['slate_get']['username'], config['scheduled_actions']['slate_get']['password'])
 
-    # Email crash handler notification settings
-    smtp_config = config['smtp']
-
-    # Microsoft SQL Server connection. Requires ODBC connection provisioned on the local machine.
+    # Microsoft SQL Server connection.
     cnxn = pyodbc.connect(config['pc_database_string'])
     cursor = cnxn.cursor()
     app_status_log_table = config['app_status_log_table']
 
     today = datetime.datetime.date(datetime.datetime.now())
+
+    # Config dicts
+    smtp_config = config['smtp']
+    error_strings = config['error_strings']
 
     # Print a test of connections
     r = requests.get(pc_api_url + 'api/version', auth=pc_api_cred)
@@ -105,7 +90,9 @@ def init_config(x):
 def de_init():
     # Clean up connections.
     cnxn.close()  # SQL
-    sq_actions_session.close()  # HTTP session to Slate for scheduled actions
+
+    if config['scheduled_actions']['enabled'] == True:
+        http_session_sched_acts.close()  # HTTP session to Slate for scheduled actions
 
 
 def blank_to_null(x):
@@ -470,7 +457,8 @@ def get_actions(apps_list):
         # # Stuff them into a comma-separated string.
         qs = ",".join(str(item) for item in ql)
 
-        r = sq_actions_session.post(sq_actions_url, params={'aids': qs})
+        r = http_session_sched_acts.get(
+            config['scheduled_actions']['slate_get']['url'], params={'aids': qs})
         r.raise_for_status()
         al = json.loads(r.text)
         actions_list.extend(al['row'])
@@ -571,3 +559,147 @@ def pc_update_smsoptin(app):
         cursor.execute('exec [custom].[PS_updSMSOptIn] ?, ?, ?',
                        app['PEOPLE_CODE_ID'], 'SLATE', app['SMSOptIn'])
         cnxn.commit()
+
+
+def main_sync(pid=None):
+    """Main body of the program.
+
+    Keyword arguments:
+    pid -- specific application GUID to sync (default None)
+    """
+
+    # Get applicants from Slate
+    creds = (config['slate_query_apps']['username'],
+             config['slate_query_apps']['password'])
+    if pid is not None:
+        r = requests.get(config['slate_query_apps']['url'],
+                         auth=creds, params={'pid': pid})
+    else:
+        r = requests.get(config['slate_query_apps']['url'], auth=creds)
+    r.raise_for_status()
+    slate_dict = json.loads(r.text)
+    # Transform the data to Recruiter format
+    rec_formatted_list = trans_slate_to_rec(slate_dict)
+
+    if not rec_formatted_list:
+        raise EOFError(error_strings['no_apps'])
+
+    # Check each item in rec_formatted_list for status in PowerCampus.
+    rec_new_list = []
+    rec_existing_list = []
+
+    for k, v in enumerate(rec_formatted_list):
+        ra_status, apl_status, computed_status, PEOPLE_CODE_ID = scan_status(
+            rec_formatted_list[k])
+
+        if ra_status is not None:
+
+            # If application exist but did not process, try it again.
+            if ra_status in (1, 2) and apl_status is None:
+                rec_new_list.append(rec_formatted_list[k])
+
+            # If application is in a good status, write to rec_existing_list for updating
+            if computed_status == 'Active':
+                rec_formatted_list[k]['PEOPLE_CODE_ID'] = PEOPLE_CODE_ID
+                rec_existing_list.append(rec_formatted_list[k])
+
+        # If application doesn't exist in PowerCampus, write record to rec_new_list.
+        else:
+            rec_new_list.append(rec_formatted_list[k])
+
+    # POST any new items to PowerCampus Web API, then record the returned PEOPLE_CODE_ID or None
+    slate_upload_dict = {}
+
+    for k, v in enumerate(rec_new_list):
+        PEOPLE_CODE_ID = post_to_pc(rec_new_list[k])
+
+        # Add PEOPLE_CODE_ID to a dict to eventually send back to Slate
+        if PEOPLE_CODE_ID is not None:
+            slate_upload_dict.update({
+                rec_new_list[k]['ApplicationNumber']: {
+                    'PEOPLE_CODE_ID': PEOPLE_CODE_ID
+                }
+            })
+
+    # Update existing PowerCampus applications and get registration information
+    # First transform the dict to PowerCampus native format (like Campus6 instead of like Recruiter).
+    pc_existing_apps_list = trans_rec_to_pc(rec_existing_list)
+
+    for k, v in enumerate(pc_existing_apps_list):
+        # Update Demographics
+        pc_update_demographics(pc_existing_apps_list[k])
+
+        # Update SMS Opt-In
+        pc_update_smsoptin(pc_existing_apps_list[k])
+
+        # Update Status/Decision
+        pc_update_statusdecision(pc_existing_apps_list[k])
+
+        # Get registration information to send back to Slate. (Newly-posted apps won't be registered yet.)
+        # First add keys to slate_upload_dict
+        if pc_existing_apps_list[k]['ApplicationNumber'] not in slate_upload_dict:
+            slate_upload_dict.update(
+                {pc_existing_apps_list[k]['ApplicationNumber']: {'PEOPLE_CODE_ID': None}})
+
+        found, registered, reg_date, readmit, withdrawn, credits, campus_email = get_pc_profile(
+            pc_existing_apps_list[k]['PEOPLE_CODE_ID'],
+            pc_existing_apps_list[k]['ACADEMIC_YEAR'],
+            pc_existing_apps_list[k]['ACADEMIC_TERM'],
+            pc_existing_apps_list[k]['ACADEMIC_SESSION'],
+            pc_existing_apps_list[k]['PROGRAM'],
+            pc_existing_apps_list[k]['DEGREE'],
+            pc_existing_apps_list[k]['CURRICULUM'],)
+
+        # Update slate_upload_dict with registration information
+        slate_upload_dict[pc_existing_apps_list[k]['ApplicationNumber']].update({'found': found,
+                                                                                 'registered': registered,
+                                                                                 'reg_date': reg_date,
+                                                                                 'readmit': readmit,
+                                                                                 'withdrawn': withdrawn,
+                                                                                 'credits': credits,
+                                                                                 'campus_email': campus_email})
+
+    # Update Scheduled Actions for existing PowerCampus applications
+    if config['scheduled_actions']['enabled'] == True:
+        actions = get_actions(pc_existing_apps_list)
+
+        for k, v in actions.items():
+            for kk, vv in enumerate(actions[k]['actions']):
+                cursor.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
+                               actions[k]['PEOPLE_CODE_ID'],
+                               'SLATE',
+                               actions[k]['actions'][kk]['action_id'],
+                               actions[k]['actions'][kk]['item'],
+                               actions[k]['actions'][kk]['completed'],
+                               # Only the date portion is actually used.
+                               actions[k]['actions'][kk]['create_datetime'],
+                               actions[k]['ACADEMIC_YEAR'],
+                               actions[k]['ACADEMIC_TERM'],
+                               actions[k]['ACADEMIC_SESSION'])
+                cnxn.commit()
+
+    # Scan PowerCampus status for all apps and log to external db; capture PEOPLE_CODE_ID
+    for k, v in enumerate(rec_formatted_list):
+        ra_status, apl_status, computed_status, PEOPLE_CODE_ID = scan_status(
+            rec_formatted_list[k])
+
+        if PEOPLE_CODE_ID is not None and computed_status == 'Active':
+            slate_upload_dict[rec_formatted_list[k]['ApplicationNumber']].update(
+                {'PEOPLE_CODE_ID': PEOPLE_CODE_ID})
+
+    # Upload data back to Slate
+    # slate_upload_dict has app ID's as keys for ease of updating; now transform to a list of flat dicts for Slate to ingest
+    slate_upload_list = []
+    for k, v in slate_upload_dict.items():
+        slate_upload_list.append({**{'aid': k}, **v})
+
+    # Slate requires JSON to be convertable to XML
+    slate_upload_dict = {'row': slate_upload_list}
+
+    creds = (config['slate_upload']['username'],
+             config['slate_upload']['password'])
+    r = requests.post(config['slate_upload']['url'],
+                      json=slate_upload_dict, auth=creds)
+    r.raise_for_status()
+
+    return 'Done. Please check the PowerSlate Sync Report for more details.'
