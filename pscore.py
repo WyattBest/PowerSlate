@@ -156,8 +156,6 @@ def trans_slate_to_rec(x):
         # Surely there's a better way to write this!
         if 'Phone0' in x2[k] or 'Phone1' in x2[k] or 'Phone2' in x2[k]:
             x2[k].update({'PhoneNumbers': []})
-            # print('You\'ve got phones!')      # Debug
-            # print(len(x2[k]['PhoneNumbers'])) # Debug
         # PowerCampus WebAPI requires Type -1 instead of a blank or null when not submitting any phones.
         else:
             x2[k]['PhoneNumbers'] = [
@@ -688,6 +686,17 @@ def main_sync(pid=None):
                                actions[k]['ACADEMIC_TERM'],
                                actions[k]['ACADEMIC_SESSION'])
                 cnxn.commit()
+
+    # Get Financial Aid checklist for upload to Slate
+    if config['fa_checklist']['enabled']:
+        fa_upload = [pf_get_fachecklist(k['aid'],
+                                        k['PEOPLE_CODE_ID'],
+                                        k['ACADEMIC_YEAR'],
+                                        k['ACADEMIC_TERM'],
+                                        k['ACADEMIC_SESSION']) for k in pc_existing_apps_list]
+
+        for k in fa_upload:
+            fa_upload[k]['AppID'] = slate_dict[k['aid']]['AppID']
 
     # Scan PowerCampus status for all apps and log to external db; capture PEOPLE_CODE_ID
     for k, v in enumerate(rec_formatted_list):
