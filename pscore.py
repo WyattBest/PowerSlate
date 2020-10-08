@@ -1,4 +1,4 @@
-from copy import deepcopy
+from copy import deepcopy, error
 from typing import Mapping
 import requests
 import copy
@@ -136,49 +136,63 @@ def strtobool(s):
         return None
 
 
-def format_recruiter(app):
-    """Remap application to Recruiter/Web API format.
-
-    Keyword arguments:
-    app -- an application dict
-    """
+def format_app_generic(app):
+    """Massage Slate query export into generic, flat format with missing fields supplied and datatypes corrected."""
 
     mapped = blank_to_null(app)
 
-    # Define API fields according to required datatypes and/or null handling
-    fields_verbatim = ['FirstName',  'LastName',
-                       'Email', 'Campus', 'BirthDate', 'CreateDateTime']
     fields_null = ['Prefix', 'MiddleName', 'LastNamePrefix', 'Suffix', 'Nickname', 'GovernmentId', 'LegalName',
                    'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'MaritalStatus',
                    'ProposedDecision', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
                    'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status']
-    fields_arr = ['Relationships', 'Activities',
-                  'EmergencyContacts', 'Education']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                    'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                    'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid']
     fields_int = ['Ethnicity', 'Gender']
 
-    # Pass through some fields verbatim
-    mapped.append({k: v for (k, v) in app if k in fields_verbatim})
-
     # Copy nullable strings from input to output, then fill in nulls
-    mapped.append({k: v for (k, v) in app if k in fields_null})
-    mapped.append({k: None for k in fields_null if k not in app})
+    mapped.update({k: v for (k, v) in app.items() if k in fields_null})
+    mapped.update({k: None for k in fields_null if k not in app})
 
     # Convert integers and booleans
-    mapped.update({k: int(v) for (k, v) in app if k in fields_int})
-    mapped.update({k: strtobool(v) for (k, v) in app if k in fields_bool})
-
-    # Supply empty arrays. Implementing these would require more logic.
-    mapped.append({k: [] for k in fields_arr if k not in app})
+    mapped.update({k: int(v) for (k, v) in app.items() if k in fields_int})
+    mapped.update({k: strtobool(v)
+                   for (k, v) in app.items() if k in fields_bool})
 
     # Probably a stub in the API
     if 'GovernmentDateOfEntry' not in app:
         mapped['GovernmentDateOfEntry'] = '0001-01-01T00:00:00'
     else:
         mapped['GovernmentDateOfEntry'] = app['GovernmentDateOfEntry']
+
+    return mapped
+
+
+def format_app_api(app):
+    """Remap application to Recruiter/Web API format.
+
+    Keyword arguments:
+    app -- an application dict
+    """
+
+    mapped = {}
+
+    # Pass through fields
+    fields_verbatim = ['FirstName',  'LastName', 'Email', 'Campus', 'BirthDate', 'CreateDateTime',
+                       'Prefix', 'MiddleName', 'LastNamePrefix', 'Suffix', 'Nickname', 'GovernmentId', 'LegalName',
+                       'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'MaritalStatus',
+                       'ProposedDecision', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
+                       'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status',
+                       'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
+                       'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid'
+                       'Ethnicity', 'Gender']
+    mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
+
+    # Supply empty arrays. Implementing these would require more logic.
+    fields_arr = ['Relationships', 'Activities',
+                  'EmergencyContacts', 'Education']
+    mapped.update({k: [] for k in fields_arr if k not in app})
 
     # Nest up to ten addresses as a list of dicts
     # "Address1Line1": "123 St" becomes "Addresses": [{"Line1": "123 St"}]
@@ -227,7 +241,7 @@ def format_recruiter(app):
             {'Type': -1, 'Country': None, 'Number': None}]
 
     # Veteran has funny logic
-    if 'Veteran' not in app:
+    if app['Veteran'] is None:
         mapped['Veteran'] = 0
         mapped['VeteranStatus'] = False
     else:
@@ -245,36 +259,43 @@ def format_recruiter(app):
     return mapped
 
 
-def format_pc(app):
+def format_app_sql(app):
     """Remap application to PowerCampus SQL format.
 
     Keyword arguments:
     app -- an application dict
     """
 
-    mapped = []
+    mapped = {}
 
-    # Gender is hardcoded into the API. [WebServices].[spSetDemographics] has different hardcoded values.
+    # Pass through fields
+    fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
+                       'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
+                       'ProposedDecision', 'CreateDateTime']
+    mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
+
+    # Gender is hardcoded into the PowerCampus Web API, but [WebServices].[spSetDemographics] has different hardcoded values.
     gender_map = {None: 3, 0: 1, 1: 2, 2: 3}
     mapped['GENDER'] = gender_map[app['Gender']]
 
     mapped['ACADEMIC_YEAR'] = RM_MAPPING['AcademicTerm']['PCYearCodeValue'][app['YearTerm']]
     mapped['ACADEMIC_TERM'] = RM_MAPPING['AcademicTerm']['PCTermCodeValue'][app['YearTerm']]
     mapped['ACADEMIC_SESSION'] = '01'
-    mapped['PROGRAM'] = RM_MAPPING['AcademicLevel'][app['Programs'][0]['Program']]
-    mapped['DEGREE'] = RM_MAPPING['AcademicProgram']['PCDegreeCodeValue'][app['Programs'][0]['Degree']]
-    mapped['CURRICULUM'] = RM_MAPPING['AcademicLevel'][app['Programs'][0]['Program']]
+    # Todo: Fix inconsistency of 1-field vs 2-field mappings
+    mapped['PROGRAM'] = RM_MAPPING['AcademicLevel'][app['Program']]
+    mapped['DEGREE'] = RM_MAPPING['AcademicProgram']['PCDegreeCodeValue'][app['Degree']]
+    mapped['CURRICULUM'] = RM_MAPPING['AcademicProgram']['PCCurriculumCodeValue'][app['Degree']]
     mapped['PRIMARYCITIZENSHIP'] = RM_MAPPING['CitizenshipStatus'][app['CitizenshipStatus']]
-
-    if app['VeteranStatus'] == True:
-        mapped['VETERAN'] = RM_MAPPING['Veteran'][str(app['Veteran'])]
-    else:
-        mapped['VETERAN'] = None
 
     if app['Visa'] is not None:
         mapped['VISA'] = RM_MAPPING['Visa'][app['Visa']]
     else:
         mapped['VISA'] = None
+
+    if 'VeteranStatus' in app and app['VeteranStatus'] == True:
+        mapped['VETERAN'] = RM_MAPPING['Veteran'][str(app['Veteran'])]
+    else:
+        mapped['VETERAN'] = None
 
     if app['SecondaryCitizenship'] is not None:
         mapped['SECONDARYCITIZENSHIP'] = RM_MAPPING['CitizenshipStatus'][app['SecondaryCitizenship']]
@@ -286,8 +307,10 @@ def format_pc(app):
     else:
         mapped['MARITALSTATUS'] = None
 
+    return mapped
 
-def post_to_pc(x):
+
+def pc_post_api(x):
     """Post an application to PowerCampus.
     Return  PEOPLE_CODE_ID if application was automatically accepted or None for all other conditions.
 
@@ -329,7 +352,7 @@ def scan_status(x):
     # Expects a dict
 
     r = requests.get(PC_API_URL + 'api/applications?applicationNumber=' +
-                     x['ApplicationNumber'], auth=PC_API_CRED)
+                     x['aid'], auth=PC_API_CRED)
     r.raise_for_status()
     r_dict = json.loads(r.text)
 
@@ -337,7 +360,7 @@ def scan_status(x):
     # Log PCID and status.
     if 'applicationNumber' in r_dict:
         CURSOR.execute('EXEC [custom].[PS_selRAStatus] \'' +
-                       x['ApplicationNumber'] + '\'')
+                       x['aid'] + '\'')
         row = CURSOR.fetchone()
         if row.PEOPLE_CODE_ID is not None:
             PEOPLE_CODE_ID = row.PEOPLE_CODE_ID
@@ -370,7 +393,7 @@ def scan_status(x):
             [ComputedStatus],[Notes],[RecruiterApplicationStatus],[ApplicationStatus],[PEOPLE_CODE_ID])
         VALUES 
             (?,?,?,?,?,?,?,?,?,?)""",
-                       [x['Ref'], x['ApplicationNumber'], x['ProspectId'], x['FirstName'], x['LastName'], computed_status, row.ra_errormessage, row.ra_status, row.apl_status, PEOPLE_CODE_ID])
+                       [x['Ref'], x['aid'], x['pid'], x['FirstName'], x['LastName'], computed_status, row.ra_errormessage, row.ra_status, row.apl_status, PEOPLE_CODE_ID])
         CNXN.commit()
 
         return row.ra_status, row.apl_status, computed_status, PEOPLE_CODE_ID
@@ -462,7 +485,13 @@ def pc_get_profile(app):
     campus_email = None
 
     CURSOR.execute('EXEC [custom].[PS_selProfile] ?,?,?,?,?,?,?',
-                   app['PEOPLE_CODE_ID'], app['year'], app['term'], app['session'], app['program'], app['degree'], app['curriculum'])
+                   app['PEOPLE_CODE_ID'],
+                   app['ACADEMIC_YEAR'],
+                   app['ACADEMIC_TERM'],
+                   app['ACADEMIC_SESSION'],
+                   app['PROGRAM'],
+                   app['DEGREE'],
+                   app['CURRICULUM'])
     row = CURSOR.fetchone()
 
     if row is not None:
@@ -563,31 +592,35 @@ def main_sync(pid=None):
     if len(apps) == 0:
         raise EOFError(ERROR_STRINGS['no_apps'])
 
+    # Clean up app data from Slate (datatypes, supply nulls, etc.)
+    for k, v in apps.items():
+        apps[k] = format_app_generic(v)
+
     # Check each app's status flags/PCID in PowerCampus and store them
     for k, v in apps.items():
         status_ra, status_app, status_calc, PEOPLE_CODE_ID = scan_status(v)
-        v.update({'status_ra': status_ra, 'status_app': status_app,
-                  'status_calc': status_calc})
-        v['PEOPLE_CODE_ID'] = PEOPLE_CODE_ID
+        apps[k].update({'status_ra': status_ra, 'status_app': status_app,
+                        'status_calc': status_calc})
+        apps[k]['PEOPLE_CODE_ID'] = PEOPLE_CODE_ID
 
     # (Re)Post new or unprocessed applications to PowerCampus API
     for k, v in apps.items():
         if (v['status_ra'] == None) or (v['status_ra'] in (1, 2) and v['status_app'] is None):
-            PEOPLE_CODE_ID = post_to_pc(v)
-            v['PEOPLE_CODE_ID'] = PEOPLE_CODE_ID
+            PEOPLE_CODE_ID = pc_post_api(format_app_api(v))
+            apps[k]['PEOPLE_CODE_ID'] = PEOPLE_CODE_ID
 
     # Rescan statuses
     for k, v in apps.items():
         status_ra, status_app, status_calc, PEOPLE_CODE_ID = scan_status(v)
-        v.update({'status_ra': status_ra, 'status_app': status_app,
-                  'status_calc': status_calc})
-        v['PEOPLE_CODE_ID'] = PEOPLE_CODE_ID
+        apps[k].update({'status_ra': status_ra, 'status_app': status_app,
+                        'status_calc': status_calc})
+        apps[k]['PEOPLE_CODE_ID'] = PEOPLE_CODE_ID
 
     # Update existing applications in PowerCampus and extract information
     for k, v in apps.items():
         if v['status_calc'] == 'Active':
             # Transform to PowerCampus format
-            app_pc = format_pc(v)
+            app_pc = format_app_sql(v)
 
             # Execute update sprocs
             pc_update_demographics(app_pc)
@@ -596,27 +629,27 @@ def main_sync(pid=None):
 
             # Collect information
             found, registered, reg_date, readmit, withdrawn, credits, campus_email = pc_get_profile(
-                v)
-            v.update({'found': found, 'registered': registered, 'reg_date': reg_date, 'readmit': readmit,
-                      'withdrawn': withdrawn, 'credits': credits, 'campus_email': campus_email})
+                app_pc)
+            apps[k].update({'found': found, 'registered': registered, 'reg_date': reg_date, 'readmit': readmit,
+                            'withdrawn': withdrawn, 'credits': credits, 'campus_email': campus_email})
 
     # Update PowerCampus Scheduled Actions
     if CONFIG['scheduled_actions']['enabled'] == True:
         apps_for_sa = [k for (k, v) in apps.items()
-                       if apps['status_calc'] == 'Active']
-        actions = get_actions(apps_for_sa)
+                       if v['status_calc'] == 'Active']
+        apps_actions = get_actions(apps_for_sa)
 
-        for k, v in actions.items():
-            pc_update_actions(v)
+        for app in apps_actions.values():
+            pc_update_actions(app)
 
     # Upload data back to Slate
     # Build list of flat app dicts with only certain fields included
     slate_upload_list = []
     slate_upload_fields = ['aid', 'PEOPLE_CODE_ID', 'found', 'registered',
                            'reg_date', 'readmit', 'withdrawn', 'credits', 'campus_email']
-    for k, v in apps.items():
+    for app in apps.values():
         slate_upload_list.append(
-            {k: v for (k, v) in v.items() if k in slate_upload_fields})
+            {k: v for (k, v) in app.items() if k in slate_upload_fields})
 
     # Slate requires JSON to be convertable to XML
     slate_upload_dict = {'row': slate_upload_list}
