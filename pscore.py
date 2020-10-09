@@ -363,23 +363,23 @@ def scan_status(x):
                        x['aid'] + '\'')
         row = CURSOR.fetchone()
         if row.PEOPLE_CODE_ID is not None:
-            PEOPLE_CODE_ID = row.PEOPLE_CODE_ID
+            pcid = row.PEOPLE_CODE_ID
             # people_code = row.PEOPLE_CODE_ID[1:]
             # PersonId = row.PersonId # Delete
         else:
-            PEOPLE_CODE_ID = None
+            pcid = None
             people_code = None
 
         # Determine status.
-        if row.ra_status in (0, 3, 4) and row.apl_status == 2 and PEOPLE_CODE_ID is not None:
+        if row.ra_status in (0, 3, 4) and row.apl_status == 2 and pcid is not None:
             computed_status = 'Active'
-        elif row.ra_status in (0, 3, 4) and row.apl_status == 3 and PEOPLE_CODE_ID is None:
+        elif row.ra_status in (0, 3, 4) and row.apl_status == 3 and pcid is None:
             computed_status = 'Declined'
-        elif row.ra_status in (0, 3, 4) and row.apl_status == 1 and PEOPLE_CODE_ID is None:
+        elif row.ra_status in (0, 3, 4) and row.apl_status == 1 and pcid is None:
             computed_status = 'Pending'
-        elif row.ra_status == 1 and row.apl_status is None and PEOPLE_CODE_ID is None:
+        elif row.ra_status == 1 and row.apl_status is None and pcid is None:
             computed_status = 'Required field missing.'
-        elif row.ra_status == 2 and row.apl_status is None and PEOPLE_CODE_ID is None:
+        elif row.ra_status == 2 and row.apl_status is None and pcid is None:
             computed_status = 'Required field mapping is missing.'
         # elif row is not None:
             # ra_status = row.ra_status
@@ -391,55 +391,43 @@ def scan_status(x):
         CURSOR.execute('INSERT INTO' + CONFIG['app_status_log_table'] + """
             ([Ref],[ApplicationNumber],[ProspectId],[FirstName],[LastName],
             [ComputedStatus],[Notes],[RecruiterApplicationStatus],[ApplicationStatus],[PEOPLE_CODE_ID])
-        VALUES 
+        VALUES
             (?,?,?,?,?,?,?,?,?,?)""",
-                       [x['Ref'], x['aid'], x['pid'], x['FirstName'], x['LastName'], computed_status, row.ra_errormessage, row.ra_status, row.apl_status, PEOPLE_CODE_ID])
+                       [x['Ref'], x['aid'], x['pid'], x['FirstName'], x['LastName'], computed_status, row.ra_errormessage, row.ra_status, row.apl_status, pcid])
         CNXN.commit()
 
-        return row.ra_status, row.apl_status, computed_status, PEOPLE_CODE_ID
+        return row.ra_status, row.apl_status, computed_status, pcid
     else:
         return None, None, None, None
 
 
-def get_actions(apps_list):
+def slate_get_actions(apps_list):
     """Fetch 'Scheduled Actions' (Slate Checklist) for a list of applications.
 
     Keyword arguments:
     apps_list -- list of ApplicationNumbers to fetch actions for
 
     Returns:
-    app_dict -- list of applications as a dict with nested dicts of actions. Example:
-        {'ApplicationNumber': {'ACADEMIC_SESSION': '01',
-            'ACADEMIC_TERM': 'SUMMER',
-            'ACADEMIC_YEAR': '2019',
-            'PEOPLE_CODE_ID': 'P000164949',
-            'actions': [{'action_id': 'ADRFLTR',
-                'aid': 'ApplicationNumber',
-                'completed': 'Y',
-                'create_datetime': '2019-01-15T14:17:20',
-                'item': 'Gregory Smith, Prinicpal'}]}}
+    action_list -- list of individual action as dicts
 
     Uses its own HTTP session to reduce overhead and queries Slate with batches of 48 comma-separated ID's.
     48 was chosen to avoid exceeding max GET request.
     """
 
-    pl = copy.deepcopy(apps_list)
-    actions_list = []  # Main list of actions that will be appended to
-    # Dict of applications with nested actions that will be returned.
-    app_dict = {}
+    actions_list = []
 
-    while pl:
+    while apps_list:
         counter = 0
         ql = []  # Queue list
         qs = ''  # Queue string
         al = []  # Temporary actions list
 
-        # Pop up to 48 ApplicationNumbers and append to queue list.
-        while pl and counter < 48:
-            ql.append(pl.pop()['ApplicationNumber'])
+        # Pop up to 48 app GUID's and append to queue list.
+        while apps_list and counter < 48:
+            ql.append(apps_list.pop())
             counter += 1
 
-        # # Stuff them into a comma-separated string.
+        # Stuff them into a comma-separated string.
         qs = ",".join(str(item) for item in ql)
 
         r = HTTP_SESSION_SCHED_ACTS.get(
@@ -449,18 +437,7 @@ def get_actions(apps_list):
         actions_list.extend(al['row'])
         # if len(al['row']) > 1: # Delete. I don't think an application could ever have zero actions.
 
-    # Rebuild the list of applications with the actions nested
-    for k, v in enumerate(apps_list):
-        app_dict.update({apps_list[k]['ApplicationNumber']: {'PEOPLE_CODE_ID': apps_list[k]['PEOPLE_CODE_ID'],
-                                                             'ACADEMIC_YEAR': apps_list[k]['ACADEMIC_YEAR'],
-                                                             'ACADEMIC_TERM': apps_list[k]['ACADEMIC_TERM'],
-                                                             'ACADEMIC_SESSION': apps_list[k]['ACADEMIC_SESSION'],
-                                                             'actions': []}})
-
-    for k, v in enumerate(actions_list):
-        app_dict[actions_list[k]['aid']]['actions'].append(actions_list[k])
-
-    return app_dict
+    return actions_list
 
 
 def pc_get_profile(app):
@@ -545,20 +522,22 @@ def pc_update_statusdecision(app):
     CNXN.commit()
 
 
-def pc_update_actions(app):
-    for k, v in enumerate(app['actions']):
-        CURSOR.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
-                       app['PEOPLE_CODE_ID'],
-                       'SLATE',
-                       k['action_id'],
-                       k['item'],
-                       k['completed'],
-                       # Only the date portion is actually used.
-                       k['create_datetime'],
-                       app['ACADEMIC_YEAR'],
-                       app['ACADEMIC_TERM'],
-                       app['ACADEMIC_SESSION'])
-        CNXN.commit()
+def pc_update_action(action):
+    """Update a Scheduled Action in PowerCampus. Expects an action dict with 'app' key containing SQL formatted app
+    {'aid': GUID, 'item': 'Transcript', 'app': {'PEOPLE_CODE_ID':...}}
+    """
+    CURSOR.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
+                   action['app']['PEOPLE_CODE_ID'],
+                   'SLATE',
+                   action['action_id'],
+                   action['item'],
+                   action['completed'],
+                   # Only the date portion is actually used.
+                   action['create_datetime'],
+                   action['app']['ACADEMIC_YEAR'],
+                   action['app']['ACADEMIC_TERM'],
+                   action['app']['ACADEMIC_SESSION'])
+    CNXN.commit()
 
 
 def pc_update_smsoptin(app):
@@ -598,23 +577,23 @@ def main_sync(pid=None):
 
     # Check each app's status flags/PCID in PowerCampus and store them
     for k, v in apps.items():
-        status_ra, status_app, status_calc, PEOPLE_CODE_ID = scan_status(v)
+        status_ra, status_app, status_calc, pcid = scan_status(v)
         apps[k].update({'status_ra': status_ra, 'status_app': status_app,
                         'status_calc': status_calc})
-        apps[k]['PEOPLE_CODE_ID'] = PEOPLE_CODE_ID
+        apps[k]['PEOPLE_CODE_ID'] = pcid
 
     # (Re)Post new or unprocessed applications to PowerCampus API
     for k, v in apps.items():
         if (v['status_ra'] == None) or (v['status_ra'] in (1, 2) and v['status_app'] is None):
-            PEOPLE_CODE_ID = pc_post_api(format_app_api(v))
-            apps[k]['PEOPLE_CODE_ID'] = PEOPLE_CODE_ID
+            pcid = pc_post_api(format_app_api(v))
+            apps[k]['PEOPLE_CODE_ID'] = pcid
 
     # Rescan statuses
     for k, v in apps.items():
-        status_ra, status_app, status_calc, PEOPLE_CODE_ID = scan_status(v)
+        status_ra, status_app, status_calc, pcid = scan_status(v)
         apps[k].update({'status_ra': status_ra, 'status_app': status_app,
                         'status_calc': status_calc})
-        apps[k]['PEOPLE_CODE_ID'] = PEOPLE_CODE_ID
+        apps[k]['PEOPLE_CODE_ID'] = pcid
 
     # Update existing applications in PowerCampus and extract information
     for k, v in apps.items():
@@ -634,13 +613,18 @@ def main_sync(pid=None):
                             'withdrawn': withdrawn, 'credits': credits, 'campus_email': campus_email})
 
     # Update PowerCampus Scheduled Actions
+    # Querying each app individually would introduce significant network overhead, so query Slate in bulk
     if CONFIG['scheduled_actions']['enabled'] == True:
+        # Make a list of App GUID's
         apps_for_sa = [k for (k, v) in apps.items()
                        if v['status_calc'] == 'Active']
-        apps_actions = get_actions(apps_for_sa)
+        actions_list = slate_get_actions(apps_for_sa)
 
-        for app in apps_actions.values():
-            pc_update_actions(app)
+        for action in actions_list:
+            # Lookup the app each action is associated with; we need PCID and YTS
+            # Nest SQL version of app underneath action
+            action['app'] = format_app_sql(apps[action['aid']])
+            pc_update_action(action)
 
     # Upload data back to Slate
     # Build list of flat app dicts with only certain fields included
