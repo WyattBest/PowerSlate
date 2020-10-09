@@ -85,3 +85,5 @@ config_dev.json
 config_15_prod.json
 config_http_prod.json
 PowerSlate.code-workspace
+run_http_server - dev.ps1
+sandbox.py
