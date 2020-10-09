@@ -223,13 +223,12 @@ def format_app_api(app):
                                    if k[:5] == 'Phone' and int(k[5:6]) - 1 == i} for i in range(10)]
 
         # Supply missing keys
-        # Phone numbers will be typed in order from 0-10,
-        #   so either order the output from Slate to line up with that or supply Type from Slate
-        for k, i in mapped['PhoneNumbers'], range(10):
-            if 'Type' not in k:
-                k['Type'] = i
-            if 'Country' not in k:
-                k['Country'] = CONFIG['defaults']['phone_country']
+        # Phone numbers will be typed in order from 0-10 if type isn't supplied from Slate
+        for i, item in enumerate(mapped['PhoneNumbers']):
+            if 'Type' not in item:
+                item['Type'] = i
+            if 'Country' not in item:
+                item['Country'] = CONFIG['defaults']['phone_country']
 
         # Remove empty phone dicts
         mapped['PhoneNumbers'] = [
