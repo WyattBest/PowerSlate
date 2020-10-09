@@ -566,8 +566,12 @@ def main_sync(pid=None):
     # Make a dict of apps with application GUID as the key
     # {AppGUID: { JSON from Slate }
     apps = {k['aid']: k for k in apps}
-    if len(apps) == 0:
+    if len(apps) == 0 and pid is not None:
+        # Assuming we're running in interactive (HTTP) mode if pid param exists
         raise EOFError(ERROR_STRINGS['no_apps'])
+    elif len(apps) == 0:
+        # Don't raise an error for scheduled mode
+        return None
 
     # Clean up app data from Slate (datatypes, supply nulls, etc.)
     for k, v in apps.items():
