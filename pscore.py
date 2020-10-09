@@ -26,7 +26,6 @@ def init_config(config_path):
     # Read config file and convert to dict
     with open(config_path) as config_path:
         CONFIG = json.loads(config_path.read())
-        print(CONFIG)  # Debug: print config object
 
     # We will use recruiterMapping.xml to translate Recruiter values to PowerCampus values for direct SQL operations.
     # The file path can be local or remote. Obviously, a remote file must have proper network share and permissions set up.
