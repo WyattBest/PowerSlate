@@ -33,6 +33,11 @@
 			"password": "astrongpassword"
 		}
 	},
+	"defaults": {
+		"address_country": null,
+		"phone_country": "US",
+		"phone_type": 1
+	},
 	"error_strings": {
 		"no_apps": "No applications found. Perhaps the application(s) are not submitted or are missing required fields?"
 	}

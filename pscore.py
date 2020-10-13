@@ -1,4 +1,5 @@
 from copy import deepcopy, error
+from sys import hash_info
 from typing import Mapping
 import requests
 import copy
@@ -136,19 +137,19 @@ def strtobool(s):
 
 
 def format_app_generic(app):
-    """Massage Slate query export into generic, flat format with missing fields supplied and datatypes corrected."""
+    """Supply missing fields and correct datatypes. Returns a flat dict."""
 
     mapped = blank_to_null(app)
 
     fields_null = ['Prefix', 'MiddleName', 'LastNamePrefix', 'Suffix', 'Nickname', 'GovernmentId', 'LegalName',
                    'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'MaritalStatus',
                    'ProposedDecision', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
-                   'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status']
+                   'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                    'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                    'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid']
-    fields_int = ['Ethnicity', 'Gender']
+    fields_int = ['Ethnicity', 'Gender', 'SMSOptIn']
 
     # Copy nullable strings from input to output, then fill in nulls
     mapped.update({k: v for (k, v) in app.items() if k in fields_null})
@@ -164,6 +165,9 @@ def format_app_generic(app):
         mapped['GovernmentDateOfEntry'] = '0001-01-01T00:00:00'
     else:
         mapped['GovernmentDateOfEntry'] = app['GovernmentDateOfEntry']
+
+    # Pass through all other fields
+    mapped.update({k: v for (k, v) in app.items() if k not in mapped})
 
     return mapped
 
@@ -185,7 +189,7 @@ def format_app_api(app):
                        'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status',
                        'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid'
-                       'Ethnicity', 'Gender']
+                       'Ethnicity', 'Gender', 'YearTerm']
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
     # Supply empty arrays. Implementing these would require more logic.
@@ -217,22 +221,34 @@ def format_app_api(app):
         if 'County' not in k:
             k['County'] = CONFIG['defaults']['address_country']
 
-    if 'Phone0' in app:
-        # Nest up to ten phone numbers as a list of dicts
-        mapped['PhoneNumbers'] = [{'Number': format_phone_number(v) for (k, v) in app.items()
-                                   if k[:5] == 'Phone' and int(k[5:6]) - 1 == i} for i in range(10)]
+    if len([k for k in app if k[:5] == 'Phone']) > 0:
+        has_phones = True
+    else:
+        has_phones = False
 
-        # Supply missing keys
-        # Phone numbers will be typed in order from 0-10 if type isn't supplied from Slate
+    if has_phones == True:
+        # Nest up to 9 phone numbers as a list of dicts.
+        # Phones should be passed in as {Phone0Number: '...', Phone0Type: 1, Phone1Number: '...', Phone1Country: '...', Phone1Type: 0}
+        # First phone in the list becomes Primary in PowerCampus (I think)
+        mapped['PhoneNumbers'] = [{k[6:]: v for (k, v) in app.items(
+        ) if k[:5] == 'Phone' and int(k[5:6]) - 1 == i} for i in range(9)]
+
+        # Remove empty dicts
+        mapped['PhoneNumbers'] = [
+            k for k in mapped['PhoneNumbers'] if 'Number' in k]
+
+        # Supply missing keys and enforce datatypes
         for i, item in enumerate(mapped['PhoneNumbers']):
+            item['Number'] = format_phone_number(item['Number'])
+
             if 'Type' not in item:
-                item['Type'] = i
+                item['Type'] = CONFIG['defaults']['phone_type']
+            else:
+                item['Type'] = int(item['Type'])
+
             if 'Country' not in item:
                 item['Country'] = CONFIG['defaults']['phone_country']
 
-        # Remove empty phone dicts
-        mapped['PhoneNumbers'] = [
-            k for k in mapped['PhoneNumbers'] if 'Number' in k]
     else:
         # PowerCampus WebAPI requires Type -1 instead of a blank or null when not submitting any phones.
         mapped['PhoneNumbers'] = [
@@ -243,7 +259,7 @@ def format_app_api(app):
         mapped['Veteran'] = 0
         mapped['VeteranStatus'] = False
     else:
-        mapped['Veteran'] = int(mapped['Veteran'])
+        mapped['Veteran'] = int(app['Veteran'])
         mapped['VeteranStatus'] = True
 
     # Academic program
@@ -269,7 +285,7 @@ def format_app_sql(app):
     # Pass through fields
     fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
-                       'ProposedDecision', 'CreateDateTime']
+                       'ProposedDecision', 'CreateDateTime', 'SMSOptIn']
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
     # Gender is hardcoded into the PowerCampus Web API, but [WebServices].[spSetDemographics] has different hardcoded values.
@@ -318,12 +334,15 @@ def pc_post_api(x):
 
     r = requests.post(PC_API_URL + 'api/applications',
                       json=x, auth=PC_API_CRED)
-    r.raise_for_status()
 
-    # Catch 202 errors, like ApplicationSettings.config not configured.
-    # Not sure if this is the most Pythonic way.
+    # Catch some errors we know how to handle. Not sure if this is the most Pythonic way.
+    # 202 probably means ApplicationSettings.config not configured.
     if r.status_code == 202:
         raise ValueError(r.text)
+    elif r.status_code == 400:
+        raise ValueError(r.text)
+
+    r.raise_for_status()
 
     if (r.text[-25:-12] == 'New People Id'):
         try:
@@ -391,7 +410,7 @@ def scan_status(x):
             [ComputedStatus],[Notes],[RecruiterApplicationStatus],[ApplicationStatus],[PEOPLE_CODE_ID])
         VALUES
             (?,?,?,?,?,?,?,?,?,?)""",
-                       [x['Ref'], x['aid'], x['pid'], x['FirstName'], x['LastName'], computed_status, row.ra_errormessage, row.ra_status, row.apl_status, pcid])
+                       [x['AppID'], x['aid'], x['pid'], x['FirstName'], x['LastName'], computed_status, row.ra_errormessage, row.ra_status, row.apl_status, pcid])
         CNXN.commit()
 
         return row.ra_status, row.apl_status, computed_status, pcid
@@ -607,6 +626,7 @@ def main_sync(pid=None):
             pc_update_demographics(app_pc)
             pc_update_statusdecision(app_pc)
             pc_update_statusdecision(app_pc)
+            pc_update_smsoptin(app_pc)
 
             # Collect information
             found, registered, reg_date, readmit, withdrawn, credits, campus_email = pc_get_profile(
