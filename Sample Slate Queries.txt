@@ -1,5 +1,5 @@
 94205ec6-7f20-148f-9a0a-1d8d2bf36e4e@mcn
-Used for 15-minute sync with Applicaiton Update Queue or for 24-hour sync without a queue.
+Used for 15-minute sync with Application Update Queue or for 24-hour sync without a queue.
 
 6e3636ee-f703-e5d4-858a-bb7763bb0f52@mcn
 Used for HTTP sync. Accepts a person GUID parameter 'pid'.
