@@ -404,7 +404,6 @@ def scan_status(x):
             computed_status = 'Unrecognized Status: ' + str(row.ra_status)
 
         # Write errors to external database for end-user presentation via SSRS.
-        # Append _dev to table name for # Dev v Production
         CURSOR.execute('INSERT INTO' + CONFIG['app_status_log_table'] + """
             ([Ref],[ApplicationNumber],[ProspectId],[FirstName],[LastName],
             [ComputedStatus],[Notes],[RecruiterApplicationStatus],[ApplicationStatus],[PEOPLE_CODE_ID])

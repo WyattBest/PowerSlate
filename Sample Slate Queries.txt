@@ -1,0 +1,13 @@
+94205ec6-7f20-148f-9a0a-1d8d2bf36e4e@mcn
+Used for 15-minute sync. Fairly generic.
+
+d100a1c3-2841-8742-67d2-428a365821a9@mcn
+Used for 24-hr sync. Intentionally passes blank AddressLine1 instead if missing, which allows blank Line 1 to end up in PowerCampus.
+Logic is that some older apps slipped through this way, and we don't want to stop syncing them.
+
+6e3636ee-f703-e5d4-858a-bb7763bb0f52@mcn
+Used for HTTP sync. Accepts a person GUID parameter 'pid'.
+
+7719c3e8-f238-8eba-2079-1be42bcde1bd@mcn
+Custom SQL query for Scheduled Actions. Might be replaceable with Configurable Joins.
+Contains some MCNY-specific ACTION_ID's.
