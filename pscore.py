@@ -542,18 +542,21 @@ def pc_update_action(action):
     """Update a Scheduled Action in PowerCampus. Expects an action dict with 'app' key containing SQL formatted app
     {'aid': GUID, 'item': 'Transcript', 'app': {'PEOPLE_CODE_ID':...}}
     """
-    CURSOR.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
-                   action['app']['PEOPLE_CODE_ID'],
-                   'SLATE',
-                   action['action_id'],
-                   action['item'],
-                   action['completed'],
-                   # Only the date portion is actually used.
-                   action['create_datetime'],
-                   action['app']['ACADEMIC_YEAR'],
-                   action['app']['ACADEMIC_TERM'],
-                   action['app']['ACADEMIC_SESSION'])
-    CNXN.commit()
+    try:
+        CURSOR.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
+                    action['app']['PEOPLE_CODE_ID'],
+                    'SLATE',
+                    action['action_id'],
+                    action['item'],
+                    action['completed'],
+                    # Only the date portion is actually used.
+                    action['create_datetime'],
+                    action['app']['ACADEMIC_YEAR'],
+                    action['app']['ACADEMIC_TERM'],
+                    action['app']['ACADEMIC_SESSION'])
+        CNXN.commit()
+    except KeyError as e:
+        raise KeyError(e, 'aid: ' + action['aid'])
 
 
 def pc_update_smsoptin(app):
