@@ -568,9 +568,9 @@ def pc_update_smsoptin(app):
 
 def pf_get_fachecklist(pcid, year, term, session):
     """Return the PowerFAIDS missing docs list for uploading to Financial Aid Checklist."""
-    cursor.execute(
+    CURSOR.execute(
         'exec [custom].[PS_selPFChecklist] ?, ?, ?, ?', pcid, year, term, session)
-    rows = cursor.fetchall()
+    rows = CURSOR.fetchall()
 
     return rows
 
