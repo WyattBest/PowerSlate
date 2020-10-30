@@ -700,12 +700,17 @@ def main_sync(pid=None):
 
                 slate_upload_list = slate_upload_list + fa_checklists
 
-        slate_upload_dict = {'row': slate_upload_list}
+        # Slate's Checklist Import (Financial Aid) requires tab-separated files because it's old and crusty, apparently.
+        tab = '\t'
+        slate_fa_string = 'AppID' + tab + 'Code' + tab + 'Status' + tab + 'Date'
+        for i in slate_upload_list:
+            line = i['AppID'] + tab + str(i['Code']) + tab + i['Status'] + tab + i['Date']
+            slate_fa_string = slate_fa_string + '\n' + line
 
         creds = (CONFIG['fa_checklist']['slate_post']['username'],
                  CONFIG['fa_checklist']['slate_post']['password'])
         r = requests.post(CONFIG['fa_checklist']['slate_post']['url'],
-                          json=slate_upload_dict, auth=creds)
+                          data=slate_fa_string, auth=creds)
         r.raise_for_status()
 
     return 'Done. Please check the PowerSlate Sync Report for more details.'
