@@ -33,13 +33,14 @@
 			"password": "astrongpassword"
 		}
 	},
-	"finaid": {
+	"fa_checklist": {
 		"enabled": true,
 		"slate_post": {
 			"url": "https://apply.mcny.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
 			"username": "username",
 			"password": "astrongpassword"
-		},
+		}
+	},
 	"defaults": {
 		"address_country": null,
 		"phone_country": "US",

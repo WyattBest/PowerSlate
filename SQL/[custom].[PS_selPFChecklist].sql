@@ -31,17 +31,18 @@ BEGIN
 	SELECT srd.doc_token [Code]
 		--,d.doc_name
 		,doc_status_desc [Status]
-		,cast(status_effective_dt AS DATE) [Date]
-	FROM [PFaids_test].[dbo].[student] s
-	INNER JOIN [PFaids_test].[dbo].[stu_award_year] say
+		,FORMAT(status_effective_dt, 'yyyy-MM-dd') [Date]
+	FROM [PFaids].[dbo].[student] s
+	INNER JOIN [PFaids].[dbo].[stu_award_year] say
 		ON say.award_year_token = @FinAidYear
 			AND s.student_token = say.student_token
-	INNER JOIN [PFaids_test].[dbo].[student_required_documents] srd
+	INNER JOIN [PFaids].[dbo].[student_required_documents] srd
 		ON say.stu_award_year_token = srd.stu_award_year_token
-	INNER JOIN [PFaids_test].[dbo].[docs] d
+	INNER JOIN [PFaids].[dbo].[docs] d
 		ON d.doc_token = srd.doc_token
-	INNER JOIN [PFaids_test].[dbo].[doc_status_code] dsc
+	INNER JOIN [PFaids].[dbo].[doc_status_code] dsc
 		ON dsc.doc_required_status_code = srd.doc_status
+	WHERE s.alternate_id = @PCID
 END
 GO
 
