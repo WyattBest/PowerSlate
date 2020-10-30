@@ -409,7 +409,7 @@ def scan_status(x):
             [ComputedStatus],[Notes],[RecruiterApplicationStatus],[ApplicationStatus],[PEOPLE_CODE_ID])
         VALUES
             (?,?,?,?,?,?,?,?,?,?)""",
-                       [x['AppID'], x['aid'], x['pid'], x['FirstName'], x['LastName'], computed_status, row.ra_errormessage, row.ra_status, row.apl_status, pcid])
+                       [x['Ref'], x['aid'], x['pid'], x['FirstName'], x['LastName'], computed_status, row.ra_errormessage, row.ra_status, row.apl_status, pcid])
         CNXN.commit()
 
         return row.ra_status, row.apl_status, computed_status, pcid
