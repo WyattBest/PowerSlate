@@ -544,16 +544,16 @@ def pc_update_action(action):
     """
     try:
         CURSOR.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
-                    action['app']['PEOPLE_CODE_ID'],
-                    'SLATE',
-                    action['action_id'],
-                    action['item'],
-                    action['completed'],
-                    # Only the date portion is actually used.
-                    action['create_datetime'],
-                    action['app']['ACADEMIC_YEAR'],
-                    action['app']['ACADEMIC_TERM'],
-                    action['app']['ACADEMIC_SESSION'])
+                       action['app']['PEOPLE_CODE_ID'],
+                       'SLATE',
+                       action['action_id'],
+                       action['item'],
+                       action['completed'],
+                       # Only the date portion is actually used.
+                       action['create_datetime'],
+                       action['app']['ACADEMIC_YEAR'],
+                       action['app']['ACADEMIC_TERM'],
+                       action['app']['ACADEMIC_SESSION'])
         CNXN.commit()
     except KeyError as e:
         raise KeyError(e, 'aid: ' + action['aid'])
@@ -564,6 +564,23 @@ def pc_update_smsoptin(app):
         CURSOR.execute('exec [custom].[PS_updSMSOptIn] ?, ?, ?',
                        app['PEOPLE_CODE_ID'], 'SLATE', app['SMSOptIn'])
         CNXN.commit()
+
+
+def pf_get_fachecklist(pcid, appid, year, term, session):
+    """Return the PowerFAIDS missing docs list for uploading to Financial Aid Checklist."""
+    checklist = []
+    CURSOR.execute(
+        'exec [custom].[PS_selPFChecklist] ?, ?, ?, ?', pcid, year, term, session)
+
+    columns = [column[0] for column in CURSOR.description]
+    for row in CURSOR.fetchall():
+        checklist.append(dict(zip(columns, row)))
+
+    # Pass through the Slate Application ID
+    for doc in checklist:
+        doc['AppID'] = appid
+
+    return checklist
 
 
 def main_sync(pid=None):
@@ -667,5 +684,35 @@ def main_sync(pid=None):
     r = requests.post(CONFIG['slate_upload']['url'],
                       json=slate_upload_dict, auth=creds)
     r.raise_for_status()
+
+    # Collect Financial Aid checklist and upload to Slate
+    if CONFIG['fa_checklist']['enabled'] == True:
+        slate_upload_list = []
+        slate_upload_fields = {'AppID', 'Code', 'Status', 'Date'}
+
+        for k, v in apps.items():
+            if v['status_calc'] == 'Active':
+                # Transform to PowerCampus format
+                app_pc = format_app_sql(v)
+
+                fa_checklists = pf_get_fachecklist(
+                    app_pc['PEOPLE_CODE_ID'], v['AppID'], app_pc['ACADEMIC_YEAR'], app_pc['ACADEMIC_TERM'], app_pc['ACADEMIC_SESSION'])
+
+                slate_upload_list = slate_upload_list + fa_checklists
+
+        if len(slate_upload_list) > 0:
+            # Slate's Checklist Import (Financial Aid) requires tab-separated files because it's old and crusty, apparently.
+            tab = '\t'
+            slate_fa_string = 'AppID' + tab + 'Code' + tab + 'Status' + tab + 'Date'
+            for i in slate_upload_list:
+                line = i['AppID'] + tab + \
+                    str(i['Code']) + tab + i['Status'] + tab + i['Date']
+                slate_fa_string = slate_fa_string + '\n' + line
+
+            creds = (CONFIG['fa_checklist']['slate_post']['username'],
+                     CONFIG['fa_checklist']['slate_post']['password'])
+            r = requests.post(CONFIG['fa_checklist']['slate_post']['url'],
+                              data=slate_fa_string, auth=creds)
+            r.raise_for_status()
 
     return 'Done. Please check the PowerSlate Sync Report for more details.'
