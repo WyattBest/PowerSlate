@@ -566,11 +566,11 @@ def pc_update_smsoptin(app):
         CNXN.commit()
 
 
-def pf_get_fachecklist(pcid, appid, year, term, session):
+def pf_get_fachecklist(pcid, govid, appid, year, term, session):
     """Return the PowerFAIDS missing docs list for uploading to Financial Aid Checklist."""
     checklist = []
     CURSOR.execute(
-        'exec [custom].[PS_selPFChecklist] ?, ?, ?, ?', pcid, year, term, session)
+        'exec [custom].[PS_selPFChecklist] ?, ?, ?, ?, ?', pcid, govid, year, term, session)
 
     columns = [column[0] for column in CURSOR.description]
     for row in CURSOR.fetchall():
@@ -696,7 +696,7 @@ def main_sync(pid=None):
                 app_pc = format_app_sql(v)
 
                 fa_checklists = pf_get_fachecklist(
-                    app_pc['PEOPLE_CODE_ID'], v['AppID'], app_pc['ACADEMIC_YEAR'], app_pc['ACADEMIC_TERM'], app_pc['ACADEMIC_SESSION'])
+                    app_pc['PEOPLE_CODE_ID'], v['GovernmentId'], v['AppID'], app_pc['ACADEMIC_YEAR'], app_pc['ACADEMIC_TERM'], app_pc['ACADEMIC_SESSION'])
 
                 slate_upload_list = slate_upload_list + fa_checklists
 

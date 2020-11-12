@@ -1,3 +1,6 @@
+USE [Campus6]
+GO
+
 SET ANSI_NULLS ON
 GO
 
@@ -9,10 +12,13 @@ GO
 -- Create date: 2020-09-30
 -- Description:	Selects a list of missing documents from PowerFAIDS.
 --				award_year_token in PowerFAIDS is pulled from FIN_AID_YEAR in ACADEMICCALENDAR.
+--
+-- 2020-11-12 Wyatt Best:	Added search by TIN/SSN (@GovID) instead of just PEOPLE_CODE_ID (@PCID).
 -- =============================================
 CREATE PROCEDURE [custom].[PS_selPFChecklist]
 	-- Add the parameters for the stored procedure here
 	@PCID NVARCHAR(10)
+	,@GovID INT
 	,@AcademicYear NVARCHAR(4)
 	,@AcademicTerm NVARCHAR(10)
 	,@AcademicSession NVARCHAR(10)
@@ -43,7 +49,5 @@ BEGIN
 	INNER JOIN [PFaids].[dbo].[doc_status_code] dsc
 		ON dsc.doc_required_status_code = srd.doc_status
 	WHERE s.alternate_id = @PCID
+		OR s.student_ssn = @GovID
 END
-GO
-
-
