@@ -121,8 +121,8 @@ def format_phone_number(number):
         {c: None for c in ascii_letters + punctuation + whitespace})
     number = number.translate(non_digits)
 
-    if len(number) == 11 and number[:1] == 1:
-        number = number[:1]
+    if len(number) == 11 and number[:1] == '1':
+        number = number[1:]
 
     return number
 
