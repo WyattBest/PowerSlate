@@ -21,6 +21,7 @@ def init_config(config_path):
     global RM_MAPPING
     global CNXN
     global CURSOR
+    global TODAY
     global ERROR_STRINGS
 
     # Read config file and convert to dict
@@ -70,6 +71,8 @@ def init_config(config_path):
     # Microsoft SQL Server connection.
     CNXN = pyodbc.connect(CONFIG['pc_database_string'])
     CURSOR = CNXN.cursor()
+
+    TODAY = datetime.datetime.date(datetime.datetime.now())
 
     # Config dicts
     smtp_config = CONFIG['smtp']
