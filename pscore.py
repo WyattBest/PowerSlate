@@ -72,7 +72,7 @@ def init_config(config_path):
     CNXN = pyodbc.connect(CONFIG['pc_database_string'])
     CURSOR = CNXN.cursor()
 
-    TODAY = datetime.datetime.date(datetime.datetime.now())
+    today = datetime.datetime.date(datetime.datetime.now())
 
     # Config dicts
     smtp_config = CONFIG['smtp']
