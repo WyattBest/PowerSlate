@@ -1,12 +1,8 @@
-from copy import deepcopy, error
-from sys import hash_info
-from typing import Mapping
 import requests
 import copy
 import json
 import xml.etree.ElementTree as ET
 import pyodbc
-import datetime
 from string import ascii_letters, punctuation, whitespace
 
 

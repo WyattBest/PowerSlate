@@ -1,10 +1,4 @@
 import sys
-import requests
-import json
-import copy
-import datetime
-import pyodbc
-import xml.etree.ElementTree as ET
 import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib
