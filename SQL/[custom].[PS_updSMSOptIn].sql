@@ -1,6 +1,7 @@
 USE [Campus6]
 GO
 
+/****** Object:  StoredProcedure [custom].[PS_updSMSOptIn]    Script Date: 2021-01-04 11:25:36 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -8,11 +9,14 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 
+
 -- =============================================
 -- Author:		Wyatt Best
 -- Create date: 2019-10-11
 -- Description:	Initially populates or updates SMS Opt-In status from Slate.
---				If initial import, call custom.defaultSMSOpts to update other departments.
+--				If initial import, call custom.CadenceDefaultSMSOpts to update other departments.
+--
+-- 2021-01-04 Wyatt Best: Renamed custom.defaultSMSOpts to custom.CadenceDefaultSMSOpts
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updSMSOptIn]
 	@PCID NVARCHAR(10)
@@ -79,7 +83,7 @@ BEGIN
 			);
 
 		--Set up opts for other departments
-		EXEC [custom].[defaultSMSOpts] @PCID;
+		EXEC [custom].CadenceDefaultSMSOpts @PCID;
 	END
 	ELSE
 		UPDATE TELECOMMUNICATIONS
@@ -93,3 +97,5 @@ BEGIN
 			AND COM_TYPE = 'SMSADM'
 			AND [STATUS] <> @SMSADM
 END
+GO
+
