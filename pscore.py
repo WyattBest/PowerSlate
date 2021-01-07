@@ -137,7 +137,7 @@ def format_app_generic(app):
     fields_null = ['Prefix', 'MiddleName', 'LastNamePrefix', 'Suffix', 'Nickname', 'GovernmentId', 'LegalName',
                    'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'MaritalStatus',
                    'ProposedDecision', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
-                   'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran']
+                   'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran', 'Nontraditional']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                    'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
