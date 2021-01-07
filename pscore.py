@@ -278,7 +278,7 @@ def format_app_sql(app):
     # Pass through fields
     fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
-                       'ProposedDecision', 'CreateDateTime', 'SMSOptIn']
+                       'ProposedDecision', 'CreateDateTime', 'SMSOptIn', 'Nontraditional']
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
     # Gender is hardcoded into the PowerCampus Web API, but [WebServices].[spSetDemographics] has different hardcoded values.
