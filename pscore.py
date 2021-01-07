@@ -517,8 +517,8 @@ def pc_update_demographics(app):
     CNXN.commit()
 
 
-def pc_update_statusdecision(app):
-    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?',
+def pc_update_academic(app):
+    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    app['ACADEMIC_YEAR'],
                    app['ACADEMIC_TERM'],
@@ -526,6 +526,7 @@ def pc_update_statusdecision(app):
                    app['PROGRAM'],
                    app['DEGREE'],
                    app['CURRICULUM'],
+                   app['Nontraditional'],
                    app['ProposedDecision'],
                    app['CreateDateTime'])
     CNXN.commit()
@@ -636,8 +637,7 @@ def main_sync(pid=None):
 
             # Execute update sprocs
             pc_update_demographics(app_pc)
-            pc_update_statusdecision(app_pc)
-            pc_update_statusdecision(app_pc)
+            pc_update_academic(app_pc)
             pc_update_smsoptin(app_pc)
 
             # Collect information
