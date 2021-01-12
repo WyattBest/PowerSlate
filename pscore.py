@@ -137,7 +137,7 @@ def format_app_generic(app):
     fields_null = ['Prefix', 'MiddleName', 'LastNamePrefix', 'Suffix', 'Nickname', 'GovernmentId', 'LegalName',
                    'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'MaritalStatus',
                    'ProposedDecision', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
-                   'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran']
+                   'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran', 'Nontraditional']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                    'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
@@ -278,7 +278,7 @@ def format_app_sql(app):
     # Pass through fields
     fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
-                       'ProposedDecision', 'CreateDateTime', 'SMSOptIn']
+                       'ProposedDecision', 'CreateDateTime', 'SMSOptIn', 'Nontraditional']
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
     # Gender is hardcoded into the PowerCampus Web API, but [WebServices].[spSetDemographics] has different hardcoded values.
@@ -517,8 +517,8 @@ def pc_update_demographics(app):
     CNXN.commit()
 
 
-def pc_update_statusdecision(app):
-    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?',
+def pc_update_academic(app):
+    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    app['ACADEMIC_YEAR'],
                    app['ACADEMIC_TERM'],
@@ -526,6 +526,7 @@ def pc_update_statusdecision(app):
                    app['PROGRAM'],
                    app['DEGREE'],
                    app['CURRICULUM'],
+                   app['Nontraditional'],
                    app['ProposedDecision'],
                    app['CreateDateTime'])
     CNXN.commit()
@@ -636,8 +637,7 @@ def main_sync(pid=None):
 
             # Execute update sprocs
             pc_update_demographics(app_pc)
-            pc_update_statusdecision(app_pc)
-            pc_update_statusdecision(app_pc)
+            pc_update_academic(app_pc)
             pc_update_smsoptin(app_pc)
 
             # Collect information
