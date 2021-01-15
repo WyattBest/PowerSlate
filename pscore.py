@@ -41,7 +41,7 @@ def init_config(config_path):
                 RM_MAPPING[child.tag].update(
                     {row.get('RCCodeValue'): row.get('PCCodeValue')})
 
-        if child.get('NumberOfPowerCampusFieldsMapped') == '2' or child.get('NumberOfPowerCampusFieldsMapped') == '3':
+        if child.get('NumberOfPowerCampusFieldsMapped') == '2':
             fn1 = 'PC' + str(child.get('PCFirstField')) + 'CodeValue'
             fn2 = 'PC' + str(child.get('PCSecondField')) + 'CodeValue'
             RM_MAPPING[child.tag] = {fn1: {}, fn2: {}}
@@ -51,6 +51,20 @@ def init_config(config_path):
                     {row.get('RCCodeValue'): row.get(fn1)})
                 RM_MAPPING[child.tag][fn2].update(
                     {row.get('RCCodeValue'): row.get(fn2)})
+
+        if child.get('NumberOfPowerCampusFieldsMapped') == '3':
+            fn1 = 'PC' + str(child.get('PCFirstField')) + 'CodeValue'
+            fn2 = 'PC' + str(child.get('PCSecondField')) + 'CodeValue'
+            fn3 = 'PC' + str(child.get('PCThirdField')) + 'CodeValue'
+            RM_MAPPING[child.tag] = {fn1: {}, fn2: {}, fn3: {}}
+
+            for row in child:
+                RM_MAPPING[child.tag][fn1].update(
+                    {row.get('RCCodeValue'): row.get(fn1)})
+                RM_MAPPING[child.tag][fn2].update(
+                    {row.get('RCCodeValue'): row.get(fn2)})
+                RM_MAPPING[child.tag][fn3].update(
+                    {row.get('RCCodeValue'): row.get(fn3)})
 
     # PowerCampus Web API connection
     PC_API_URL = CONFIG['pc_api']['url']
@@ -287,7 +301,7 @@ def format_app_sql(app):
 
     mapped['ACADEMIC_YEAR'] = RM_MAPPING['AcademicTerm']['PCYearCodeValue'][app['YearTerm']]
     mapped['ACADEMIC_TERM'] = RM_MAPPING['AcademicTerm']['PCTermCodeValue'][app['YearTerm']]
-    mapped['ACADEMIC_SESSION'] = '01'
+    mapped['ACADEMIC_SESSION'] = RM_MAPPING['AcademicTerm']['PCSessionCodeValue'][app['YearTerm']]
     # Todo: Fix inconsistency of 1-field vs 2-field mappings
     mapped['PROGRAM'] = RM_MAPPING['AcademicLevel'][app['Program']]
     mapped['DEGREE'] = RM_MAPPING['AcademicProgram']['PCDegreeCodeValue'][app['Degree']]
