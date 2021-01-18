@@ -151,11 +151,11 @@ def format_app_generic(app):
     fields_null = ['Prefix', 'MiddleName', 'LastNamePrefix', 'Suffix', 'Nickname', 'GovernmentId', 'LegalName',
                    'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'MaritalStatus',
                    'ProposedDecision', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
-                   'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran', 'Nontraditional']
+                   'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran',
+                   'Nontraditional', 'Extracurricular']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
-                   'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid']
-    fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
-                   'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid']
+                   'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid',
+                   'Extracurricular']
     fields_int = ['Ethnicity', 'Gender', 'SMSOptIn']
 
     # Copy nullable strings from input to output, then fill in nulls
@@ -292,7 +292,7 @@ def format_app_sql(app):
     # Pass through fields
     fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
-                       'ProposedDecision', 'CreateDateTime', 'SMSOptIn', 'Nontraditional']
+                       'ProposedDecision', 'CreateDateTime', 'SMSOptIn', 'Extracurricular', 'Nontraditional']
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
     # Gender is hardcoded into the PowerCampus Web API, but [WebServices].[spSetDemographics] has different hardcoded values.
@@ -307,7 +307,11 @@ def format_app_sql(app):
     mapped['DEGREE'] = RM_MAPPING['AcademicProgram']['PCDegreeCodeValue'][app['Degree']]
     mapped['CURRICULUM'] = RM_MAPPING['AcademicProgram']['PCCurriculumCodeValue'][app['Degree']]
     mapped['PRIMARYCITIZENSHIP'] = RM_MAPPING['CitizenshipStatus'][app['CitizenshipStatus']]
-    mapped['COLLEGE_ATTEND'] = RM_MAPPING['CollegeAttend'][app['CollegeAttendStatus']]
+
+    if app['CollegeAttendStatus'] is not None:
+        mapped['COLLEGE_ATTEND'] = RM_MAPPING['CollegeAttend'][app['CollegeAttendStatus']]
+    else:
+        mapped['COLLEGE_ATTEND'] = None
 
     if app['Visa'] is not None:
         mapped['VISA'] = RM_MAPPING['Visa'][app['Visa']]
@@ -533,7 +537,7 @@ def pc_update_demographics(app):
 
 
 def pc_update_academic(app):
-    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    app['ACADEMIC_YEAR'],
                    app['ACADEMIC_TERM'],
@@ -543,6 +547,8 @@ def pc_update_academic(app):
                    app['CURRICULUM'],
                    app['Nontraditional'],
                    app['ProposedDecision'],
+                   app['COLLEGE_ATTEND'],
+                   app['Extracurricular'],
                    app['CreateDateTime'])
     CNXN.commit()
 

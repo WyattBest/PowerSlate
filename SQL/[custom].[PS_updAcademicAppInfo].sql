@@ -1,7 +1,7 @@
 USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 1/18/2021 5:34:52 PM ******/
+/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 1/18/2021 4:24:30 PM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -25,7 +25,7 @@ GO
 --	2019-12-09	Wyatt Best: Added UPDATE for APPLICATION_DATE.
 --	2019-12-28	Wyatt Best: Added COALESCE() on APPLICATION_DATE update.
 --	2021-01-07	Wyatt Best: Added NONTRAD_PROGRAM.
---	2021-01-18	Wyatt Best: Added COLLEGE_ATTEND.
+--	2021-01-18	Wyatt Best: Added COLLEGE_ATTEND and EXTRA_CURRICULAR.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -37,6 +37,7 @@ CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Nontraditional NVARCHAR(6) NULL
 	,@ProposedDecision NVARCHAR(max) --Slate data field; translation will happen in this sp
 	,@CollegeAttend NVARCHAR(4) NULL
+	,@Extracurricular BIT NULL
 	,@CreateDateTime DATETIME --Application creation date
 AS
 BEGIN
@@ -220,8 +221,28 @@ BEGIN
 		AND @CollegeAttend IN (
 			SELECT CODE_VALUE_KEY
 			FROM CODE_COLLEGEATTEND
-			where [STATUS] = 'A'
+			WHERE [STATUS] = 'A'
 			)
+
+	--Update EXTRA_CURRICULAR if needed
+	UPDATE ACADEMIC
+	SET EXTRA_CURRICULAR = CASE 
+			WHEN @Extracurricular = 1
+				THEN 'Y'
+			ELSE 'N'
+			END
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND APPLICATION_FLAG = 'Y'
+		AND CASE EXTRA_CURRICULAR
+			WHEN 'Y'
+				THEN 1
+			WHEN 'N'
+				THEN 0
+			ELSE NULL
+			END <> @Extracurricular
 
 	--Update APPLICATION_DATE if needed
 	UPDATE ACADEMIC
