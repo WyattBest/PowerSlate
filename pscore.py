@@ -152,7 +152,7 @@ def format_app_generic(app):
                    'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'MaritalStatus',
                    'ProposedDecision', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
                    'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran',
-                   'Nontraditional', 'Extracurricular']
+                   'Department', 'Nontraditional', 'Extracurricular']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                    'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid',
                    'Extracurricular']
@@ -292,7 +292,7 @@ def format_app_sql(app):
     # Pass through fields
     fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
-                       'ProposedDecision', 'CreateDateTime', 'SMSOptIn', 'Extracurricular', 'Nontraditional']
+                       'ProposedDecision', 'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular', 'Nontraditional']
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
     # Gender is hardcoded into the PowerCampus Web API, but [WebServices].[spSetDemographics] has different hardcoded values.
@@ -537,7 +537,7 @@ def pc_update_demographics(app):
 
 
 def pc_update_academic(app):
-    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    app['ACADEMIC_YEAR'],
                    app['ACADEMIC_TERM'],
@@ -545,6 +545,7 @@ def pc_update_academic(app):
                    app['PROGRAM'],
                    app['DEGREE'],
                    app['CURRICULUM'],
+                   app['Department'],
                    app['Nontraditional'],
                    app['ProposedDecision'],
                    app['COLLEGE_ATTEND'],

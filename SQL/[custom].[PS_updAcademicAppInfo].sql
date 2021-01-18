@@ -1,7 +1,7 @@
 USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 1/18/2021 4:24:30 PM ******/
+/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 1/18/2021 4:41:56 PM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -25,7 +25,7 @@ GO
 --	2019-12-09	Wyatt Best: Added UPDATE for APPLICATION_DATE.
 --	2019-12-28	Wyatt Best: Added COALESCE() on APPLICATION_DATE update.
 --	2021-01-07	Wyatt Best: Added NONTRAD_PROGRAM.
---	2021-01-18	Wyatt Best: Added COLLEGE_ATTEND and EXTRA_CURRICULAR.
+--	2021-01-18	Wyatt Best: Added COLLEGE_ATTEND, EXTRA_CURRICULAR, and DEPARTMENT.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -34,6 +34,7 @@ CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Program NVARCHAR(6)
 	,@Degree NVARCHAR(6)
 	,@Curriculum NVARCHAR(6)
+	,@Department NVARCHAR(10) NULL
 	,@Nontraditional NVARCHAR(6) NULL
 	,@ProposedDecision NVARCHAR(max) --Slate data field; translation will happen in this sp
 	,@CollegeAttend NVARCHAR(4) NULL
@@ -136,6 +137,24 @@ BEGIN
 			,@ProgramOfStudyId
 			,@AppStatusId
 			,@AppDecisionId;
+
+	--Update DEPARTMENT if needed
+	UPDATE ACADEMIC
+	SET DEPARTMENT = @Department
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND APPLICATION_FLAG = 'Y'
+		AND (
+			DEPARTMENT <> @Department
+			OR DEPARTMENT IS NULL
+			)
+		AND @Department IN (
+			SELECT CODE_VALUE_KEY
+			FROM CODE_DEPARTMENT
+			WHERE [STATUS] = 'A'
+			)
 
 	-- Set PRIMARY_FLAG if needed
 	IF NOT EXISTS (
