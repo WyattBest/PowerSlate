@@ -1,11 +1,13 @@
 USE [Campus6]
 GO
 
+/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 1/18/2021 5:34:52 PM ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
+
 
 -- =============================================
 -- Author:		Wyatt Best
@@ -23,6 +25,7 @@ GO
 --	2019-12-09	Wyatt Best: Added UPDATE for APPLICATION_DATE.
 --	2019-12-28	Wyatt Best: Added COALESCE() on APPLICATION_DATE update.
 --	2021-01-07	Wyatt Best: Added NONTRAD_PROGRAM.
+--	2021-01-18	Wyatt Best: Added COLLEGE_ATTEND.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -31,8 +34,9 @@ CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Program NVARCHAR(6)
 	,@Degree NVARCHAR(6)
 	,@Curriculum NVARCHAR(6)
-	,@Nontraditional NVARCHAR(6)
+	,@Nontraditional NVARCHAR(6) NULL
 	,@ProposedDecision NVARCHAR(max) --Slate data field; translation will happen in this sp
+	,@CollegeAttend NVARCHAR(4) NULL
 	,@CreateDateTime DATETIME --Application creation date
 AS
 BEGIN
@@ -184,16 +188,6 @@ BEGIN
 			AND ACADEMIC_SESSION = @Session
 			AND APPLICATION_FLAG = 'Y';
 
-	--Update APPLICATION_DATE if needed
-	UPDATE ACADEMIC
-	SET APPLICATION_DATE = dbo.fnMakeDate(@CreateDateTime)
-	WHERE PEOPLE_CODE_ID = @PCID
-		AND ACADEMIC_YEAR = @Year
-		AND ACADEMIC_TERM = @Term
-		AND ACADEMIC_SESSION = @Session
-		AND APPLICATION_FLAG = 'Y'
-		AND COALESCE(APPLICATION_DATE, '') <> dbo.fnMakeDate(@CreateDateTime);
-
 	--Update NONTRAD_PROGRAM if needed
 	UPDATE ACADEMIC
 	SET NONTRAD_PROGRAM = @Nontraditional
@@ -211,8 +205,35 @@ BEGIN
 			FROM NONTRADITIONAL
 			)
 
+	--Update COLLEGE_ATTEND if needed
+	UPDATE ACADEMIC
+	SET COLLEGE_ATTEND = @CollegeAttend
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND APPLICATION_FLAG = 'Y'
+		AND (
+			COLLEGE_ATTEND <> @CollegeAttend
+			OR COLLEGE_ATTEND IS NULL
+			)
+		AND @CollegeAttend IN (
+			SELECT CODE_VALUE_KEY
+			FROM CODE_COLLEGEATTEND
+			where [STATUS] = 'A'
+			)
+
+	--Update APPLICATION_DATE if needed
+	UPDATE ACADEMIC
+	SET APPLICATION_DATE = dbo.fnMakeDate(@CreateDateTime)
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND APPLICATION_FLAG = 'Y'
+		AND COALESCE(APPLICATION_DATE, '') <> dbo.fnMakeDate(@CreateDateTime);
+
 	COMMIT
 END
 GO
-
 

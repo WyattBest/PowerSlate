@@ -82,4 +82,10 @@ CREATE TABLE [dbo].[Datatel_countryExtensionBase] (
 	) ON [PRIMARY]
 GO
 
+CREATE TABLE [dbo].[Datatel_educationlevelExtensionBase] (
+	[Datatel_name] [nvarchar](255) NULL
+	,[Datatel_abbreviation] [nvarchar](255) NULL
+	) ON [PRIMARY]
+GO
+
 
