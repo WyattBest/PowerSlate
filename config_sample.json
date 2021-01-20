@@ -33,6 +33,13 @@
 			"password": "astrongpassword"
 		}
 	},
+	"notes": [
+        {
+            "field": "DevelopmentCourses",
+            "office": "ADMCOMM",
+            "note_type": "GENRL"
+        }
+    ],
 	"fa_checklist": {
 		"enabled": true,
 		"slate_post": {

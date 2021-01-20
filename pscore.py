@@ -293,6 +293,7 @@ def format_app_sql(app):
     fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
                        'ProposedDecision', 'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular', 'Nontraditional']
+    fields_verbatim.extend([n['field'] for n in CONFIG['notes']])
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
     # Gender is hardcoded into the PowerCampus Web API, but [WebServices].[spSetDemographics] has different hardcoded values.
@@ -582,6 +583,12 @@ def pc_update_smsoptin(app):
         CNXN.commit()
 
 
+def pc_update_note(app, field, office, note_type):
+    CURSOR.execute('exec [custom].[PS_insNote] ?, ?, ?, ?',
+                   app['PEOPLE_CODE_ID'], office, note_type, app[field])
+    CNXN.commit()
+
+
 def pf_get_fachecklist(pcid, govid, appid, year, term, session):
     """Return the PowerFAIDS missing docs list for uploading to Financial Aid Checklist."""
     checklist = []
@@ -661,6 +668,11 @@ def main_sync(pid=None):
             pc_update_demographics(app_pc)
             pc_update_academic(app_pc)
             pc_update_smsoptin(app_pc)
+
+            # Update any PowerCampus Notes defined in config
+            for note in CONFIG['notes']:
+                pc_update_note(app_pc, note['field'],
+                               note['office'], note['note_type'])
 
             # Collect information
             found, registered, reg_date, readmit, withdrawn, credits, campus_email = pc_get_profile(
