@@ -34,12 +34,18 @@
 		}
 	},
 	"notes": [
-        {
-            "field": "DevelopmentCourses",
-            "office": "ADMCOMM",
-            "note_type": "GENRL"
-        }
-    ],
+		{
+			"slate_field": "DevelopmentCourses",
+			"office": "ADMCOMM",
+			"note_type": "GENRL"
+		}
+	],
+	"user_defined": [
+		{
+			"slate_field": "FirstGeneration",
+			"pc_column": "FIRSTGEN"
+		}
+	],
 	"fa_checklist": {
 		"enabled": true,
 		"slate_post": {
