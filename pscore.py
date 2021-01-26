@@ -372,15 +372,24 @@ def pc_post_api(x):
 
 
 def str_digits(s):
-    # Returns only digits from a string.
+    """Return only digits from a string."""
     non_digits = str.maketrans(
         {c: None for c in ascii_letters + punctuation + whitespace})
     return s.translate(non_digits)
 
 
 def scan_status(x):
-    # Scan the PowerCampus status of a single applicant and return it in three parts plus three ID numbers.
-    # Expects a dict
+    """Query the PowerCampus status of a single application and return three status indicators and PowerCampus ID number, if present.
+
+    Keyword arguments:
+    x -- an application dict
+
+    Returns:
+    ra_status -- RecruiterApplication table status (int)
+    apl_status -- Application table status (int)
+    computed_status -- Descriptive status (string)
+    pcid -- PEOPLE_CODE_ID (string)
+    """
 
     r = requests.get(PC_API_URL + 'api/applications?applicationNumber=' +
                      x['aid'], auth=PC_API_CRED)
@@ -399,7 +408,6 @@ def scan_status(x):
             # PersonId = row.PersonId # Delete
         else:
             pcid = None
-            people_code = None
 
         # Determine status.
         if row.ra_status in (0, 3, 4) and row.apl_status == 2 and pcid is not None:
