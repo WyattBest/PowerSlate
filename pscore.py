@@ -7,9 +7,7 @@ from string import ascii_letters, punctuation, whitespace
 
 
 def init_config(config_path):
-    """Reads config file to global 'config' dict. Many frequently-used variables are copied to their own globals for convenince.
-
-    Returns SMTP config dict for crash handling."""
+    """Reads config file to global 'config' dict. Many frequently-used variables are copied to their own globals for convenince."""
     global CONFIG
     global PC_API_URL
     global PC_API_CRED
@@ -81,8 +79,7 @@ def init_config(config_path):
     CNXN = pyodbc.connect(CONFIG['pc_database_string'])
     CURSOR = CNXN.cursor()
 
-    # Config dicts
-    smtp_config = CONFIG['smtp']
+    # Misc configs
     ERROR_STRINGS = CONFIG['error_strings']
 
     # Print a test of connections
@@ -91,8 +88,6 @@ def init_config(config_path):
     print(r.text)
     r.raise_for_status()
     print(CNXN.getinfo(pyodbc.SQL_DATABASE_NAME))
-
-    return smtp_config
 
 
 def de_init():
