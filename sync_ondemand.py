@@ -1,6 +1,10 @@
 import sys
+import requests
 import json
+import copy
 import datetime
+import pyodbc
+import xml.etree.ElementTree as ET
 import traceback
 import smtplib
 from email.mime.text import MIMEText
@@ -8,15 +12,16 @@ import pscore
 
 
 # Attempt a sync; send failure email with traceback if error.
-# Name of configuration is file passed via command-line
 try:
     print('Start sync at ' + str(datetime.datetime.now()))
-    pscore.init_config(sys.argv[1])
+    # Name of configuration file passed via command-line
+    smtp_config = pscore.init_config(sys.argv[1])
+    # smtp_config = pscore.init_config('config_dev.json') # For debugging
     pscore.main_sync()
+    pscore.de_init()
     print('Done at ' + str(datetime.datetime.now()))
 except Exception as e:
-    with open(sys.argv[1]) as config_file:
-        smtp_config = json.load(config_file)['smtp']
+    # Send a failure email with traceback on exceptions
     print('Exception at ' + str(datetime.datetime.now()) +
           '! Check notification email.')
     msg = MIMEText('Sync failed at ' + str(datetime.datetime.now()) + '\n\nError: '
