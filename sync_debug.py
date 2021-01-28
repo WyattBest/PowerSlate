@@ -1,13 +1,4 @@
 import sys
-import requests
-import json
-import copy
-import datetime
-import pyodbc
-import xml.etree.ElementTree as ET
-import traceback
-import smtplib
-from email.mime.text import MIMEText
 import pscore
 
 
