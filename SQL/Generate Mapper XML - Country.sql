@@ -13,7 +13,7 @@ LEFT JOIN Campus6.dbo.code_country CC
 --Duplicates check
 SELECT ISO3166_CODE
 	,*
-FROM Campus6.dbo.CODE_COUNTRY
+FROM Campus6.dbo.CODE_COUNTRY CC
 WHERE ISO3166_CODE IN (
 		SELECT ISO3166_CODE
 		FROM Campus6.dbo.CODE_COUNTRY
@@ -21,6 +21,7 @@ WHERE ISO3166_CODE IN (
 		GROUP BY ISO3166_CODE
 		HAVING count(*) > 1
 		)
+order by CC.ISO3166_CODE
 
 --Check for a variety of problems
 SELECT CODE_VALUE_KEY
