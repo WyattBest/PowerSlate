@@ -308,7 +308,11 @@ def format_app_sql(app):
     mapped['PROGRAM'] = RM_MAPPING['AcademicLevel'][app['Program']]
     mapped['DEGREE'] = RM_MAPPING['AcademicProgram']['PCDegreeCodeValue'][app['Degree']]
     mapped['CURRICULUM'] = RM_MAPPING['AcademicProgram']['PCCurriculumCodeValue'][app['Degree']]
-    mapped['PRIMARYCITIZENSHIP'] = RM_MAPPING['CitizenshipStatus'][app['CitizenshipStatus']]
+
+    if app['CitizenshipStatus'] is not None:
+        mapped['PRIMARYCITIZENSHIP'] = RM_MAPPING['CitizenshipStatus'][app['CitizenshipStatus']]
+    else:
+        mapped['PRIMARYCITIZENSHIP'] = None
 
     if app['CollegeAttendStatus'] is not None:
         mapped['COLLEGE_ATTEND'] = RM_MAPPING['CollegeAttend'][app['CollegeAttendStatus']]
@@ -516,9 +520,10 @@ def pc_get_profile(app):
             registered = True
             reg_date = str(row.REG_VAL_DATE)
             credits = str(row.CREDITS)
-            campus_email = row.CampusEmail
 
-        if row.COLLEGE_ATTEND == 'READ':
+        campus_email = row.CampusEmail
+
+        if row.COLLEGE_ATTEND == CONFIG['readmit_code']:
             readmit = True
 
         if row.Withdrawn == 'Y':

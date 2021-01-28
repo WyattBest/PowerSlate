@@ -61,5 +61,6 @@
 	},
 	"error_strings": {
 		"no_apps": "No applications found. Perhaps the application(s) are not submitted or are missing required fields?"
-	}
+	},
+	"readmit_code": "READ"
 }
