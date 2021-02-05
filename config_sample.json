@@ -6,7 +6,11 @@
 	},
 	"pc_database_string": "Driver={ODBC Driver 17 for SQL Server};Server=servername;Database=campus6;Trusted_Connection=yes;ServerSPN=MSSQLSvc/servername.local.domain.edu;",
 	"mapping_file_location": "\\\\servername\\PowerCampus Mapper\\recruiterMapping.xml",
-	"app_status_log_table": "[SomeDatabase].[dbo].[PowerSlate_AppStatus_Log]",
+	"console_verbose": true,
+	"logging": {
+		"enabled": true,
+		"log_table": "[SomeDatabase].[dbo].[PowerSlate_AppStatus_Log]",
+	},
 	"slate_query_apps": {
 		"url": "https://apply.mcny.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
 		"username": "username",

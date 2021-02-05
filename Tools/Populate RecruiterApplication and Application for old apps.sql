@@ -5,7 +5,6 @@ USE PowerCampusMapper
 -- syncing via PowerSlate as if the applications had been inserted organically via the API.
 -- I.e. sync your old apps that were manually typed into PowerCampus before you implemented PowerSlate.
 --
-
 SELECT DISTINCT aid
 INTO #Exclusions
 FROM PowerCampusMapper.dbo.Slate_Apps_test
@@ -32,12 +31,6 @@ SELECT DISTINCT aid
 FROM PowerCampusMapper.dbo.Slate_Apps_test
 WHERE PEOPLE_CODE_ID IS NULL
 
---Temporary until some mappings are fixed
-INSERT INTO #Exclusions
-SELECT DISTINCT aid
-FROM PowerCampusMapper.dbo.Slate_Apps_test
-WHERE yearterm LIKE '%/SEMSUM/MAIN'
-
 PRINT '#Exclusions table built.'
 
 INSERT INTO [Campus6_odyssey].[dbo].[Application] (
@@ -52,9 +45,9 @@ INSERT INTO [Campus6_odyssey].[dbo].[Application] (
 	,[ApplicationFormSettingId]
 	,[OtherSource]
 	)
-SELECT getdate()
-	,2
-	,[Campus6_odyssey].[dbo].fngetpersonid(PEOPLE_CODE_ID)
+SELECT getdate() [CreateDatetime]
+	,2 [Status]
+	,[Campus6_odyssey].[dbo].fngetpersonid(PEOPLE_CODE_ID) [PersonId]
 	,FirstName
 	,LastName
 	,(
@@ -75,19 +68,24 @@ SELECT getdate()
 				FROM string_split(yearterm, '/')
 				ORDER BY @@rowcount offset 2 rows FETCH NEXT 1 rows ONLY
 				)
-		)
-	,0
-	,0
-	,1
-	,aid
+		) [SessionPeriodId]
+	,0 [FoodPlanInterest]
+	,0 [DormPlanInterest]
+	,1 [ApplicationFormSettingId]
+	,aid [OtherSource]
 FROM PowerCampusMapper.dbo.Slate_Apps_test
 WHERE aid NOT IN (
 		SELECT aid
-		FROM #exclusions
+		FROM #Exclusions
 		)
 	AND aid NOT IN (
 		SELECT applicationnumber
 		FROM [Campus6_odyssey].[dbo].[RecruiterApplication]
+		WHERE ApplicationId IS NOT NULL
+		)
+	AND aid NOT IN (
+		SELECT othersource
+		FROM [Campus6_odyssey].[dbo].[Application]
 		)
 
 PRINT 'Insert into [Application] done.'

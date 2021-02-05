@@ -11,7 +11,7 @@ GO
 -- Create date: 2021-01-20
 -- Description:	Inserts or updates data in User Defined fields. Here be dragons!
 -- =============================================
-ALTER PROCEDURE [custom].[PS_updUserDefined] @PCID NVARCHAR(10)
+CREATE PROCEDURE [custom].[PS_updUserDefined] @PCID NVARCHAR(10)
 	,@Column NVARCHAR(18)
 	,@Value NVARCHAR(max)
 AS

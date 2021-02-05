@@ -84,10 +84,10 @@ def init_config(config_path):
 
     # Print a test of connections
     r = requests.get(PC_API_URL + 'api/version', auth=PC_API_CRED)
-    print('PowerCampus API Status: ' + str(r.status_code))
-    print(r.text)
+    verbose_print('PowerCampus API Status: ' + str(r.status_code))
+    verbose_print(r.text)
     r.raise_for_status()
-    print(CNXN.getinfo(pyodbc.SQL_DATABASE_NAME))
+    verbose_print('Database:' + CNXN.getinfo(pyodbc.SQL_DATABASE_NAME))
 
 
 def de_init():
@@ -95,7 +95,19 @@ def de_init():
     CNXN.close()  # SQL
 
     if CONFIG['scheduled_actions']['enabled'] == True:
-        HTTP_SESSION_SCHED_ACTS.close()  # HTTP session to Slate for scheduled actions
+        HTTP_SESSION_SCHED_ACTS.close()
+
+
+def verbose_print(x):
+    """Attempt to print JSON without altering it, serializable objects as JSON, and anything else as default."""
+    if CONFIG['console_verbose'] and len(x) > 0:
+        if isinstance(x, str):
+            print(x)
+        else:
+            try:
+                print(json.dumps(x, indent=4))
+            except:
+                print(x)
 
 
 def blank_to_null(x):
@@ -130,9 +142,9 @@ def format_phone_number(number):
 
 
 def strtobool(s):
-    if s.lower() in ['true', '1', 'y', 'yes']:
+    if s is not None and s.lower() in ['true', '1', 'y', 'yes']:
         return True
-    elif s.lower() in ['false', '0', 'n', 'no']:
+    elif s is not None and s.lower() in ['false', '0', 'n', 'no']:
         return False
     else:
         return None
@@ -145,9 +157,9 @@ def format_app_generic(app):
 
     fields_null = ['Prefix', 'MiddleName', 'LastNamePrefix', 'Suffix', 'Nickname', 'GovernmentId', 'LegalName',
                    'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'MaritalStatus',
-                   'ProposedDecision', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
-                   'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran',
-                   'Department', 'Nontraditional', 'Extracurricular']
+                   'ProposedDecision', 'AppStatus', 'AppDecision', 'Religion', 'FormerLastName', 'FormerFirstName',
+                   'PrimaryLanguage', 'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment',
+                   'Status', 'Veteran', 'Department', 'Nontraditional', 'Extracurricular']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                    'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid',
                    'Extracurricular']
@@ -287,7 +299,7 @@ def format_app_sql(app):
     # Pass through fields
     fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
-                       'ProposedDecision', 'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular', 'Nontraditional']
+                       'AppStatus', 'AppDecision', 'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular', 'Nontraditional']
     fields_verbatim.extend([n['slate_field'] for n in CONFIG['notes']])
     fields_verbatim.extend([f['slate_field'] for f in CONFIG['user_defined']])
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
@@ -377,7 +389,7 @@ def str_digits(s):
     return s.translate(non_digits)
 
 
-def scan_status(x):
+def pc_scan_status(x):
     """Query the PowerCampus status of a single application and return three status indicators and PowerCampus ID number, if present.
 
     Keyword arguments:
@@ -390,23 +402,18 @@ def scan_status(x):
     pcid -- PEOPLE_CODE_ID (string)
     """
 
-    r = requests.get(PC_API_URL + 'api/applications?applicationNumber=' +
-                     x['aid'], auth=PC_API_CRED)
-    r.raise_for_status()
-    r_dict = json.loads(r.text)
+    ra_status = None
+    apl_status = None
+    computed_status = None
+    pcid = None
 
-    # If application exists in PowerCampus, execute SP to look for existing PCID.
-    # Log PCID and status.
-    if 'applicationNumber' in r_dict:
-        CURSOR.execute('EXEC [custom].[PS_selRAStatus] \'' +
-                       x['aid'] + '\'')
-        row = CURSOR.fetchone()
-        if row.PEOPLE_CODE_ID is not None:
-            pcid = row.PEOPLE_CODE_ID
-            # people_code = row.PEOPLE_CODE_ID[1:]
-            # PersonId = row.PersonId # Delete
-        else:
-            pcid = None
+    CURSOR.execute('EXEC [custom].[PS_selRAStatus] ?', x['aid'])
+    row = CURSOR.fetchone()
+
+    if row is not None:
+        ra_status = row.ra_status
+        apl_status = row.apl_status
+        pcid = row.PEOPLE_CODE_ID
 
         # Determine status.
         if row.ra_status in (0, 3, 4) and row.apl_status == 2 and pcid is not None:
@@ -419,23 +426,20 @@ def scan_status(x):
             computed_status = 'Required field missing.'
         elif row.ra_status == 2 and row.apl_status is None and pcid is None:
             computed_status = 'Required field mapping is missing.'
-        # elif row is not None:
-            # ra_status = row.ra_status
         else:
             computed_status = 'Unrecognized Status: ' + str(row.ra_status)
 
-        # Write errors to external database for end-user presentation via SSRS.
-        CURSOR.execute('INSERT INTO' + CONFIG['app_status_log_table'] + """
-            ([Ref],[ApplicationNumber],[ProspectId],[FirstName],[LastName],
-            [ComputedStatus],[Notes],[RecruiterApplicationStatus],[ApplicationStatus],[PEOPLE_CODE_ID])
-        VALUES
-            (?,?,?,?,?,?,?,?,?,?)""",
-                       [x['Ref'], x['aid'], x['pid'], x['FirstName'], x['LastName'], computed_status, row.ra_errormessage, row.ra_status, row.apl_status, pcid])
-        CNXN.commit()
+        if CONFIG['logging']['enabled']:
+            # Write errors to external database for end-user presentation via SSRS.
+            CURSOR.execute('INSERT INTO' + CONFIG['logging']['log_table'] + """
+                ([Ref],[ApplicationNumber],[ProspectId],[FirstName],[LastName],
+                [ComputedStatus],[Notes],[RecruiterApplicationStatus],[ApplicationStatus],[PEOPLE_CODE_ID])
+            VALUES
+                (?,?,?,?,?,?,?,?,?,?)""",
+                           [x['Ref'], x['aid'], x['pid'], x['FirstName'], x['LastName'], computed_status, row.ra_errormessage, row.ra_status, row.apl_status, pcid])
+            CNXN.commit()
 
-        return row.ra_status, row.apl_status, computed_status, pcid
-    else:
-        return None, None, None, None
+    return ra_status, apl_status, computed_status, pcid
 
 
 def slate_get_actions(apps_list):
@@ -547,7 +551,7 @@ def pc_update_demographics(app):
 
 
 def pc_update_academic(app):
-    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    app['ACADEMIC_YEAR'],
                    app['ACADEMIC_TERM'],
@@ -557,7 +561,8 @@ def pc_update_academic(app):
                    app['CURRICULUM'],
                    app['Department'],
                    app['Nontraditional'],
-                   app['ProposedDecision'],
+                   app['AppStatus'],
+                   app['AppDecision'],
                    app['COLLEGE_ATTEND'],
                    app['Extracurricular'],
                    app['CreateDateTime'])
@@ -628,7 +633,7 @@ def main_sync(pid=None):
     pid -- specific application GUID to sync (default None)
     """
 
-    # Get applicants from Slate
+    verbose_print('Get applicants from Slate...')
     creds = (CONFIG['slate_query_apps']['username'],
              CONFIG['slate_query_apps']['password'])
     if pid is not None:
@@ -649,31 +654,40 @@ def main_sync(pid=None):
         # Don't raise an error for scheduled mode
         return None
 
-    # Clean up app data from Slate (datatypes, supply nulls, etc.)
+    verbose_print(
+        'Clean up app data from Slate (datatypes, supply nulls, etc.)')
     for k, v in apps.items():
         apps[k] = format_app_generic(v)
 
-    # Check each app's status flags/PCID in PowerCampus and store them
+    verbose_print('Check each app\'s status flags/PCID in PowerCampus')
     for k, v in apps.items():
-        status_ra, status_app, status_calc, pcid = scan_status(v)
+        status_ra, status_app, status_calc, pcid = pc_scan_status(v)
         apps[k].update({'status_ra': status_ra, 'status_app': status_app,
                         'status_calc': status_calc})
         apps[k]['PEOPLE_CODE_ID'] = pcid
 
-    # (Re)Post new or unprocessed applications to PowerCampus API
+    verbose_print(
+        'Post new or repost unprocessed applications to PowerCampus API')
     for k, v in apps.items():
         if (v['status_ra'] == None) or (v['status_ra'] in (1, 2) and v['status_app'] is None):
             pcid = pc_post_api(format_app_api(v))
             apps[k]['PEOPLE_CODE_ID'] = pcid
 
-    # Rescan statuses
-    for k, v in apps.items():
-        status_ra, status_app, status_calc, pcid = scan_status(v)
-        apps[k].update({'status_ra': status_ra, 'status_app': status_app,
-                        'status_calc': status_calc})
-        apps[k]['PEOPLE_CODE_ID'] = pcid
+            # Rescan status
+            status_ra, status_app, status_calc, pcid = pc_scan_status(v)
+            apps[k].update({'status_ra': status_ra, 'status_app': status_app,
+                            'status_calc': status_calc})
+            apps[k]['PEOPLE_CODE_ID'] = pcid
 
-    # Update existing applications in PowerCampus and extract information
+    # verbose_print('Rescan statuses in PowerCampus')
+    # for k, v in apps.items():
+    #     status_ra, status_app, status_calc, pcid = pc_scan_status(v)
+    #     apps[k].update({'status_ra': status_ra, 'status_app': status_app,
+    #                     'status_calc': status_calc})
+    #     apps[k]['PEOPLE_CODE_ID'] = pcid
+
+    verbose_print(
+        'Update existing applications in PowerCampus and extract information')
     for k, v in apps.items():
         if v['status_calc'] == 'Active':
             # Transform to PowerCampus format
@@ -704,6 +718,7 @@ def main_sync(pid=None):
     # Update PowerCampus Scheduled Actions
     # Querying each app individually would introduce significant network overhead, so query Slate in bulk
     if CONFIG['scheduled_actions']['enabled'] == True:
+        verbose_print('Update PowerCampus Scheduled Actions')
         # Make a list of App GUID's
         apps_for_sa = [k for (k, v) in apps.items()
                        if v['status_calc'] == 'Active']
@@ -715,7 +730,7 @@ def main_sync(pid=None):
             action['app'] = format_app_sql(apps[action['aid']])
             pc_update_action(action)
 
-    # Upload data back to Slate
+    verbose_print('Upload data back to Slate')
     # Build list of flat app dicts with only certain fields included
     slate_upload_list = []
     slate_upload_fields = ['aid', 'PEOPLE_CODE_ID', 'found', 'registered',
@@ -735,6 +750,7 @@ def main_sync(pid=None):
 
     # Collect Financial Aid checklist and upload to Slate
     if CONFIG['fa_checklist']['enabled'] == True:
+        verbose_print('Collect Financial Aid checklist and upload to Slate')
         slate_upload_list = []
         slate_upload_fields = {'AppID', 'Code', 'Status', 'Date'}
 
