@@ -11,7 +11,6 @@ def init_config(config_path):
     global CONFIG
     global PC_API_URL
     global PC_API_CRED
-    global HTTP_SESSION_SCHED_ACTS
     global RM_MAPPING
     global CNXN
     global CURSOR
@@ -68,13 +67,6 @@ def init_config(config_path):
     PC_API_URL = CONFIG['pc_api']['url']
     PC_API_CRED = (CONFIG['pc_api']['username'], CONFIG['pc_api']['password'])
 
-    # Set up an HTTP session to be used for updating scheduled actions. It's initialized here because it will be used
-    # inside a loop. Other web service calls will use the top-level requests functions (i.e. their own, automatic sessions).
-    if CONFIG['scheduled_actions']['enabled'] == True:
-        HTTP_SESSION_SCHED_ACTS = requests.Session()
-        HTTP_SESSION_SCHED_ACTS.auth = (
-            CONFIG['scheduled_actions']['slate_get']['username'], CONFIG['scheduled_actions']['slate_get']['password'])
-
     # Microsoft SQL Server connection.
     CNXN = pyodbc.connect(CONFIG['pc_database_string'])
     CURSOR = CNXN.cursor()
@@ -93,9 +85,6 @@ def init_config(config_path):
 def de_init():
     # Clean up connections.
     CNXN.close()  # SQL
-
-    if CONFIG['scheduled_actions']['enabled'] == True:
-        HTTP_SESSION_SCHED_ACTS.close()
 
 
 def verbose_print(x):
@@ -164,6 +153,16 @@ def format_app_generic(app):
                    'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid',
                    'Extracurricular']
     fields_int = ['Ethnicity', 'Gender', 'SMSOptIn']
+    fields_null.extend(
+        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_string']])
+    fields_null.extend(
+        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_bool']])
+    fields_null.extend(
+        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_int']])
+    fields_bool.extend(
+        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_bool']])
+    fields_int.extend(
+        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_int']])
 
     # Copy nullable strings from input to output, then fill in nulls
     mapped.update({k: v for (k, v) in app.items() if k in fields_null})
@@ -300,8 +299,9 @@ def format_app_sql(app):
     fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
                        'AppStatus', 'AppDecision', 'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular', 'Nontraditional']
-    fields_verbatim.extend([n['slate_field'] for n in CONFIG['notes']])
-    fields_verbatim.extend([f['slate_field'] for f in CONFIG['user_defined']])
+    fields_verbatim.extend([n['slate_field'] for n in CONFIG['pc_notes']])
+    fields_verbatim.extend([f['slate_field']
+                            for f in CONFIG['pc_user_defined']])
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
     # Gender is hardcoded into the PowerCampus Web API, but [WebServices].[spSetDemographics] has different hardcoded values.
@@ -349,6 +349,110 @@ def format_app_sql(app):
     return mapped
 
 
+def str_digits(s):
+    """Return only digits from a string."""
+    non_digits = str.maketrans(
+        {c: None for c in ascii_letters + punctuation + whitespace})
+    return s.translate(non_digits)
+
+
+def slate_get_actions(apps_list):
+    """Fetch 'Scheduled Actions' (Slate Checklist) for a list of applications.
+
+    Keyword arguments:
+    apps_list -- list of ApplicationNumbers to fetch actions for
+
+    Returns:
+    action_list -- list of individual action as dicts
+
+    Uses its own HTTP session to reduce overhead and queries Slate with batches of 48 comma-separated ID's.
+    48 was chosen to avoid exceeding max GET request.
+    """
+
+    # Set up an HTTP session to use for multiple GET requests.
+    http_session = requests.Session()
+    http_session.auth = (CONFIG['scheduled_actions']['slate_get']['username'],
+                         CONFIG['scheduled_actions']['slate_get']['password'])
+
+    actions_list = []
+
+    while apps_list:
+        counter = 0
+        ql = []  # Queue list
+        qs = ''  # Queue string
+        al = []  # Temporary actions list
+
+        # Pop up to 48 app GUID's and append to queue list.
+        while apps_list and counter < 48:
+            ql.append(apps_list.pop())
+            counter += 1
+
+        # Stuff them into a comma-separated string.
+        qs = ",".join(str(item) for item in ql)
+
+        r = http_session.get(
+            CONFIG['scheduled_actions']['slate_get']['url'], params={'aids': qs})
+        r.raise_for_status()
+        al = json.loads(r.text)
+        actions_list.extend(al['row'])
+        # if len(al['row']) > 1: # Delete. I don't think an application could ever have zero actions.
+
+    http_session.close()
+
+    return actions_list
+
+
+def slate_post_fields_changed(apps, config_dict):
+    # Check for changes between Slate and local state
+    # Upload changed records back to Slate
+
+    # Build list of flat app dicts with only certain fields included
+    upload_list = []
+    fields = config_dict['fields_string']
+    fields.extend(config_dict['fields_bool'])
+    fields.extend(config_dict['fields_int'])
+
+    if len(fields) == 1:
+        return
+
+    for app in apps.values():
+        upload_list.append({k: v for (k, v) in app.items() if k in fields 
+            and v != app["compare_" + k]} | {'aid': app['aid']})
+
+    # Apps with no changes will only contain {'aid': 'xxx'}
+    # Only retain items that have more than one field
+    upload_list[:] = [app for app in upload_list if len(app) > 1]
+
+    if len(upload_list) > 0:
+        # Slate requires JSON to be convertable to XML
+        upload_dict = {'row': upload_list}
+
+        creds = (config_dict['username'], config_dict['password'])
+        r = requests.post(config_dict['url'], json=upload_dict, auth=creds)
+        r.raise_for_status()
+    
+    msg = '\t' + str(len(upload_list)) + ' of ' + str(len(apps)) + ' apps had changed fields'
+    return msg
+
+
+def slate_post_fields(apps, config_dict):
+    # Build list of flat app dicts with only certain fields included
+    upload_list = []
+    fields = ['aid']
+    fields.extend(config_dict['fields'])
+
+    for app in apps.values():
+        upload_list.append({k: v for (k, v) in app.items()
+                            if k in fields})
+
+    # Slate requires JSON to be convertable to XML
+    upload_dict = {'row': upload_list}
+
+    creds = (config_dict['username'], config_dict['password'])
+    r = requests.post(config_dict['url'], json=upload_dict, auth=creds)
+    r.raise_for_status()
+
+
 def pc_post_api(x):
     """Post an application to PowerCampus.
     Return  PEOPLE_CODE_ID if application was automatically accepted or None for all other conditions.
@@ -380,13 +484,6 @@ def pc_post_api(x):
             return None
     else:
         return None
-
-
-def str_digits(s):
-    """Return only digits from a string."""
-    non_digits = str.maketrans(
-        {c: None for c in ascii_letters + punctuation + whitespace})
-    return s.translate(non_digits)
 
 
 def pc_scan_status(x):
@@ -442,45 +539,6 @@ def pc_scan_status(x):
     return ra_status, apl_status, computed_status, pcid
 
 
-def slate_get_actions(apps_list):
-    """Fetch 'Scheduled Actions' (Slate Checklist) for a list of applications.
-
-    Keyword arguments:
-    apps_list -- list of ApplicationNumbers to fetch actions for
-
-    Returns:
-    action_list -- list of individual action as dicts
-
-    Uses its own HTTP session to reduce overhead and queries Slate with batches of 48 comma-separated ID's.
-    48 was chosen to avoid exceeding max GET request.
-    """
-
-    actions_list = []
-
-    while apps_list:
-        counter = 0
-        ql = []  # Queue list
-        qs = ''  # Queue string
-        al = []  # Temporary actions list
-
-        # Pop up to 48 app GUID's and append to queue list.
-        while apps_list and counter < 48:
-            ql.append(apps_list.pop())
-            counter += 1
-
-        # Stuff them into a comma-separated string.
-        qs = ",".join(str(item) for item in ql)
-
-        r = HTTP_SESSION_SCHED_ACTS.get(
-            CONFIG['scheduled_actions']['slate_get']['url'], params={'aids': qs})
-        r.raise_for_status()
-        al = json.loads(r.text)
-        actions_list.extend(al['row'])
-        # if len(al['row']) > 1: # Delete. I don't think an application could ever have zero actions.
-
-    return actions_list
-
-
 def pc_get_profile(app):
     '''Fetch ACADEMIC row data and email address from PowerCampus.
 
@@ -499,7 +557,7 @@ def pc_get_profile(app):
     reg_date = None
     readmit = False
     withdrawn = False
-    credits = 0
+    credits = '0.00'
     campus_email = None
 
     CURSOR.execute('EXEC [custom].[PS_selProfile] ?,?,?,?,?,?,?',
@@ -522,7 +580,7 @@ def pc_get_profile(app):
 
         campus_email = row.CampusEmail
 
-        if row.COLLEGE_ATTEND == CONFIG['readmit_code']:
+        if row.COLLEGE_ATTEND == CONFIG['pc_readmit_code']:
             readmit = True
 
         if row.Withdrawn == 'Y':
@@ -643,6 +701,7 @@ def main_sync(pid=None):
         r = requests.get(CONFIG['slate_query_apps']['url'], auth=creds)
     r.raise_for_status()
     apps = json.loads(r.text)['row']
+    verbose_print('\tFetched ' + str(len(apps)) + ' apps')
 
     # Make a dict of apps with application GUID as the key
     # {AppGUID: { JSON from Slate }
@@ -699,13 +758,13 @@ def main_sync(pid=None):
             pc_update_smsoptin(app_pc)
 
             # Update any PowerCampus Notes defined in config
-            for note in CONFIG['notes']:
+            for note in CONFIG['pc_notes']:
                 if note['slate_field'] in app_pc and len(app_pc[note['slate_field']]) > 0:
                     pc_update_note(
                         app_pc, note['slate_field'], note['office'], note['note_type'])
 
             # Update any PowerCampus User Defined fields defined in config
-            for udf in CONFIG['user_defined']:
+            for udf in CONFIG['pc_user_defined']:
                 if udf['slate_field'] in app_pc and len(app_pc[udf['slate_field']]) > 0:
                     pc_update_udf(app_pc, udf['slate_field'], udf['pc_field'])
 
@@ -729,24 +788,12 @@ def main_sync(pid=None):
             # Nest SQL version of app underneath action
             action['app'] = format_app_sql(apps[action['aid']])
             pc_update_action(action)
+    
+    verbose_print('Upload passive fields back to Slate')
+    slate_post_fields(apps, CONFIG['slate_upload_passive'])
 
-    verbose_print('Upload data back to Slate')
-    # Build list of flat app dicts with only certain fields included
-    slate_upload_list = []
-    slate_upload_fields = ['aid', 'PEOPLE_CODE_ID', 'found', 'registered',
-                           'reg_date', 'readmit', 'withdrawn', 'credits', 'campus_email']
-    for app in apps.values():
-        slate_upload_list.append(
-            {k: v for (k, v) in app.items() if k in slate_upload_fields})
-
-    # Slate requires JSON to be convertable to XML
-    slate_upload_dict = {'row': slate_upload_list}
-
-    creds = (CONFIG['slate_upload']['username'],
-             CONFIG['slate_upload']['password'])
-    r = requests.post(CONFIG['slate_upload']['url'],
-                      json=slate_upload_dict, auth=creds)
-    r.raise_for_status()
+    verbose_print('Upload active (changed) fields back to Slate')
+    verbose_print(slate_post_fields_changed(apps, CONFIG['slate_upload_active']))
 
     # Collect Financial Aid checklist and upload to Slate
     if CONFIG['fa_checklist']['enabled'] == True:
