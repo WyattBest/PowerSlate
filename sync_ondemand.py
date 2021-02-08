@@ -20,7 +20,8 @@ except Exception as e:
     print('Exception at ' + str(datetime.datetime.now()) +
           '! Check notification email.')
     msg = MIMEText('Sync failed at ' + str(datetime.datetime.now()) + '\n\nError: '
-                   + str(traceback.format_exc()))
+                   + str(traceback.format_exc())
+                   + '\nCurrent Record: ' + str(pscore.CURRENT_RECORD))
     msg['Subject'] = smtp_config['subject']
     msg['From'] = smtp_config['from']
     msg['To'] = smtp_config['to']

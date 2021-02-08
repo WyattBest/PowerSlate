@@ -416,8 +416,9 @@ def slate_post_fields_changed(apps, config_dict):
         return
 
     for app in apps.values():
-        upload_list.append({k: v for (k, v) in app.items() if k in fields 
-            and v != app["compare_" + k]} | {'aid': app['aid']})
+        CURRENT_RECORD = app['aid']
+        upload_list.append({k: v for (k, v) in app.items() if k in fields
+                            and v != app["compare_" + k]} | {'aid': app['aid']})
 
     # Apps with no changes will only contain {'aid': 'xxx'}
     # Only retain items that have more than one field
@@ -430,8 +431,9 @@ def slate_post_fields_changed(apps, config_dict):
         creds = (config_dict['username'], config_dict['password'])
         r = requests.post(config_dict['url'], json=upload_dict, auth=creds)
         r.raise_for_status()
-    
-    msg = '\t' + str(len(upload_list)) + ' of ' + str(len(apps)) + ' apps had changed fields'
+
+    msg = '\t' + str(len(upload_list)) + ' of ' + \
+        str(len(apps)) + ' apps had changed fields'
     return msg
 
 
@@ -442,6 +444,7 @@ def slate_post_fields(apps, config_dict):
     fields.extend(config_dict['fields'])
 
     for app in apps.values():
+        CURRENT_RECORD = app['aid']
         upload_list.append({k: v for (k, v) in app.items()
                             if k in fields})
 
@@ -690,6 +693,7 @@ def main_sync(pid=None):
     Keyword arguments:
     pid -- specific application GUID to sync (default None)
     """
+    global CURRENT_RECORD
 
     verbose_print('Get applicants from Slate...')
     creds = (CONFIG['slate_query_apps']['username'],
@@ -716,10 +720,12 @@ def main_sync(pid=None):
     verbose_print(
         'Clean up app data from Slate (datatypes, supply nulls, etc.)')
     for k, v in apps.items():
+        CURRENT_RECORD = k
         apps[k] = format_app_generic(v)
 
     verbose_print('Check each app\'s status flags/PCID in PowerCampus')
     for k, v in apps.items():
+        CURRENT_RECORD = k
         status_ra, status_app, status_calc, pcid = pc_scan_status(v)
         apps[k].update({'status_ra': status_ra, 'status_app': status_app,
                         'status_calc': status_calc})
@@ -728,6 +734,7 @@ def main_sync(pid=None):
     verbose_print(
         'Post new or repost unprocessed applications to PowerCampus API')
     for k, v in apps.items():
+        CURRENT_RECORD = k
         if (v['status_ra'] == None) or (v['status_ra'] in (1, 2) and v['status_app'] is None):
             pcid = pc_post_api(format_app_api(v))
             apps[k]['PEOPLE_CODE_ID'] = pcid
@@ -748,6 +755,7 @@ def main_sync(pid=None):
     verbose_print(
         'Update existing applications in PowerCampus and extract information')
     for k, v in apps.items():
+        CURRENT_RECORD = k
         if v['status_calc'] == 'Active':
             # Transform to PowerCampus format
             app_pc = format_app_sql(v)
@@ -788,12 +796,13 @@ def main_sync(pid=None):
             # Nest SQL version of app underneath action
             action['app'] = format_app_sql(apps[action['aid']])
             pc_update_action(action)
-    
+
     verbose_print('Upload passive fields back to Slate')
     slate_post_fields(apps, CONFIG['slate_upload_passive'])
 
     verbose_print('Upload active (changed) fields back to Slate')
-    verbose_print(slate_post_fields_changed(apps, CONFIG['slate_upload_active']))
+    verbose_print(slate_post_fields_changed(
+        apps, CONFIG['slate_upload_active']))
 
     # Collect Financial Aid checklist and upload to Slate
     if CONFIG['fa_checklist']['enabled'] == True:
@@ -802,6 +811,7 @@ def main_sync(pid=None):
         slate_upload_fields = {'AppID', 'Code', 'Status', 'Date'}
 
         for k, v in apps.items():
+            CURRENT_RECORD = k
             if v['status_calc'] == 'Active':
                 # Transform to PowerCampus format
                 app_pc = format_app_sql(v)
