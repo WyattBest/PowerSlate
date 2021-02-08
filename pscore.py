@@ -14,7 +14,7 @@ def init_config(config_path):
     global RM_MAPPING
     global CNXN
     global CURSOR
-    global ERROR_STRINGS
+    global MSG_STRINGS
 
     # Read config file and convert to dict
     with open(config_path) as config_path:
@@ -72,7 +72,7 @@ def init_config(config_path):
     CURSOR = CNXN.cursor()
 
     # Misc configs
-    ERROR_STRINGS = CONFIG['error_strings']
+    MSG_STRINGS = CONFIG['msg_strings']
 
     # Print a test of connections
     r = requests.get(PC_API_URL + 'api/version', auth=PC_API_CRED)
@@ -712,7 +712,7 @@ def main_sync(pid=None):
     apps = {k['aid']: k for k in apps}
     if len(apps) == 0 and pid is not None:
         # Assuming we're running in interactive (HTTP) mode if pid param exists
-        raise EOFError(ERROR_STRINGS['no_apps'])
+        raise EOFError(MSG_STRINGS['error_no_apps'])
     elif len(apps) == 0:
         # Don't raise an error for scheduled mode
         return None
@@ -836,4 +836,4 @@ def main_sync(pid=None):
                               data=slate_fa_string, auth=creds)
             r.raise_for_status()
 
-    return 'Done. Please check the PowerSlate Sync Report for more details.'
+    return MSG_STRINGS['sync_done']
