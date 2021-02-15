@@ -1,13 +1,12 @@
-USE [Campus6]
+USE [Campus6_odyssey]
 GO
 
-/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 1/18/2021 4:41:56 PM ******/
+/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 2/4/2021 4:20:36 PM ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
-
 
 -- =============================================
 -- Author:		Wyatt Best
@@ -16,16 +15,17 @@ GO
 --				Sets ACADEMIC_FLAG if needed (an API defect).
 --				Sets PRIMARY_FLAG
 --
---	2016-12-15	Wyatt Best: Added 'Defer' ProposedDecision type.
---	2016-12-28	Wyatt Best:	Changed translation CODE_APPDECISION for Waiver from 'ACCP' to 'WAIV'
---	2017-01-09	Wyatt Best: Added code to set PRIMARY_FLAG. Assuming that a current admissions application should be the primary activity.
---	2017-01-10	Wyatt Best: Added 'Withdraw' ProposedDecision type.
---	2017-08-16	Wyatt Best:	Added 'Deny' ProposedDecision type.
---  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
---	2019-12-09	Wyatt Best: Added UPDATE for APPLICATION_DATE.
---	2019-12-28	Wyatt Best: Added COALESCE() on APPLICATION_DATE update.
---	2021-01-07	Wyatt Best: Added NONTRAD_PROGRAM.
---	2021-01-18	Wyatt Best: Added COLLEGE_ATTEND, EXTRA_CURRICULAR, and DEPARTMENT.
+-- 2016-12-15 Wyatt Best:	Added 'Defer' ProposedDecision type.
+-- 2016-12-28 Wyatt Best:	Changed translation CODE_APPDECISION for Waiver from 'ACCP' to 'WAIV'
+-- 2017-01-09 Wyatt Best:	Added code to set PRIMARY_FLAG. Assuming that a current admissions application should be the primary activity.
+-- 2017-01-10 Wyatt Best:	Added 'Withdraw' ProposedDecision type.
+-- 2017-08-16 Wyatt Best:	Added 'Deny' ProposedDecision type.
+-- 2019-10-15 Wyatt Best:	Renamed and moved to [custom] schema.
+-- 2019-12-09 Wyatt Best:	Added UPDATE for APPLICATION_DATE.
+-- 2019-12-28 Wyatt Best:	Added COALESCE() on APPLICATION_DATE update.
+-- 2021-01-07 Wyatt Best:	Added NONTRAD_PROGRAM.
+-- 2021-01-18 Wyatt Best:	Added COLLEGE_ATTEND, EXTRA_CURRICULAR, and DEPARTMENT.
+-- 2021-02-04 Wyatt Best:	Eliminated logic to translate @ProposedDecision into App Status and Decision. Instead, accept code values directly.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -36,7 +36,8 @@ CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Curriculum NVARCHAR(6)
 	,@Department NVARCHAR(10) NULL
 	,@Nontraditional NVARCHAR(6) NULL
-	,@ProposedDecision NVARCHAR(max) --Slate data field; translation will happen in this sp
+	,@AppStatus NVARCHAR(8) NULL
+	,@AppDecision NVARCHAR(8) NULL
 	,@CollegeAttend NVARCHAR(4) NULL
 	,@Extracurricular BIT NULL
 	,@CreateDateTime DATETIME --Application creation date
@@ -48,8 +49,6 @@ BEGIN
 	DECLARE @SessionPeriodId INT
 	DECLARE @AppStatusId INT
 	DECLARE @AppDecisionId INT
-	DECLARE @Status NVARCHAR(4)
-	DECLARE @Decision NVARCHAR(4)
 
 	SELECT @ProgramOfStudyId = ProgramOfStudyId
 	FROM ProgramOfStudy pos
@@ -69,51 +68,54 @@ BEGIN
 		AND ACADEMIC_TERM = @Term
 		AND ACADEMIC_SESSION = @Session
 
+	--Error check
+	IF (
+			@AppStatus IS NOT NULL
+			AND NOT EXISTS (
+				SELECT *
+				FROM CODE_APPSTATUS
+				WHERE CODE_VALUE_KEY = @AppStatus
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@AppStatus ''%s'' not found in CODE_APPSTATUS.'
+				,11
+				,1
+				,@AppStatus
+				)
+
+		RETURN
+	END
+
+	IF (
+			@AppDecision IS NOT NULL
+			AND NOT EXISTS (
+				SELECT *
+				FROM CODE_APPDECISION
+				WHERE CODE_VALUE_KEY = @AppDecision
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@AppDecision ''%s'' not found in CODE_APPSTATUS.'
+				,11
+				,1
+				,@AppDecision
+				)
+
+		RETURN
+	END
+
 	SELECT @AppStatusId = ApplicationStatusId
 	FROM CODE_APPSTATUS
 	WHERE STATUS = 'A'
-		AND CODE_VALUE_KEY = CASE @ProposedDecision
-			WHEN 'Accept'
-				THEN 'COMP'
-			WHEN 'Waiver'
-				THEN 'WAVI'
-			WHEN 'Defer'
-				THEN 'CANC'
-			WHEN 'Withdraw'
-				THEN 'CANC'
-			WHEN 'Deny'
-				THEN 'CANC'
-			ELSE 'INCP'
-			END
+		AND CODE_VALUE_KEY = @AppStatus
 
 	SELECT @AppDecisionId = ApplicationDecisionId
 	FROM CODE_APPDECISION
 	WHERE STATUS = 'A'
-		AND CODE_VALUE_KEY = CASE @ProposedDecision
-			WHEN 'Accept'
-				THEN 'ACCP'
-			WHEN 'Waiver'
-				THEN 'WAIV'
-			WHEN 'Defer'
-				THEN 'DEFR'
-			WHEN 'Withdraw'
-				THEN 'WITH'
-			WHEN 'Deny'
-				THEN 'DECL'
-			ELSE 'PEND'
-			END
-
-	SELECT @Status = (
-			SELECT CODE_VALUE_KEY
-			FROM dbo.CODE_APPSTATUS
-			WHERE ApplicationStatusId = @AppStatusId
-			)
-
-	SELECT @Decision = (
-			SELECT CODE_VALUE_KEY
-			FROM dbo.CODE_APPDECISION
-			WHERE ApplicationDecisionId = @AppDecisionId
-			)
+		AND CODE_VALUE_KEY = @AppDecision
 
 	BEGIN TRANSACTION
 
@@ -129,8 +131,8 @@ BEGIN
 				AND DEGREE = @Degree
 				AND CURRICULUM = @Curriculum
 				AND APPLICATION_FLAG = 'Y'
-				AND APP_STATUS = @Status
-				AND APP_DECISION = @Decision
+				AND APP_STATUS = @AppStatus
+				AND APP_DECISION = @AppDecision
 			)
 		EXEC [WebServices].[spUpdAcademicAppInfo] @PCID
 			,@SessionPeriodId
@@ -275,5 +277,3 @@ BEGIN
 
 	COMMIT
 END
-GO
-
