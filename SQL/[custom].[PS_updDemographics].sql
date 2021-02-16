@@ -1,11 +1,13 @@
-USE [Campus6]
+USE [Campus6_odyssey]
 GO
 
+/****** Object:  StoredProcedure [custom].[PS_updDemographics]    Script Date: 2/15/2021 10:19:03 PM ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
+
 
 
 -- =============================================
@@ -15,6 +17,7 @@ GO
 --				went to HandleInquries.
 --
 --  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
+--	2021-02-15	Wyatt Best:	Pass Ethnicity code value to [WebServices].[spSetDemographics].
 -- =============================================
 
 CREATE PROCEDURE [custom].[PS_updDemographics]
@@ -38,11 +41,16 @@ BEGIN
 	SET NOCOUNT ON;
 	BEGIN TRANSACTION
 
-		DECLARE @PersonId int = dbo.fnGetPersonId(@PCID)
-		DECLARE @getdate datetime = getdate()
-		DECLARE @Today datetime = dbo.fnMakeDate(@getdate)
-		DECLARE @Now datetime = dbo.fnMakeTime(@getdate)
-	
+		DECLARE @PersonId INT = dbo.fnGetPersonId(@PCID)
+			,@getdate DATETIME = getdate()
+		DECLARE @Today DATETIME = dbo.fnMakeDate(@getdate)
+			,@Now DATETIME = dbo.fnMakeTime(@getdate)
+			,@CodeEthnicity NVARCHAR(12) = (
+				SELECT code_value_key
+				FROM code_ethnicity
+				WHERE ethnicityid = @ethnicity
+				)
+
 		--IPEDS Ethnicity
 		IF (@RaceAfricanAmerican = 1
 			AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
@@ -69,13 +77,12 @@ BEGIN
 				FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 1))
 			EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 1;
 
-		execute [WebServices].[spSetDemographics] @PersonId, @Opid, '001', @Gender, null, @MaritalStatus, null
-			, @Veteran, null, @PrimaryCitizenship, @SecondaryCitizenship, @Visa, null, null, null, null
+		EXECUTE [WebServices].[spSetDemographics] @PersonId, @Opid, '001', @Gender, @CodeEthnicity, @MaritalStatus, NULL, @Veteran, NULL, @PrimaryCitizenship, @SecondaryCitizenship, @Visa, NULL, NULL, NULL, NULL
+
+
+
 	
 	COMMIT
 END
-
-
 GO
-
 
