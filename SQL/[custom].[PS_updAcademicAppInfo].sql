@@ -1,8 +1,10 @@
 USE [Campus6_odyssey]
 GO
-/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 2/16/2021 6:09:10 PM ******/
+
+/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 2/16/2021 8:57:41 PM ******/
 SET ANSI_NULLS ON
 GO
+
 SET QUOTED_IDENTIFIER ON
 GO
 
@@ -25,6 +27,7 @@ GO
 -- 2021-01-18 Wyatt Best:	Added COLLEGE_ATTEND, EXTRA_CURRICULAR, and DEPARTMENT.
 -- 2021-02-04 Wyatt Best:	Eliminated logic to translate @ProposedDecision into App Status and Decision. Instead, accept code values directly.
 -- 2021-02-16 Wyatt Best:	Raise error if @Department is not valid.
+--							Added POPULATION.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -35,6 +38,7 @@ CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Curriculum NVARCHAR(6)
 	,@Department NVARCHAR(10) NULL
 	,@Nontraditional NVARCHAR(6) NULL
+	,@Population NVARCHAR(12) NULL
 	,@AppStatus NVARCHAR(8) NULL
 	,@AppDecision NVARCHAR(8) NULL
 	,@CollegeAttend NVARCHAR(4) NULL
@@ -120,6 +124,25 @@ BEGIN
 				,11
 				,1
 				,@Department
+				)
+
+		RETURN
+	END
+
+	IF (
+			@Population IS NOT NULL
+			AND NOT EXISTS (
+				SELECT *
+				FROM CODE_POPULATION
+				WHERE CODE_VALUE_KEY = @Population
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@Population ''%s'' not found in CODE_POPULATION.'
+				,11
+				,1
+				,@Population
 				)
 
 		RETURN
@@ -243,6 +266,19 @@ BEGIN
 		AND @Nontraditional IN (
 			SELECT NONTRAD_PROGRAM
 			FROM NONTRADITIONAL
+			)
+
+	--Update POPULATION if needed
+	UPDATE ACADEMIC
+	SET [POPULATION] = @Population
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND APPLICATION_FLAG = 'Y'
+		AND (
+			[POPULATION] <> @Population
+			OR [POPULATION] IS NULL
 			)
 
 	--Update COLLEGE_ATTEND if needed

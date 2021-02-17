@@ -267,7 +267,7 @@ def format_app_api(app):
         mapped['PhoneNumbers'] = [
             {'Type': -1, 'Country': None, 'Number': None}]
 
-    # Veteran has funny logic, and the API is broken (passing in 1 will write 2 into Application.VeteranStatus)
+    # Veteran has funny logic, and  API 8.8.3 is broken (passing in 1 will write 2 into [Application].[VeteranStatus]).
     # Impact is low because custom SQL routines will fix Veteran field once person has passed Handle Applications.
     if app['Veteran'] is None:
         mapped['Veteran'] = 0
@@ -299,7 +299,8 @@ def format_app_sql(app):
     # Pass through fields
     fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
-                       'AppStatus', 'AppDecision', 'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular', 'Nontraditional']
+                       'AppStatus', 'AppDecision', 'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular',
+                       'Nontraditional', 'Population']
     fields_verbatim.extend([n['slate_field'] for n in CONFIG['pc_notes']])
     fields_verbatim.extend([f['slate_field']
                             for f in CONFIG['pc_user_defined']])
@@ -613,7 +614,7 @@ def pc_update_demographics(app):
 
 
 def pc_update_academic(app):
-    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    app['ACADEMIC_YEAR'],
                    app['ACADEMIC_TERM'],
@@ -623,6 +624,7 @@ def pc_update_academic(app):
                    app['CURRICULUM'],
                    app['Department'],
                    app['Nontraditional'],
+                   app['Population'],
                    app['AppStatus'],
                    app['AppDecision'],
                    app['COLLEGE_ATTEND'],
