@@ -331,7 +331,7 @@ def format_app_sql(app):
     else:
         mapped['VISA'] = None
 
-    if 'VeteranStatus' in app and app['VeteranStatus'] == True:
+    if 'Veteran' in app:
         mapped['VETERAN'] = RM_MAPPING['Veteran'][str(app['Veteran'])]
     else:
         mapped['VETERAN'] = None
