@@ -267,7 +267,8 @@ def format_app_api(app):
         mapped['PhoneNumbers'] = [
             {'Type': -1, 'Country': None, 'Number': None}]
 
-    # Veteran has funny logic
+    # Veteran has funny logic, and the API is broken (passing in 1 will write 2 into Application.VeteranStatus)
+    # Impact is low because custom SQL routines will fix Veteran field once person has passed Handle Applications.
     if app['Veteran'] is None:
         mapped['Veteran'] = 0
         mapped['VeteranStatus'] = False
