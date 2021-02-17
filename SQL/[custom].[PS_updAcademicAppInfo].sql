@@ -1,10 +1,8 @@
 USE [Campus6_odyssey]
 GO
-
-/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 2/4/2021 4:20:36 PM ******/
+/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 2/16/2021 6:09:10 PM ******/
 SET ANSI_NULLS ON
 GO
-
 SET QUOTED_IDENTIFIER ON
 GO
 
@@ -26,6 +24,7 @@ GO
 -- 2021-01-07 Wyatt Best:	Added NONTRAD_PROGRAM.
 -- 2021-01-18 Wyatt Best:	Added COLLEGE_ATTEND, EXTRA_CURRICULAR, and DEPARTMENT.
 -- 2021-02-04 Wyatt Best:	Eliminated logic to translate @ProposedDecision into App Status and Decision. Instead, accept code values directly.
+-- 2021-02-16 Wyatt Best:	Raise error if @Department is not valid.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -102,6 +101,25 @@ BEGIN
 				,11
 				,1
 				,@AppDecision
+				)
+
+		RETURN
+	END
+
+	IF (
+			@Department IS NOT NULL
+			AND NOT EXISTS (
+				SELECT *
+				FROM CODE_DEPARTMENT
+				WHERE CODE_VALUE_KEY = @Department
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@Department ''%s'' not found in CODE_DEPARTMENT.'
+				,11
+				,1
+				,@Department
 				)
 
 		RETURN
