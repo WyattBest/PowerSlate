@@ -148,7 +148,7 @@ def format_app_generic(app):
                    'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'MaritalStatus',
                    'ProposedDecision', 'AppStatus', 'AppDecision', 'Religion', 'FormerLastName', 'FormerFirstName',
                    'PrimaryLanguage', 'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment',
-                   'Status', 'Veteran', 'Department', 'Nontraditional', 'Extracurricular']
+                   'Status', 'Veteran', 'Department', 'Nontraditional', 'Population', 'Extracurricular']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                    'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid',
                    'Extracurricular']
