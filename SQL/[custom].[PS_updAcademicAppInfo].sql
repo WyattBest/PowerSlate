@@ -1,12 +1,13 @@
 USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 2/16/2021 8:57:41 PM ******/
+/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 2/18/2021 3:20:41 PM ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
+
 
 -- =============================================
 -- Author:		Wyatt Best
@@ -157,6 +158,9 @@ BEGIN
 			OR COALESCE(APP_DECISION, '') <> @AppDecision
 			OR COALESCE(CAST(APP_DECISION_DATE AS DATE), '') <> @AppDecisionDate
 			)
+		--Don't do anything unless both Status and Decision are present.
+		AND @AppStatus IS NOT NULL
+		AND @AppDecision IS NOT NULL
 
 	--Update DEPARTMENT if needed
 	UPDATE ACADEMIC
@@ -308,3 +312,5 @@ BEGIN
 
 	COMMIT
 END
+GO
+
