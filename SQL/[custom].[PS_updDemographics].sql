@@ -1,4 +1,4 @@
-USE [Campus6_odyssey]
+USE [Campus6]
 GO
 
 /****** Object:  StoredProcedure [custom].[PS_updDemographics]    Script Date: 2/15/2021 10:19:03 PM ******/

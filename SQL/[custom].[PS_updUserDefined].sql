@@ -1,4 +1,4 @@
-USE [Campus6_odyssey]
+USE [Campus6]
 
 SET ANSI_NULLS ON
 GO

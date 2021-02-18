@@ -1,4 +1,4 @@
-USE [Campus6_odyssey]
+USE [Campus6]
 GO
 
 /****** Object:  StoredProcedure [custom].[PS_selRAStatus]    Script Date: 2/4/2021 4:34:41 PM ******/

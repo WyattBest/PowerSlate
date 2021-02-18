@@ -1,4 +1,4 @@
-USE [Campus6_odyssey]
+USE [Campus6]
 GO
 
 /****** Object:  StoredProcedure [custom].[PS_insNote]    Script Date: 2/18/2021 11:38:17 AM ******/
