@@ -145,10 +145,10 @@ def format_app_generic(app):
     mapped = blank_to_null(app)
 
     fields_null = ['Prefix', 'MiddleName', 'LastNamePrefix', 'Suffix', 'Nickname', 'GovernmentId', 'LegalName',
-                   'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'MaritalStatus',
-                   'ProposedDecision', 'AppStatus', 'AppDecision', 'Religion', 'FormerLastName', 'FormerFirstName',
-                   'PrimaryLanguage', 'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment',
-                   'Status', 'Veteran', 'Department', 'Nontraditional', 'Population', 'Extracurricular']
+                   'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'DemographicsEthnicity',
+                   'MaritalStatus', 'ProposedDecision', 'AppStatus', 'AppDecision', 'Religion', 'FormerLastName',
+                   'FormerFirstName', 'PrimaryLanguage', 'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus',
+                   'Commitment', 'Status', 'Veteran', 'Department', 'Nontraditional', 'Population', 'Extracurricular']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                    'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid',
                    'Extracurricular']
@@ -299,8 +299,8 @@ def format_app_sql(app):
     # Pass through fields
     fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
-                       'AppStatus', 'AppDecision', 'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular',
-                       'Nontraditional', 'Population']
+                       'DemographicsEthnicity', 'AppStatus', 'AppDecision', 'CreateDateTime', 'SMSOptIn', 'Department',
+                       'Extracurricular', 'Nontraditional', 'Population']
     fields_verbatim.extend([n['slate_field'] for n in CONFIG['pc_notes']])
     fields_verbatim.extend([f['slate_field']
                             for f in CONFIG['pc_user_defined']])
@@ -333,7 +333,7 @@ def format_app_sql(app):
     else:
         mapped['VISA'] = None
 
-    if 'Veteran' in app:
+    if app['Veteran'] is not None:
         mapped['VETERAN'] = RM_MAPPING['Veteran'][str(app['Veteran'])]
     else:
         mapped['VETERAN'] = None
@@ -595,11 +595,12 @@ def pc_get_profile(app):
 
 
 def pc_update_demographics(app):
-    CURSOR.execute('execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    CURSOR.execute('execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    'SLATE',
                    app['GENDER'],
                    app['Ethnicity'],
+                   app['DemographicsEthnicity'],
                    app['MARITALSTATUS'],
                    app['VETERAN'],
                    app['PRIMARYCITIZENSHIP'],

@@ -17,14 +17,15 @@ GO
 --				went to HandleInquries.
 --
 --  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
---	2021-02-15	Wyatt Best:	Pass Ethnicity code value to [WebServices].[spSetDemographics].
+--	2021-02-17	Wyatt Best:	Pass @DemographicsEthnicity to [WebServices].[spSetDemographics].
 -- =============================================
 
 CREATE PROCEDURE [custom].[PS_updDemographics]
 	@PCID nvarchar(10)
 	,@Opid nvarchar(8)
 	,@Gender tinyint
-	,@Ethnicity tinyint --Approx of @RaceHispanic
+	,@Ethnicity tinyint --0 = None, 1 = Hispanic, 2 = NonHispanic. Ellucian's API was supposed to record nothing for ethnicity for 0. I don't think it supports multi-value, but this sproc does.
+	,@DemographicsEthnicity NVARCHAR(6)
 	,@MaritalStatus nvarchar(4)
 	,@Veteran nvarchar(4)
 	,@PrimaryCitizenship nvarchar(6)
@@ -45,44 +46,56 @@ BEGIN
 			,@getdate DATETIME = getdate()
 		DECLARE @Today DATETIME = dbo.fnMakeDate(@getdate)
 			,@Now DATETIME = dbo.fnMakeTime(@getdate)
-			,@CodeEthnicity NVARCHAR(12) = (
-				SELECT code_value_key
-				FROM code_ethnicity
-				WHERE ethnicityid = @ethnicity
+
+	--Error check
+	IF (
+			@DemographicsEthnicity IS NOT NULL
+			AND NOT EXISTS (
+				SELECT *
+				FROM CODE_ETHNICITY
+				WHERE CODE_VALUE_KEY = @DemographicsEthnicity
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@DemographicsEthnicity ''%s'' not found in CODE_ETHNICITY.'
+				,11
+				,1
+				,@DemographicsEthnicity
 				)
 
-		--IPEDS Ethnicity
-		IF (@RaceAfricanAmerican = 1
-			AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
-				FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 4))
-			EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 4;
-		IF (@RaceAmericanIndian = 1
-			AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
-				FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 2))
-			EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 2;
-		IF (@RaceAsian = 1
-			AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
-				FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 3))
-			EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 3;
-		IF (@RaceNativeHawaiian = 1
-			AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
-				FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 5))
-			EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 5;
-		IF (@RaceWhite = 1
-			AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
-				FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 6))
-			EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 6;
-		IF (@Ethnicity = 1 --Hispanic
-			AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
-				FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 1))
-			EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 1;
+		RETURN
+	END
 
-		EXECUTE [WebServices].[spSetDemographics] @PersonId, @Opid, '001', @Gender, @CodeEthnicity, @MaritalStatus, NULL, @Veteran, NULL, @PrimaryCitizenship, @SecondaryCitizenship, @Visa, NULL, NULL, NULL, NULL
+	--IPEDS Ethnicity
+	IF (@Ethnicity = 1 --Hispanic
+		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
+			FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 1))
+		EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 1;
+	IF (@RaceAmericanIndian = 1
+		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
+			FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 2))
+		EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 2;
+	IF (@RaceAsian = 1
+		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
+			FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 3))
+		EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 3;
+	IF (@RaceAfricanAmerican = 1
+		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
+			FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 4))
+		EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 4;
+	IF (@RaceNativeHawaiian = 1
+		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
+			FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 5))
+		EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 5;
+	IF (@RaceWhite = 1
+		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
+			FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 6))
+		EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 6;
 
-
-
+	EXECUTE [WebServices].[spSetDemographics] @PersonId, @Opid, '001', @Gender, @DemographicsEthnicity, @MaritalStatus, NULL, @Veteran, NULL, @PrimaryCitizenship, @SecondaryCitizenship, @Visa, NULL, NULL, NULL, NULL
 	
+
 	COMMIT
 END
 GO
-
