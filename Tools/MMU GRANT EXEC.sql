@@ -1,4 +1,4 @@
-USE [Campus6_odyssey]
+USE [Campus6]
 
 --GRANT EXEC ON [custom].[PS_selISIR] TO [MERCY\powerslate_svc]
 GRANT EXEC ON [custom].[PS_updDemographics] TO [MERCY\powerslate_svc]
