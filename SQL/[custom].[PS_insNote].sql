@@ -1,5 +1,7 @@
 USE [Campus6_odyssey]
+GO
 
+/****** Object:  StoredProcedure [custom].[PS_insNote]    Script Date: 2/18/2021 11:38:17 AM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -10,6 +12,8 @@ GO
 -- Author:		Wyatt Best
 -- Create date: 2021-01-18
 -- Description:	Inserts a note if a matching note doesn't already exist.
+--
+-- 2021-02-18 Wyatt Best:	Replace line feeds with carriage returns + line feeds.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_insNote] @PCID NVARCHAR(10)
 	,@Office NVARCHAR(10)
@@ -74,6 +78,9 @@ BEGIN
 		RETURN
 	END
 
+	--PowerCampus Notes dialog expects both, but Slate only sends char(10)
+	SET @Notes = REPLACE(@Notes, CHAR(10), CHAR(13) + CHAR(10))
+
 	IF NOT EXISTS (
 			SELECT *
 			FROM NOTES
@@ -121,6 +128,3 @@ BEGIN
 			,'N'
 			)
 END
-GO
-
-
