@@ -28,6 +28,7 @@ GO
 -- 2021-02-04 Wyatt Best:	Eliminated logic to translate @ProposedDecision into App Status and Decision. Instead, accept code values directly.
 -- 2021-02-16 Wyatt Best:	Raise error if @Department is not valid.
 --							Added POPULATION.
+-- 2021-02-17 Wyatt Best:	Added AppStatusDate and AppDecisionDate. Remove dependency on WebServices.spUpdAcademicAppInfo, which doesn't support these fields.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -40,7 +41,9 @@ CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Nontraditional NVARCHAR(6) NULL
 	,@Population NVARCHAR(12) NULL
 	,@AppStatus NVARCHAR(8) NULL
+	,@AppStatusDate DATE NULL
 	,@AppDecision NVARCHAR(8) NULL
+	,@AppDecisionDate DATE NULL
 	,@CollegeAttend NVARCHAR(4) NULL
 	,@Extracurricular BIT NULL
 	,@CreateDateTime DATETIME --Application creation date
@@ -48,28 +51,8 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
-	DECLARE @ProgramOfStudyId INT
-	DECLARE @SessionPeriodId INT
-	DECLARE @AppStatusId INT
-	DECLARE @AppDecisionId INT
-
-	SELECT @ProgramOfStudyId = ProgramOfStudyId
-	FROM ProgramOfStudy pos
-	INNER JOIN dbo.CODE_PROGRAM cp
-		ON cp.ProgramId = pos.PROGRAM
-			AND cp.CODE_VALUE = @Program
-	INNER JOIN dbo.CODE_DEGREE cd
-		ON cd.DegreeId = pos.DEGREE
-			AND cd.CODE_VALUE = @Degree
-	INNER JOIN dbo.CODE_CURRICULUM cc
-		ON cc.CurriculumId = pos.CURRICULUM
-			AND cc.CODE_VALUE = @Curriculum
-
-	SELECT @SessionPeriodId = SessionPeriodId
-	FROM ACADEMICCALENDAR
-	WHERE ACADEMIC_YEAR = @Year
-		AND ACADEMIC_TERM = @Term
-		AND ACADEMIC_SESSION = @Session
+	DECLARE @Today DATETIME = dbo.fnMakeDate(GETDATE())
+		,@Now DATETIME = dbo.fnMakeTime(GETDATE())
 
 	--Error check
 	IF (
@@ -148,38 +131,32 @@ BEGIN
 		RETURN
 	END
 
-	SELECT @AppStatusId = ApplicationStatusId
-	FROM CODE_APPSTATUS
-	WHERE STATUS = 'A'
-		AND CODE_VALUE_KEY = @AppStatus
-
-	SELECT @AppDecisionId = ApplicationDecisionId
-	FROM CODE_APPDECISION
-	WHERE STATUS = 'A'
-		AND CODE_VALUE_KEY = @AppDecision
-
 	BEGIN TRANSACTION
 
 	--Update Status and Decision if needed
-	IF NOT EXISTS (
-			SELECT *
-			FROM ACADEMIC
-			WHERE PEOPLE_CODE_ID = @PCID
-				AND ACADEMIC_YEAR = @Year
-				AND ACADEMIC_TERM = @Term
-				AND ACADEMIC_SESSION = @Session
-				AND PROGRAM = @Program
-				AND DEGREE = @Degree
-				AND CURRICULUM = @Curriculum
-				AND APPLICATION_FLAG = 'Y'
-				AND APP_STATUS = @AppStatus
-				AND APP_DECISION = @AppDecision
+	UPDATE ACADEMIC
+	SET APP_STATUS = @AppStatus
+		,APP_STATUS_DATE = COALESCE(@AppStatusDate, @Today)
+		,APP_DECISION = @AppDecision
+		,APP_DECISION_DATE = COALESCE(@AppDecisionDate, @Today)
+		,REVISION_DATE = @Today
+		,REVISION_TIME = @Now
+		,REVISION_OPID = 'SLATE'
+		,REVISION_TERMINAL = '0001'
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
+		AND APPLICATION_FLAG = 'Y'
+		AND (
+			COALESCE(APP_STATUS, '') <> @AppStatus
+			OR COALESCE(CAST(APP_STATUS_DATE AS DATE), '') <> @AppStatusDate
+			OR COALESCE(APP_DECISION, '') <> @AppDecision
+			OR COALESCE(CAST(APP_DECISION_DATE AS DATE), '') <> @AppDecisionDate
 			)
-		EXEC [WebServices].[spUpdAcademicAppInfo] @PCID
-			,@SessionPeriodId
-			,@ProgramOfStudyId
-			,@AppStatusId
-			,@AppDecisionId;
 
 	--Update DEPARTMENT if needed
 	UPDATE ACADEMIC
@@ -222,14 +199,14 @@ BEGIN
 	IF EXISTS (
 			SELECT *
 			FROM CODE_APPSTATUS
-			WHERE ApplicationStatusId = @AppStatusId
+			WHERE CODE_VALUE_KEY = @AppStatus
 				AND STATUS = 'A'
 				AND CONFIRMED_STATUS = 'Y'
 			)
 		AND EXISTS (
 			SELECT *
 			FROM CODE_APPDECISION
-			WHERE ApplicationDecisionId = @AppDecisionId
+			WHERE CODE_VALUE_KEY = @AppDecision
 				AND STATUS = 'A'
 				AND ACCEPTED_DECISION = 'Y'
 			)
