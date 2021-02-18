@@ -81,6 +81,8 @@ def init_config(config_path):
     r.raise_for_status()
     verbose_print('Database:' + CNXN.getinfo(pyodbc.SQL_DATABASE_NAME))
 
+    return CONFIG
+
 
 def de_init():
     # Clean up connections.

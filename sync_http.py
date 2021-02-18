@@ -6,7 +6,7 @@ import pscore
 import socket
 
 
-pscore.init_config(sys.argv[1])
+CONFIG = pscore.init_config(sys.argv[1])
 
 
 class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
@@ -45,7 +45,7 @@ def run_server():
     # Choose port 8080, for port 80, which is normally used for a http server, you need root access
     # This is not a static IP. TODO
     local_ip = socket.gethostbyname(socket.gethostname())
-    server_address = (local_ip, 8887)
+    server_address = (local_ip, CONFIG['http_port'])
     httpd = HTTPServer(server_address, testHTTPServer_RequestHandler)
     print('running server...')
     httpd.serve_forever()

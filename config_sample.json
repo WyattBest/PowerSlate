@@ -87,5 +87,6 @@
 		"error_no_apps": "<p><strong>No applications found. Perhaps the application(s) are not submitted or are missing required fields?</strong></p>",
 		"sync_done": "Sync completed with no errors."
 	},
-	"readmit_code": "READ"
+	"readmit_code": "READ",
+	"http_port": null
 }
