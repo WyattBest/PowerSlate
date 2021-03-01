@@ -469,17 +469,21 @@ def pc_post_api(x):
     x -- an application dict
     """
 
-    r = requests.post(PC_API_URL + 'api/applications',
-                      json=x, auth=PC_API_CRED)
+    # Expose error text response from API, replace useless error message(s).
+    try:
+        r = requests.post(PC_API_URL + 'api/applications',
+                          json=x, auth=PC_API_CRED)
+        r.raise_for_status()
+    except requests.HTTPError as e:
+        # Change newline handling so response text prints nicely in emails.
+        rtext = r.text.replace('\r\n', '\n')
 
-    # Catch some errors we know how to handle. Not sure if this is the most Pythonic way.
-    # 202 probably means ApplicationSettings.config not configured.
-    if r.status_code == 202:
-        raise ValueError(r.text)
-    elif r.status_code == 400:
-        raise ValueError(r.text)
-
-    r.raise_for_status()
+        if 'BadRequest Object reference not set to an instance of an object.' in rtext and 'ApplicationsController.cs:line 183' in rtext:
+            raise ValueError(CONFIG['msg_strings']['error_no_phones'], e)
+        elif r.status_code == 202 or r.status_code == 400:
+            raise ValueError(rtext)
+        else:
+            raise requests.HTTPError(rtext)
 
     if (r.text[-25:-12] == 'New People Id'):
         try:
