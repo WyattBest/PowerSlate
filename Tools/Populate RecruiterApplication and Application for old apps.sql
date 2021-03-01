@@ -7,33 +7,35 @@ USE PowerCampusMapper
 --
 SELECT DISTINCT aid
 INTO #Exclusions
-FROM PowerCampusMapper.dbo.Slate_Apps_test
+FROM PowerCampusMapper.dbo.Slate_Apps
 WHERE PEOPLE_CODE_ID IN (
 		SELECT PEOPLE_CODE_ID
-		FROM [Campus6_odyssey].[dbo].PEOPLE
+		FROM [Campus6].[dbo].PEOPLE
 		)
 	AND PEOPLE_CODE_ID NOT IN (
 		SELECT PEOPLE_CODE_ID
-		FROM [Campus6_odyssey].[dbo].ACADEMIC
+		FROM [Campus6].[dbo].ACADEMIC
 		WHERE APPLICATION_FLAG = 'Y'
 		)
 
 INSERT INTO #Exclusions
 SELECT DISTINCT aid
-FROM PowerCampusMapper.dbo.Slate_Apps_test
+FROM PowerCampusMapper.dbo.Slate_Apps
 WHERE PEOPLE_CODE_ID NOT IN (
 		SELECT PEOPLE_CODE_ID
-		FROM [Campus6_odyssey].[dbo].PEOPLE
+		FROM [Campus6].[dbo].PEOPLE
 		)
 
 INSERT INTO #Exclusions
 SELECT DISTINCT aid
-FROM PowerCampusMapper.dbo.Slate_Apps_test
+FROM PowerCampusMapper.dbo.Slate_Apps
 WHERE PEOPLE_CODE_ID IS NULL
 
 PRINT '#Exclusions table built.'
 
-INSERT INTO [Campus6_odyssey].[dbo].[Application] (
+BEGIN TRAN
+
+INSERT INTO [Campus6].[dbo].[Application] (
 	[CreateDatetime]
 	,[Status]
 	,[PersonId]
@@ -47,7 +49,7 @@ INSERT INTO [Campus6_odyssey].[dbo].[Application] (
 	)
 SELECT getdate() [CreateDatetime]
 	,2 [Status]
-	,[Campus6_odyssey].[dbo].fngetpersonid(PEOPLE_CODE_ID) [PersonId]
+	,[Campus6].[dbo].fngetpersonid(PEOPLE_CODE_ID) [PersonId]
 	,FirstName
 	,LastName
 	,(
@@ -73,24 +75,24 @@ SELECT getdate() [CreateDatetime]
 	,0 [DormPlanInterest]
 	,1 [ApplicationFormSettingId]
 	,aid [OtherSource]
-FROM PowerCampusMapper.dbo.Slate_Apps_test
+FROM PowerCampusMapper.dbo.Slate_Apps
 WHERE aid NOT IN (
 		SELECT aid
 		FROM #Exclusions
 		)
 	AND aid NOT IN (
 		SELECT applicationnumber
-		FROM [Campus6_odyssey].[dbo].[RecruiterApplication]
+		FROM [Campus6].[dbo].[RecruiterApplication]
 		WHERE ApplicationId IS NOT NULL
 		)
 	AND aid NOT IN (
 		SELECT othersource
-		FROM [Campus6_odyssey].[dbo].[Application]
+		FROM [Campus6].[dbo].[Application]
 		)
 
 PRINT 'Insert into [Application] done.'
 
-INSERT INTO [Campus6_odyssey].[dbo].[RecruiterApplication] (
+INSERT INTO [Campus6].[dbo].[RecruiterApplication] (
 	[ApplicationNumber]
 	,[JsonText]
 	,[ErrorMessage]
@@ -105,48 +107,25 @@ SELECT aid
 	,''
 	,(
 		SELECT applicationid
-		FROM [Campus6_odyssey].[dbo].[Application]
+		FROM [Campus6].[dbo].[Application]
 		WHERE othersource = aid
 		)
 	,getdate()
 	,getdate()
 	,0
 	,pid
-FROM PowerCampusMapper.dbo.Slate_Apps_test
+FROM PowerCampusMapper.dbo.Slate_Apps
 WHERE aid NOT IN (
 		SELECT aid
 		FROM #exclusions
 		)
 	AND aid NOT IN (
 		SELECT applicationnumber
-		FROM [Campus6_odyssey].[dbo].[RecruiterApplication]
+		FROM [Campus6].[dbo].[RecruiterApplication]
 		)
 
 PRINT 'Insert into [RecruiterApplication] done.'
 
+ROLLBACK TRAN
+
 DROP TABLE #Exclusions
-	--SELECT *
-	--FROM campus6_odyssey.information_schema.columns
-	--WHERE table_name = 'Application'
-	--	AND is_nullable = 'no'
-	--SELECT DISTINCT yearterm
-	--	,(
-	--		SELECT sessionperiodid
-	--		FROM Campus6.dbo.ACADEMICCALENDAR
-	--		WHERE academic_year = (
-	--				SELECT value
-	--				FROM string_split(yearterm, '/')
-	--				ORDER BY @@rowcount offset 0 rows FETCH NEXT 1 rows ONLY
-	--				)
-	--			AND academic_term = (
-	--				SELECT value
-	--				FROM string_split(yearterm, '/')
-	--				ORDER BY @@rowcount offset 1 rows FETCH NEXT 1 rows ONLY
-	--				)
-	--			AND academic_session = (
-	--				SELECT value
-	--				FROM string_split(yearterm, '/')
-	--				ORDER BY @@rowcount offset 2 rows FETCH NEXT 1 rows ONLY
-	--				)
-	--		)
-	--FROM PowerCampusMapper.dbo.Slate_Apps_test

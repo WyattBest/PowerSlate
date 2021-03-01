@@ -11,3 +11,6 @@ GRANT EXEC ON [custom].[PS_selRAStatus] to [MERCY\powerslate_svc]
 GRANT EXEC ON [custom].[PS_insNote] to [MERCY\powerslate_svc]
 GRANT EXEC ON [custom].[PS_updUserDefined] to [MERCY\powerslate_svc]
 GRANT SELECT, UPDATE, VIEW DEFINITION ON [USERDEFINEDIND]  to [MERCY\powerslate_svc]
+
+USE [PowerCampusMapper]
+GRANT INSERT ON PowerSlate_AppStatus_Log TO [MERCY\powerslate_svc]

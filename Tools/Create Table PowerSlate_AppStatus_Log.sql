@@ -1,7 +1,7 @@
-USE [Campus6_suppMCNY]
+USE [PowerCampusMapper]
 GO
 
-/****** Object:  Table [dbo].[PowerSlate_AppStatus_Log]    Script Date: 01/12/2021 16:51:32 ******/
+/****** Object:  Table [dbo].[PowerSlate_AppStatus_Log_test]    Script Date: 2/18/2021 3:50:29 PM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -28,6 +28,6 @@ PRIMARY KEY CLUSTERED
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
 
-ALTER TABLE [dbo].[PowerSlate_AppStatus_Log] ADD  CONSTRAINT [DF_SlaPowInt_Errors_UpdateTime]  DEFAULT (getdate()) FOR [UpdateTime]
+ALTER TABLE [dbo].[PowerSlate_AppStatus_Log] ADD  CONSTRAINT [PowerSlate_AppStatus_Log_UpdateTime]  DEFAULT (getdate()) FOR [UpdateTime]
 GO
 
