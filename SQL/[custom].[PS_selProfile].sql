@@ -21,7 +21,7 @@ GO
 --	2020-04-21	Wyatt Best: Registration check only considers PROGRAM = CERT instead of full PDC. Allows noncredit programs besides CASAC.
 --	2020-05-18	Wyatt Best:	Added REG_VAL_DATE.
 --	2020-06-17	Wyatt Best: Coalesce PREREG_VAL_DATE, REG_VAL_DATE.
---	2021-01-27	Wyatt Best: Genericized for MMU.
+--	2021-03-02	Wyatt Best: Made more generic. Still has MCNY-specific code values for PROGRAM and EmailType.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_selProfile] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -51,7 +51,8 @@ BEGIN
 	--separate the credits because TRANSCRIPTDETAIL doesn't have PDC. Custom logic is required to sort out things like-zero credit certificate
 	--dual enrollment with a for-credit program.
 	SELECT CASE 
-			WHEN EXISTS (
+			WHEN PROGRAM = 'CERT'
+				AND EXISTS (
 					SELECT TD.PEOPLE_ID
 					FROM TRANSCRIPTDETAIL TD
 					INNER JOIN ACADEMIC A
@@ -63,7 +64,7 @@ BEGIN
 							AND A.DEGREE = @Degree
 							AND A.CURRICULUM = @Curriculum
 							AND A.TRANSCRIPT_SEQ = TD.TRANSCRIPT_SEQ
-							--AND A.ACADEMIC_FLAG = 'Y' --Can mask some issues of registrations w/out acceptance, but needed for someone who applies for CASAC and undergrad and only registers for undergrad.
+							--AND A.ACADEMIC_FLAG = 'Y' --Can mask some issues of registrations w/out acceptance, but needed for someone who applies for CERT and UNDER and only registers for undergrad.
 							AND A.APPLICATION_FLAG = 'Y'
 					WHERE TD.PEOPLE_CODE_ID = @PCID
 						AND TD.ACADEMIC_YEAR = @Year
@@ -71,6 +72,8 @@ BEGIN
 						AND TD.ACADEMIC_SESSION = @Session
 						AND TD.ADD_DROP_WAIT = 'A'
 					)
+				THEN 'Y'
+			WHEN @Credits > 0
 				THEN 'Y'
 			ELSE 'N'
 			END AS 'Registered'
@@ -88,7 +91,7 @@ BEGIN
 		SELECT TOP 1 Email
 		FROM EmailAddress E
 		WHERE E.PeopleOrgCodeId = A.PEOPLE_CODE_ID
-			AND E.EmailType = 'STUDENT'
+			AND E.EmailType = 'Campus'
 			AND E.IsActive = 1
 		ORDER BY E.REVISION_DATE DESC
 			,REVISION_TIME DESC
