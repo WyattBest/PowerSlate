@@ -88,6 +88,6 @@
 		"error_no_phones": "Application must have at least one phone number.",
 		"sync_done": "Sync completed with no errors."
 	},
-	"readmit_code": "READ",
+	"pc_readmit_code": "READ",
 	"http_port": null
 }
