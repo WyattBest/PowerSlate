@@ -1,42 +1,79 @@
 {
 	"pc_api": {
-		"url": "https://webapi.mcny.edu/",
+		"url": "https://webapi.school.edu/",
 		"username": "username",
 		"password": "astrongpassword"
 	},
 	"pc_database_string": "Driver={ODBC Driver 17 for SQL Server};Server=servername;Database=campus6;Trusted_Connection=yes;ServerSPN=MSSQLSvc/servername.local.domain.edu;",
 	"mapping_file_location": "\\\\servername\\PowerCampus Mapper\\recruiterMapping.xml",
-	"app_status_log_table": "[SomeDatabase].[dbo].[PowerSlate_AppStatus_Log]",
+	"console_verbose": true,
+	"logging": {
+		"enabled": true,
+		"log_table": "[SomeDatabase].[dbo].[PowerSlate_AppStatus_Log]"
+	},
 	"slate_query_apps": {
-		"url": "https://apply.mcny.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
+		"url": "https://apply.school.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
 		"username": "username",
 		"password": "astrongpassword"
 	},
-	"slate_upload": {
-		"url": "https://apply.mcny.edu/manage/service/import?cmd=load&format=xxxx",
+	"slate_upload_active": {
+		"fields_string": [
+			"reg_date",
+			"credits"
+		],
+		"fields_bool": [
+			"found",
+			"readmit",
+			"registered",
+			"withdrawn"
+		],
+		"fields_int": [],
+		"url": "https://apply.school.edu/manage/service/import?cmd=load&format=xxxx",
+		"username": "service_user",
+		"password": "astrongpassword"
+	},
+	"slate_upload_passive": {
+		"fields": [
+			"PEOPLE_CODE_ID",
+			"campus_email"
+		],
+		"url": "https://apply.school.edu/manage/service/import?cmd=load&format=xxxx",
 		"username": "service_user",
 		"password": "astrongpassword"
 	},
 	"smtp": {
 		"subject": "PowerSlate Notification",
-		"from": "sender@mcny.edu",
-		"to": "recipient@mcny.edu",
+		"from": "sender@school.edu",
+		"to": "recipient@school.edu",
 		"server": "smtp.office365.com",
-		"username": "sender@mcny.edu",
+		"username": "sender@school.edu",
 		"password": "astrongpassword"
 	},
 	"scheduled_actions": {
 		"enabled": true,
 		"slate_get": {
-			"url": "https://apply.mcny.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
+			"url": "https://apply.school.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
 			"username": "username",
 			"password": "astrongpassword"
 		}
 	},
+	"pc_notes": [
+		{
+			"slate_field": "DevelopmentCourses",
+			"office": "ADMCOMM",
+			"note_type": "GENRL"
+		}
+	],
+	"pc_user_defined": [
+		{
+			"slate_field": "FirstGeneration",
+			"pc_column": "FIRSTGEN"
+		}
+	],
 	"fa_checklist": {
 		"enabled": true,
 		"slate_post": {
-			"url": "https://apply.mcny.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
+			"url": "https://apply.school.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
 			"username": "username",
 			"password": "astrongpassword"
 		}
@@ -46,7 +83,11 @@
 		"phone_country": "US",
 		"phone_type": 1
 	},
-	"error_strings": {
-		"no_apps": "No applications found. Perhaps the application(s) are not submitted or are missing required fields?"
-	}
+	"msg_strings": {
+		"error_no_apps": "<p><strong>No applications found. Perhaps the application(s) are not submitted or are missing required fields?</strong></p>",
+		"error_no_phones": "Application must have at least one phone number.",
+		"sync_done": "Sync completed with no errors."
+	},
+	"pc_readmit_code": "READ",
+	"http_port": null
 }

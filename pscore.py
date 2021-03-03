@@ -11,11 +11,10 @@ def init_config(config_path):
     global CONFIG
     global PC_API_URL
     global PC_API_CRED
-    global HTTP_SESSION_SCHED_ACTS
     global RM_MAPPING
     global CNXN
     global CURSOR
-    global ERROR_STRINGS
+    global MSG_STRINGS
 
     # Read config file and convert to dict
     with open(config_path) as config_path:
@@ -39,7 +38,7 @@ def init_config(config_path):
                 RM_MAPPING[child.tag].update(
                     {row.get('RCCodeValue'): row.get('PCCodeValue')})
 
-        if child.get('NumberOfPowerCampusFieldsMapped') == '2' or child.get('NumberOfPowerCampusFieldsMapped') == '3':
+        if child.get('NumberOfPowerCampusFieldsMapped') == '2':
             fn1 = 'PC' + str(child.get('PCFirstField')) + 'CodeValue'
             fn2 = 'PC' + str(child.get('PCSecondField')) + 'CodeValue'
             RM_MAPPING[child.tag] = {fn1: {}, fn2: {}}
@@ -50,38 +49,56 @@ def init_config(config_path):
                 RM_MAPPING[child.tag][fn2].update(
                     {row.get('RCCodeValue'): row.get(fn2)})
 
+        if child.get('NumberOfPowerCampusFieldsMapped') == '3':
+            fn1 = 'PC' + str(child.get('PCFirstField')) + 'CodeValue'
+            fn2 = 'PC' + str(child.get('PCSecondField')) + 'CodeValue'
+            fn3 = 'PC' + str(child.get('PCThirdField')) + 'CodeValue'
+            RM_MAPPING[child.tag] = {fn1: {}, fn2: {}, fn3: {}}
+
+            for row in child:
+                RM_MAPPING[child.tag][fn1].update(
+                    {row.get('RCCodeValue'): row.get(fn1)})
+                RM_MAPPING[child.tag][fn2].update(
+                    {row.get('RCCodeValue'): row.get(fn2)})
+                RM_MAPPING[child.tag][fn3].update(
+                    {row.get('RCCodeValue'): row.get(fn3)})
+
     # PowerCampus Web API connection
     PC_API_URL = CONFIG['pc_api']['url']
     PC_API_CRED = (CONFIG['pc_api']['username'], CONFIG['pc_api']['password'])
-
-    # Set up an HTTP session to be used for updating scheduled actions. It's initialized here because it will be used
-    # inside a loop. Other web service calls will use the top-level requests functions (i.e. their own, automatic sessions).
-    if CONFIG['scheduled_actions']['enabled'] == True:
-        HTTP_SESSION_SCHED_ACTS = requests.Session()
-        HTTP_SESSION_SCHED_ACTS.auth = (
-            CONFIG['scheduled_actions']['slate_get']['username'], CONFIG['scheduled_actions']['slate_get']['password'])
 
     # Microsoft SQL Server connection.
     CNXN = pyodbc.connect(CONFIG['pc_database_string'])
     CURSOR = CNXN.cursor()
 
     # Misc configs
-    ERROR_STRINGS = CONFIG['error_strings']
+    MSG_STRINGS = CONFIG['msg_strings']
 
     # Print a test of connections
     r = requests.get(PC_API_URL + 'api/version', auth=PC_API_CRED)
-    print('PowerCampus API Status: ' + str(r.status_code))
-    print(r.text)
+    verbose_print('PowerCampus API Status: ' + str(r.status_code))
+    verbose_print(r.text)
     r.raise_for_status()
-    print(CNXN.getinfo(pyodbc.SQL_DATABASE_NAME))
+    verbose_print('Database:' + CNXN.getinfo(pyodbc.SQL_DATABASE_NAME))
+
+    return CONFIG
 
 
 def de_init():
     # Clean up connections.
     CNXN.close()  # SQL
 
-    if CONFIG['scheduled_actions']['enabled'] == True:
-        HTTP_SESSION_SCHED_ACTS.close()  # HTTP session to Slate for scheduled actions
+
+def verbose_print(x):
+    """Attempt to print JSON without altering it, serializable objects as JSON, and anything else as default."""
+    if CONFIG['console_verbose'] and len(x) > 0:
+        if isinstance(x, str):
+            print(x)
+        else:
+            try:
+                print(json.dumps(x, indent=4))
+            except:
+                print(x)
 
 
 def blank_to_null(x):
@@ -116,9 +133,9 @@ def format_phone_number(number):
 
 
 def strtobool(s):
-    if s.lower() in ['true', '1', 'y', 'yes']:
+    if s is not None and s.lower() in ['true', '1', 'y', 'yes']:
         return True
-    elif s.lower() in ['false', '0', 'n', 'no']:
+    elif s is not None and s.lower() in ['false', '0', 'n', 'no']:
         return False
     else:
         return None
@@ -130,14 +147,25 @@ def format_app_generic(app):
     mapped = blank_to_null(app)
 
     fields_null = ['Prefix', 'MiddleName', 'LastNamePrefix', 'Suffix', 'Nickname', 'GovernmentId', 'LegalName',
-                   'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'MaritalStatus',
-                   'ProposedDecision', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
-                   'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran', 'Nontraditional']
+                   'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'DemographicsEthnicity',
+                   'MaritalStatus', 'ProposedDecision', 'AppStatus', 'AppStatusDate', 'AppDecision',
+                   'AppDecisionDate', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
+                   'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran',
+                   'Department', 'Nontraditional', 'Population', 'Extracurricular']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
-                   'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid']
-    fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
-                   'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid']
+                   'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid',
+                   'Extracurricular']
     fields_int = ['Ethnicity', 'Gender', 'SMSOptIn']
+    fields_null.extend(
+        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_string']])
+    fields_null.extend(
+        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_bool']])
+    fields_null.extend(
+        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_int']])
+    fields_bool.extend(
+        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_bool']])
+    fields_int.extend(
+        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_int']])
 
     # Copy nullable strings from input to output, then fill in nulls
     mapped.update({k: v for (k, v) in app.items() if k in fields_null})
@@ -242,7 +270,8 @@ def format_app_api(app):
         mapped['PhoneNumbers'] = [
             {'Type': -1, 'Country': None, 'Number': None}]
 
-    # Veteran has funny logic
+    # Veteran has funny logic, and  API 8.8.3 is broken (passing in 1 will write 2 into [Application].[VeteranStatus]).
+    # Impact is low because custom SQL routines will fix Veteran field once person has passed Handle Applications.
     if app['Veteran'] is None:
         mapped['Veteran'] = 0
         mapped['VeteranStatus'] = False
@@ -273,7 +302,11 @@ def format_app_sql(app):
     # Pass through fields
     fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
-                       'ProposedDecision', 'CreateDateTime', 'SMSOptIn', 'Nontraditional']
+                       'DemographicsEthnicity', 'AppStatus', 'AppStatusDate', 'AppDecision', 'AppDecisionDate',
+                       'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular', 'Nontraditional', 'Population']
+    fields_verbatim.extend([n['slate_field'] for n in CONFIG['pc_notes']])
+    fields_verbatim.extend([f['slate_field']
+                            for f in CONFIG['pc_user_defined']])
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
     # Gender is hardcoded into the PowerCampus Web API, but [WebServices].[spSetDemographics] has different hardcoded values.
@@ -282,19 +315,28 @@ def format_app_sql(app):
 
     mapped['ACADEMIC_YEAR'] = RM_MAPPING['AcademicTerm']['PCYearCodeValue'][app['YearTerm']]
     mapped['ACADEMIC_TERM'] = RM_MAPPING['AcademicTerm']['PCTermCodeValue'][app['YearTerm']]
-    mapped['ACADEMIC_SESSION'] = '01'
+    mapped['ACADEMIC_SESSION'] = RM_MAPPING['AcademicTerm']['PCSessionCodeValue'][app['YearTerm']]
     # Todo: Fix inconsistency of 1-field vs 2-field mappings
     mapped['PROGRAM'] = RM_MAPPING['AcademicLevel'][app['Program']]
     mapped['DEGREE'] = RM_MAPPING['AcademicProgram']['PCDegreeCodeValue'][app['Degree']]
     mapped['CURRICULUM'] = RM_MAPPING['AcademicProgram']['PCCurriculumCodeValue'][app['Degree']]
-    mapped['PRIMARYCITIZENSHIP'] = RM_MAPPING['CitizenshipStatus'][app['CitizenshipStatus']]
+
+    if app['CitizenshipStatus'] is not None:
+        mapped['PRIMARYCITIZENSHIP'] = RM_MAPPING['CitizenshipStatus'][app['CitizenshipStatus']]
+    else:
+        mapped['PRIMARYCITIZENSHIP'] = None
+
+    if app['CollegeAttendStatus'] is not None:
+        mapped['COLLEGE_ATTEND'] = RM_MAPPING['CollegeAttend'][app['CollegeAttendStatus']]
+    else:
+        mapped['COLLEGE_ATTEND'] = None
 
     if app['Visa'] is not None:
         mapped['VISA'] = RM_MAPPING['Visa'][app['Visa']]
     else:
         mapped['VISA'] = None
 
-    if 'VeteranStatus' in app and app['VeteranStatus'] == True:
+    if app['Veteran'] is not None:
         mapped['VETERAN'] = RM_MAPPING['Veteran'][str(app['Veteran'])]
     else:
         mapped['VETERAN'] = None
@@ -312,97 +354,11 @@ def format_app_sql(app):
     return mapped
 
 
-def pc_post_api(x):
-    """Post an application to PowerCampus.
-    Return  PEOPLE_CODE_ID if application was automatically accepted or None for all other conditions.
-
-    Keyword arguments:
-    x -- an application dict
-    """
-
-    r = requests.post(PC_API_URL + 'api/applications',
-                      json=x, auth=PC_API_CRED)
-
-    # Catch some errors we know how to handle. Not sure if this is the most Pythonic way.
-    # 202 probably means ApplicationSettings.config not configured.
-    if r.status_code == 202:
-        raise ValueError(r.text)
-    elif r.status_code == 400:
-        raise ValueError(r.text)
-
-    r.raise_for_status()
-
-    if (r.text[-25:-12] == 'New People Id'):
-        try:
-            people_code = r.text[-11:-2]
-            # Error check. After slice because leading zeros need preserved.
-            int(people_code)
-            PEOPLE_CODE_ID = 'P' + people_code
-            return PEOPLE_CODE_ID
-        except:
-            return None
-    else:
-        return None
-
-
 def str_digits(s):
-    # Returns only digits from a string.
+    """Return only digits from a string."""
     non_digits = str.maketrans(
         {c: None for c in ascii_letters + punctuation + whitespace})
     return s.translate(non_digits)
-
-
-def scan_status(x):
-    # Scan the PowerCampus status of a single applicant and return it in three parts plus three ID numbers.
-    # Expects a dict
-
-    r = requests.get(PC_API_URL + 'api/applications?applicationNumber=' +
-                     x['aid'], auth=PC_API_CRED)
-    r.raise_for_status()
-    r_dict = json.loads(r.text)
-
-    # If application exists in PowerCampus, execute SP to look for existing PCID.
-    # Log PCID and status.
-    if 'applicationNumber' in r_dict:
-        CURSOR.execute('EXEC [custom].[PS_selRAStatus] \'' +
-                       x['aid'] + '\'')
-        row = CURSOR.fetchone()
-        if row.PEOPLE_CODE_ID is not None:
-            pcid = row.PEOPLE_CODE_ID
-            # people_code = row.PEOPLE_CODE_ID[1:]
-            # PersonId = row.PersonId # Delete
-        else:
-            pcid = None
-            people_code = None
-
-        # Determine status.
-        if row.ra_status in (0, 3, 4) and row.apl_status == 2 and pcid is not None:
-            computed_status = 'Active'
-        elif row.ra_status in (0, 3, 4) and row.apl_status == 3 and pcid is None:
-            computed_status = 'Declined'
-        elif row.ra_status in (0, 3, 4) and row.apl_status == 1 and pcid is None:
-            computed_status = 'Pending'
-        elif row.ra_status == 1 and row.apl_status is None and pcid is None:
-            computed_status = 'Required field missing.'
-        elif row.ra_status == 2 and row.apl_status is None and pcid is None:
-            computed_status = 'Required field mapping is missing.'
-        # elif row is not None:
-            # ra_status = row.ra_status
-        else:
-            computed_status = 'Unrecognized Status: ' + str(row.ra_status)
-
-        # Write errors to external database for end-user presentation via SSRS.
-        CURSOR.execute('INSERT INTO' + CONFIG['app_status_log_table'] + """
-            ([Ref],[ApplicationNumber],[ProspectId],[FirstName],[LastName],
-            [ComputedStatus],[Notes],[RecruiterApplicationStatus],[ApplicationStatus],[PEOPLE_CODE_ID])
-        VALUES
-            (?,?,?,?,?,?,?,?,?,?)""",
-                       [x['Ref'], x['aid'], x['pid'], x['FirstName'], x['LastName'], computed_status, row.ra_errormessage, row.ra_status, row.apl_status, pcid])
-        CNXN.commit()
-
-        return row.ra_status, row.apl_status, computed_status, pcid
-    else:
-        return None, None, None, None
 
 
 def slate_get_actions(apps_list):
@@ -417,6 +373,11 @@ def slate_get_actions(apps_list):
     Uses its own HTTP session to reduce overhead and queries Slate with batches of 48 comma-separated ID's.
     48 was chosen to avoid exceeding max GET request.
     """
+
+    # Set up an HTTP session to use for multiple GET requests.
+    http_session = requests.Session()
+    http_session.auth = (CONFIG['scheduled_actions']['slate_get']['username'],
+                         CONFIG['scheduled_actions']['slate_get']['password'])
 
     actions_list = []
 
@@ -434,14 +395,160 @@ def slate_get_actions(apps_list):
         # Stuff them into a comma-separated string.
         qs = ",".join(str(item) for item in ql)
 
-        r = HTTP_SESSION_SCHED_ACTS.get(
+        r = http_session.get(
             CONFIG['scheduled_actions']['slate_get']['url'], params={'aids': qs})
         r.raise_for_status()
         al = json.loads(r.text)
         actions_list.extend(al['row'])
         # if len(al['row']) > 1: # Delete. I don't think an application could ever have zero actions.
 
+    http_session.close()
+
     return actions_list
+
+
+def slate_post_fields_changed(apps, config_dict):
+    # Check for changes between Slate and local state
+    # Upload changed records back to Slate
+
+    # Build list of flat app dicts with only certain fields included
+    upload_list = []
+    fields = config_dict['fields_string']
+    fields.extend(config_dict['fields_bool'])
+    fields.extend(config_dict['fields_int'])
+
+    if len(fields) == 1:
+        return
+
+    for app in apps.values():
+        CURRENT_RECORD = app['aid']
+        upload_list.append({k: v for (k, v) in app.items() if k in fields
+                            and v != app["compare_" + k]} | {'aid': app['aid']})
+
+    # Apps with no changes will only contain {'aid': 'xxx'}
+    # Only retain items that have more than one field
+    upload_list[:] = [app for app in upload_list if len(app) > 1]
+
+    if len(upload_list) > 0:
+        # Slate requires JSON to be convertable to XML
+        upload_dict = {'row': upload_list}
+
+        creds = (config_dict['username'], config_dict['password'])
+        r = requests.post(config_dict['url'], json=upload_dict, auth=creds)
+        r.raise_for_status()
+
+    msg = '\t' + str(len(upload_list)) + ' of ' + \
+        str(len(apps)) + ' apps had changed fields'
+    return msg
+
+
+def slate_post_fields(apps, config_dict):
+    # Build list of flat app dicts with only certain fields included
+    upload_list = []
+    fields = ['aid']
+    fields.extend(config_dict['fields'])
+
+    for app in apps.values():
+        CURRENT_RECORD = app['aid']
+        upload_list.append({k: v for (k, v) in app.items()
+                            if k in fields})
+
+    # Slate requires JSON to be convertable to XML
+    upload_dict = {'row': upload_list}
+
+    creds = (config_dict['username'], config_dict['password'])
+    r = requests.post(config_dict['url'], json=upload_dict, auth=creds)
+    r.raise_for_status()
+
+
+def pc_post_api(x):
+    """Post an application to PowerCampus.
+    Return  PEOPLE_CODE_ID if application was automatically accepted or None for all other conditions.
+
+    Keyword arguments:
+    x -- an application dict
+    """
+
+    # Expose error text response from API, replace useless error message(s).
+    try:
+        r = requests.post(PC_API_URL + 'api/applications',
+                          json=x, auth=PC_API_CRED)
+        r.raise_for_status()
+    except requests.HTTPError as e:
+        # Change newline handling so response text prints nicely in emails.
+        rtext = r.text.replace('\r\n', '\n')
+
+        if 'BadRequest Object reference not set to an instance of an object.' in rtext and 'ApplicationsController.cs:line 183' in rtext:
+            raise ValueError(CONFIG['msg_strings']['error_no_phones'], e)
+        elif r.status_code == 202 or r.status_code == 400:
+            raise ValueError(rtext)
+        else:
+            raise requests.HTTPError(rtext)
+
+    if (r.text[-25:-12] == 'New People Id'):
+        try:
+            people_code = r.text[-11:-2]
+            # Error check. After slice because leading zeros need preserved.
+            int(people_code)
+            PEOPLE_CODE_ID = 'P' + people_code
+            return PEOPLE_CODE_ID
+        except:
+            return None
+    else:
+        return None
+
+
+def pc_scan_status(x):
+    """Query the PowerCampus status of a single application and return three status indicators and PowerCampus ID number, if present.
+
+    Keyword arguments:
+    x -- an application dict
+
+    Returns:
+    ra_status -- RecruiterApplication table status (int)
+    apl_status -- Application table status (int)
+    computed_status -- Descriptive status (string)
+    pcid -- PEOPLE_CODE_ID (string)
+    """
+
+    ra_status = None
+    apl_status = None
+    computed_status = None
+    pcid = None
+
+    CURSOR.execute('EXEC [custom].[PS_selRAStatus] ?', x['aid'])
+    row = CURSOR.fetchone()
+
+    if row is not None:
+        ra_status = row.ra_status
+        apl_status = row.apl_status
+        pcid = row.PEOPLE_CODE_ID
+
+        # Determine status.
+        if row.ra_status in (0, 3, 4) and row.apl_status == 2 and pcid is not None:
+            computed_status = 'Active'
+        elif row.ra_status in (0, 3, 4) and row.apl_status == 3 and pcid is None:
+            computed_status = 'Declined'
+        elif row.ra_status in (0, 3, 4) and row.apl_status == 1 and pcid is None:
+            computed_status = 'Pending'
+        elif row.ra_status == 1 and row.apl_status is None and pcid is None:
+            computed_status = 'Required field missing.'
+        elif row.ra_status == 2 and row.apl_status is None and pcid is None:
+            computed_status = 'Required field mapping is missing.'
+        else:
+            computed_status = 'Unrecognized Status: ' + str(row.ra_status)
+
+        if CONFIG['logging']['enabled']:
+            # Write errors to external database for end-user presentation via SSRS.
+            CURSOR.execute('INSERT INTO' + CONFIG['logging']['log_table'] + """
+                ([Ref],[ApplicationNumber],[ProspectId],[FirstName],[LastName],
+                [ComputedStatus],[Notes],[RecruiterApplicationStatus],[ApplicationStatus],[PEOPLE_CODE_ID])
+            VALUES
+                (?,?,?,?,?,?,?,?,?,?)""",
+                           [x['Ref'], x['aid'], x['pid'], x['FirstName'], x['LastName'], computed_status, row.ra_errormessage, row.ra_status, row.apl_status, pcid])
+            CNXN.commit()
+
+    return ra_status, apl_status, computed_status, pcid
 
 
 def pc_get_profile(app):
@@ -462,7 +569,7 @@ def pc_get_profile(app):
     reg_date = None
     readmit = False
     withdrawn = False
-    credits = 0
+    credits = '0.00'
     campus_email = None
 
     CURSOR.execute('EXEC [custom].[PS_selProfile] ?,?,?,?,?,?,?',
@@ -482,9 +589,10 @@ def pc_get_profile(app):
             registered = True
             reg_date = str(row.REG_VAL_DATE)
             credits = str(row.CREDITS)
-            campus_email = row.CampusEmail
 
-        if row.COLLEGE_ATTEND == 'READ':
+        campus_email = row.CampusEmail
+
+        if row.COLLEGE_ATTEND == CONFIG['pc_readmit_code']:
             readmit = True
 
         if row.Withdrawn == 'Y':
@@ -494,11 +602,12 @@ def pc_get_profile(app):
 
 
 def pc_update_demographics(app):
-    CURSOR.execute('execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    CURSOR.execute('execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    'SLATE',
                    app['GENDER'],
                    app['Ethnicity'],
+                   app['DemographicsEthnicity'],
                    app['MARITALSTATUS'],
                    app['VETERAN'],
                    app['PRIMARYCITIZENSHIP'],
@@ -513,7 +622,7 @@ def pc_update_demographics(app):
 
 
 def pc_update_academic(app):
-    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    app['ACADEMIC_YEAR'],
                    app['ACADEMIC_TERM'],
@@ -521,8 +630,15 @@ def pc_update_academic(app):
                    app['PROGRAM'],
                    app['DEGREE'],
                    app['CURRICULUM'],
+                   app['Department'],
                    app['Nontraditional'],
-                   app['ProposedDecision'],
+                   app['Population'],
+                   app['AppStatus'],
+                   app['AppStatusDate'],
+                   app['AppDecision'],
+                   app['AppDecisionDate'],
+                   app['COLLEGE_ATTEND'],
+                   app['Extracurricular'],
                    app['CreateDateTime'])
     CNXN.commit()
 
@@ -555,6 +671,18 @@ def pc_update_smsoptin(app):
         CNXN.commit()
 
 
+def pc_update_note(app, field, office, note_type):
+    CURSOR.execute('exec [custom].[PS_insNote] ?, ?, ?, ?',
+                   app['PEOPLE_CODE_ID'], office, note_type, app[field])
+    CNXN.commit()
+
+
+def pc_update_udf(app, slate_field, pc_field):
+    CURSOR.execute('exec [custom].[PS_updUserDefined] ?, ?, ?',
+                   app['PEOPLE_CODE_ID'], pc_field, app[slate_field])
+    CNXN.commit()
+
+
 def pf_get_fachecklist(pcid, govid, appid, year, term, session):
     """Return the PowerFAIDS missing docs list for uploading to Financial Aid Checklist."""
     checklist = []
@@ -578,8 +706,9 @@ def main_sync(pid=None):
     Keyword arguments:
     pid -- specific application GUID to sync (default None)
     """
+    global CURRENT_RECORD
 
-    # Get applicants from Slate
+    verbose_print('Get applicants from Slate...')
     creds = (CONFIG['slate_query_apps']['username'],
              CONFIG['slate_query_apps']['password'])
     if pid is not None:
@@ -589,43 +718,57 @@ def main_sync(pid=None):
         r = requests.get(CONFIG['slate_query_apps']['url'], auth=creds)
     r.raise_for_status()
     apps = json.loads(r.text)['row']
+    verbose_print('\tFetched ' + str(len(apps)) + ' apps')
 
     # Make a dict of apps with application GUID as the key
     # {AppGUID: { JSON from Slate }
     apps = {k['aid']: k for k in apps}
     if len(apps) == 0 and pid is not None:
         # Assuming we're running in interactive (HTTP) mode if pid param exists
-        raise EOFError(ERROR_STRINGS['no_apps'])
+        raise EOFError(MSG_STRINGS['error_no_apps'])
     elif len(apps) == 0:
         # Don't raise an error for scheduled mode
         return None
 
-    # Clean up app data from Slate (datatypes, supply nulls, etc.)
+    verbose_print(
+        'Clean up app data from Slate (datatypes, supply nulls, etc.)')
     for k, v in apps.items():
+        CURRENT_RECORD = k
         apps[k] = format_app_generic(v)
 
-    # Check each app's status flags/PCID in PowerCampus and store them
+    verbose_print('Check each app\'s status flags/PCID in PowerCampus')
     for k, v in apps.items():
-        status_ra, status_app, status_calc, pcid = scan_status(v)
+        CURRENT_RECORD = k
+        status_ra, status_app, status_calc, pcid = pc_scan_status(v)
         apps[k].update({'status_ra': status_ra, 'status_app': status_app,
                         'status_calc': status_calc})
         apps[k]['PEOPLE_CODE_ID'] = pcid
 
-    # (Re)Post new or unprocessed applications to PowerCampus API
+    verbose_print(
+        'Post new or repost unprocessed applications to PowerCampus API')
     for k, v in apps.items():
+        CURRENT_RECORD = k
         if (v['status_ra'] == None) or (v['status_ra'] in (1, 2) and v['status_app'] is None):
             pcid = pc_post_api(format_app_api(v))
             apps[k]['PEOPLE_CODE_ID'] = pcid
 
-    # Rescan statuses
-    for k, v in apps.items():
-        status_ra, status_app, status_calc, pcid = scan_status(v)
-        apps[k].update({'status_ra': status_ra, 'status_app': status_app,
-                        'status_calc': status_calc})
-        apps[k]['PEOPLE_CODE_ID'] = pcid
+            # Rescan status
+            status_ra, status_app, status_calc, pcid = pc_scan_status(v)
+            apps[k].update({'status_ra': status_ra, 'status_app': status_app,
+                            'status_calc': status_calc})
+            apps[k]['PEOPLE_CODE_ID'] = pcid
 
-    # Update existing applications in PowerCampus and extract information
+    # verbose_print('Rescan statuses in PowerCampus')
+    # for k, v in apps.items():
+    #     status_ra, status_app, status_calc, pcid = pc_scan_status(v)
+    #     apps[k].update({'status_ra': status_ra, 'status_app': status_app,
+    #                     'status_calc': status_calc})
+    #     apps[k]['PEOPLE_CODE_ID'] = pcid
+
+    verbose_print(
+        'Update existing applications in PowerCampus and extract information')
     for k, v in apps.items():
+        CURRENT_RECORD = k
         if v['status_calc'] == 'Active':
             # Transform to PowerCampus format
             app_pc = format_app_sql(v)
@@ -634,6 +777,17 @@ def main_sync(pid=None):
             pc_update_demographics(app_pc)
             pc_update_academic(app_pc)
             pc_update_smsoptin(app_pc)
+
+            # Update any PowerCampus Notes defined in config
+            for note in CONFIG['pc_notes']:
+                if note['slate_field'] in app_pc and len(app_pc[note['slate_field']]) > 0:
+                    pc_update_note(
+                        app_pc, note['slate_field'], note['office'], note['note_type'])
+
+            # Update any PowerCampus User Defined fields defined in config
+            for udf in CONFIG['pc_user_defined']:
+                if udf['slate_field'] in app_pc and len(app_pc[udf['slate_field']]) > 0:
+                    pc_update_udf(app_pc, udf['slate_field'], udf['pc_field'])
 
             # Collect information
             found, registered, reg_date, readmit, withdrawn, credits, campus_email = pc_get_profile(
@@ -644,6 +798,7 @@ def main_sync(pid=None):
     # Update PowerCampus Scheduled Actions
     # Querying each app individually would introduce significant network overhead, so query Slate in bulk
     if CONFIG['scheduled_actions']['enabled'] == True:
+        verbose_print('Update PowerCampus Scheduled Actions')
         # Make a list of App GUID's
         apps_for_sa = [k for (k, v) in apps.items()
                        if v['status_calc'] == 'Active']
@@ -655,30 +810,21 @@ def main_sync(pid=None):
             action['app'] = format_app_sql(apps[action['aid']])
             pc_update_action(action)
 
-    # Upload data back to Slate
-    # Build list of flat app dicts with only certain fields included
-    slate_upload_list = []
-    slate_upload_fields = ['aid', 'PEOPLE_CODE_ID', 'found', 'registered',
-                           'reg_date', 'readmit', 'withdrawn', 'credits', 'campus_email']
-    for app in apps.values():
-        slate_upload_list.append(
-            {k: v for (k, v) in app.items() if k in slate_upload_fields})
+    verbose_print('Upload passive fields back to Slate')
+    slate_post_fields(apps, CONFIG['slate_upload_passive'])
 
-    # Slate requires JSON to be convertable to XML
-    slate_upload_dict = {'row': slate_upload_list}
-
-    creds = (CONFIG['slate_upload']['username'],
-             CONFIG['slate_upload']['password'])
-    r = requests.post(CONFIG['slate_upload']['url'],
-                      json=slate_upload_dict, auth=creds)
-    r.raise_for_status()
+    verbose_print('Upload active (changed) fields back to Slate')
+    verbose_print(slate_post_fields_changed(
+        apps, CONFIG['slate_upload_active']))
 
     # Collect Financial Aid checklist and upload to Slate
     if CONFIG['fa_checklist']['enabled'] == True:
+        verbose_print('Collect Financial Aid checklist and upload to Slate')
         slate_upload_list = []
         slate_upload_fields = {'AppID', 'Code', 'Status', 'Date'}
 
         for k, v in apps.items():
+            CURRENT_RECORD = k
             if v['status_calc'] == 'Active':
                 # Transform to PowerCampus format
                 app_pc = format_app_sql(v)
@@ -703,4 +849,4 @@ def main_sync(pid=None):
                               data=slate_fa_string, auth=creds)
             r.raise_for_status()
 
-    return 'Done. Please check the PowerSlate Sync Report for more details.'
+    return MSG_STRINGS['sync_done']

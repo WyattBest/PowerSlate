@@ -87,3 +87,4 @@ config_http_prod.json
 PowerSlate.code-workspace
 run_http_server - dev.ps1
 sandbox.py
+config_test.json

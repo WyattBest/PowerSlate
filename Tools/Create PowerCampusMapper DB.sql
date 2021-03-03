@@ -1,4 +1,4 @@
-USE [Recruiter_Dummy]
+USE [PowerCampusMapper]
 GO
 
 SET ANSI_NULLS ON
@@ -45,9 +45,6 @@ CREATE TABLE [dbo].[Datatel_academicprogramExtensionBase] (
 	) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
 
-USE [Recruiter_Dummy]
-GO
-
 CREATE TABLE [dbo].[Datatel_academictermExtensionBase] (
 	[Datatel_abbreviation] [nvarchar](max) NULL
 	,[Datatel_name] [nvarchar](max) NULL
@@ -75,14 +72,22 @@ GO
 
 CREATE TABLE [dbo].[Datatel_countryExtensionBase] (
 	[Datatel_name] [nvarchar](255) NULL
-	,[Full_Name] [nvarchar](255) NULL
-	,[Sort_Name] [nvarchar](255) NULL
-	,[FIPS_10_4] [nvarchar](255) NULL
 	,[Datatel_abbreviation] [nvarchar](255) NULL
+	,[Full_Name] [nvarchar](255) NULL
+	,[FIPS_10_4] [nvarchar](255) NULL
 	,[ISO_Alpha3] [nvarchar](255) NULL
-	,[Territory] [nvarchar](255) NULL
-	,[Continent] [nvarchar](255) NULL
-	,[Active] [float] NULL
+	) ON [PRIMARY]
+GO
+
+CREATE TABLE [dbo].[Datatel_educationlevelExtensionBase] (
+	[Datatel_name] [nvarchar](255) NULL
+	,[Datatel_abbreviation] [nvarchar](255) NULL
+	) ON [PRIMARY]
+GO
+
+CREATE TABLE [dbo].[Datatel_maritalstatusExtensionBase] (
+	[Datatel_abbreviation] [nvarchar](255) NULL
+	,[Datatel_name] [nvarchar](255) NULL
 	) ON [PRIMARY]
 GO
 

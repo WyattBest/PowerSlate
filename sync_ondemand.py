@@ -15,12 +15,19 @@ try:
     pscore.main_sync()
     print('Done at ' + str(datetime.datetime.now()))
 except Exception as e:
+    # There's got to be a better way to handle this.
+    try:
+        current_record = pscore.CURRENT_RECORD
+    except AttributeError:
+        current_record = None
+
     with open(sys.argv[1]) as config_file:
         smtp_config = json.load(config_file)['smtp']
     print('Exception at ' + str(datetime.datetime.now()) +
           '! Check notification email.')
     msg = MIMEText('Sync failed at ' + str(datetime.datetime.now()) + '\n\nError: '
-                   + str(traceback.format_exc()))
+                   + str(traceback.format_exc())
+                   + '\nCurrent Record: ' + str(current_record))
     msg['Subject'] = smtp_config['subject']
     msg['From'] = smtp_config['from']
     msg['To'] = smtp_config['to']

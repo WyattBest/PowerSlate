@@ -1,6 +1,7 @@
 USE [Campus6]
 GO
 
+/****** Object:  StoredProcedure [custom].[PS_selProfile]    Script Date: 2/5/2021 12:17:22 PM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -20,6 +21,7 @@ GO
 --	2020-04-21	Wyatt Best: Registration check only considers PROGRAM = CERT instead of full PDC. Allows noncredit programs besides CASAC.
 --	2020-05-18	Wyatt Best:	Added REG_VAL_DATE.
 --	2020-06-17	Wyatt Best: Coalesce PREREG_VAL_DATE, REG_VAL_DATE.
+--	2021-03-02	Wyatt Best: Made more generic. Still has MCNY-specific code values for PROGRAM and EmailType.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_selProfile] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -45,18 +47,15 @@ BEGIN
 				AND CURRICULUM = @Curriculum
 			)
 
-	--I tried hard to make this not specific to MCNY, but ultimately gave in.
-	--If someone has multiple apps for a YTS with different PDC, they will be in the same transcript sequence,
-	--and TranscriptDetail doesn't have PDC. I ultimately can't tell which TranscriptDetail goes with with Academic record without custom logic.
-	--Filtering by credits would be fine except that we have non-credit certificates. Thus the CASE statement.
+	--If someone has multiple apps for one YTS with different PDC's but the same transcript sequence, you will not be able to 
+	--separate the credits because TRANSCRIPTDETAIL doesn't have PDC. Custom logic is required to sort out things like-zero credit certificate
+	--dual enrollment with a for-credit program.
 	SELECT CASE 
 			WHEN PROGRAM = 'CERT'
-				-- AND @Degree = 'NON'
-				-- AND @Curriculum = 'CASAC'
 				AND EXISTS (
 					SELECT TD.PEOPLE_ID
 					FROM TRANSCRIPTDETAIL TD
-					INNER JOIN ACADEMIC A --No PDC columns in TD.
+					INNER JOIN ACADEMIC A
 						ON A.PEOPLE_CODE_ID = TD.PEOPLE_CODE_ID
 							AND A.ACADEMIC_YEAR = TD.ACADEMIC_YEAR
 							AND A.ACADEMIC_TERM = TD.ACADEMIC_TERM
@@ -65,7 +64,7 @@ BEGIN
 							AND A.DEGREE = @Degree
 							AND A.CURRICULUM = @Curriculum
 							AND A.TRANSCRIPT_SEQ = TD.TRANSCRIPT_SEQ
-							AND A.ACADEMIC_FLAG = 'Y' --Can mask some issues of registrations w/out acceptance, but needed for someone who applies for CASAC and undergrad and only registers for undergrad.
+							--AND A.ACADEMIC_FLAG = 'Y' --Can mask some issues of registrations w/out acceptance, but needed for someone who applies for CERT and UNDER and only registers for undergrad.
 							AND A.APPLICATION_FLAG = 'Y'
 					WHERE TD.PEOPLE_CODE_ID = @PCID
 						AND TD.ACADEMIC_YEAR = @Year
@@ -79,7 +78,7 @@ BEGIN
 			ELSE 'N'
 			END AS 'Registered'
 		,CAST(COALESCE(PREREG_VAL_DATE, REG_VAL_DATE) AS DATE) [REG_VAL_DATE]
-		,@Credits AS CREDITS
+		,cast(@Credits AS VARCHAR(6)) AS CREDITS
 		,A.COLLEGE_ATTEND
 		,(
 			SELECT REQUIRE_SEPDATE
@@ -105,39 +104,4 @@ BEGIN
 		AND DEGREE = @Degree
 		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y' --Ought to be an application, or there's a problem somewhere.
-		--AND ACADEMIC_FLAG = 'Y' --We want to expose issues where someone is registered without being accepted.
-		AND (
-			COLLEGE_ATTEND IS NULL --Returning and continuing students should not have applications.
-			OR COLLEGE_ATTEND IN ('NEW', 'READ')
-			)
-
-	
-	--The older, more generic approach.
-	--SELECT
-	--	CASE WHEN EXISTS (
-	--			SELECT TD.PEOPLE_ID
-	--			FROM TRANSCRIPTDETAIL TD
-	--			WHERE TD.PEOPLE_CODE_ID = @PCID
-	--				AND TD.ACADEMIC_YEAR = @Year
-	--				AND TD.ACADEMIC_TERM = @Term
-	--				AND TD.ACADEMIC_SESSION = @Session
-	--				AND TD.ADD_DROP_WAIT = 'A'
-	--			) THEN 'Y' ELSE 'N' END AS 'Registered'
-	--	,A.CREDITS
-	--	,A.COLLEGE_ATTEND
-	--	FROM ACADEMIC A
-	--	WHERE PEOPLE_CODE_ID = @PCID
-	--		AND ACADEMIC_YEAR = @Year
-	--		AND ACADEMIC_TERM = @Term
-	--		AND ACADEMIC_SESSION = @Session
-	--		AND PROGRAM = @Program
-	--		AND DEGREE = @Degree
-	--		AND CURRICULUM = @Curriculum
-	--		AND APPLICATION_FLAG = 'Y' --Ought to be an application, or there's a problem somewhere.
-	--		--AND ACADEMIC_FLAG = 'Y' --We want to expose issues where someone is registered without being accepted.
-	--		AND (COLLEGE_ATTEND IS NULL --Returning and continuing students should not have applications.
-	--			OR COLLEGE_ATTEND IN ('NEW','READ'))
 END
-GO
-
-

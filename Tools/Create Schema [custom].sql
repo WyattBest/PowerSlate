@@ -1,0 +1,7 @@
+USE [Campus6]
+GO
+
+CREATE SCHEMA [custom] AUTHORIZATION dbo
+GO
+
+
