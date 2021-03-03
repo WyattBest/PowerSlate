@@ -1,9 +1,0 @@
-d76ce666-8dc1-f827-e265-6345ba4bdb67@mcn
-Used for 15-minute sync with Application Update Queue or for 24-hour sync without a queue.
-
-d7aa3281-8537-a37d-3daf-adf6b37550ac@mcn
-Used for HTTP sync. Accepts a person GUID parameter 'pid'.
-
-7719c3e8-f238-8eba-2079-1be42bcde1bd@mcn
-Custom SQL query for Scheduled Actions. Might be replaceable with Configurable Joins.
-Contains some MCNY-specific ACTION_ID's.
