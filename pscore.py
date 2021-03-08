@@ -353,6 +353,8 @@ def format_app_sql(app):
 
     if app['PrimaryLanguage'] is not None:
         mapped['PRIMARY_LANGUAGE'] = RM_MAPPING['Language'][app['PrimaryLanguage']]
+    else:
+        mapped['PRIMARY_LANGUAGE'] = None
 
     if 'HomeLanguage' in app:
         mapped['HOME_LANGUAGE'] = RM_MAPPING['Language'][app['HomeLanguage']]
