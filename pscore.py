@@ -204,8 +204,8 @@ def format_app_api(app):
                        'ProposedDecision', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
                        'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status',
                        'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
-                       'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid'
-                       'Ethnicity', 'Gender', 'YearTerm']
+                       'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid',
+                       'PrimaryLanguage', 'Ethnicity', 'Gender', 'YearTerm']
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
     # Supply empty arrays. Implementing these would require more logic.
@@ -350,6 +350,12 @@ def format_app_sql(app):
         mapped['MARITALSTATUS'] = RM_MAPPING['MaritalStatus'][app['MaritalStatus']]
     else:
         mapped['MARITALSTATUS'] = None
+
+    if app['PrimaryLanguage'] is not None:
+        mapped['PRIMARY_LANGUAGE'] = RM_MAPPING['Language'][app['PrimaryLanguage']]
+
+    if app['HomeLanguage'] is not None:
+        mapped['HOME_LANGUAGE'] = RM_MAPPING['Language'][app['HomeLanguage']]
 
     return mapped
 
@@ -617,7 +623,9 @@ def pc_update_demographics(app):
                    app['RaceAmericanIndian'],
                    app['RaceAsian'],
                    app['RaceNativeHawaiian'],
-                   app['RaceWhite'])
+                   app['RaceWhite'],
+                   app['PRIMARY_LANGUAGE'],
+                   app['HOME_LANGUAGE'])
     CNXN.commit()
 
 
