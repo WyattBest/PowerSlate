@@ -354,8 +354,10 @@ def format_app_sql(app):
     if app['PrimaryLanguage'] is not None:
         mapped['PRIMARY_LANGUAGE'] = RM_MAPPING['Language'][app['PrimaryLanguage']]
 
-    if app['HomeLanguage'] is not None:
+    if 'HomeLanguage' in app:
         mapped['HOME_LANGUAGE'] = RM_MAPPING['Language'][app['HomeLanguage']]
+    else:
+        mapped['HOME_LANGUAGE'] = None
 
     return mapped
 
@@ -608,7 +610,7 @@ def pc_get_profile(app):
 
 
 def pc_update_demographics(app):
-    CURSOR.execute('execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    CURSOR.execute('execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    'SLATE',
                    app['GENDER'],
