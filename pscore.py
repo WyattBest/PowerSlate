@@ -151,7 +151,7 @@ def format_app_generic(app):
                    'MaritalStatus', 'ProposedDecision', 'AppStatus', 'AppStatusDate', 'AppDecision',
                    'AppDecisionDate', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
                    'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran',
-                   'Department', 'Nontraditional', 'Population', 'Extracurricular']
+                   'Counselor', 'Department', 'Nontraditional', 'Population', 'Extracurricular']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                    'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid',
                    'Extracurricular']
@@ -302,7 +302,7 @@ def format_app_sql(app):
     # Pass through fields
     fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
-                       'DemographicsEthnicity', 'AppStatus', 'AppStatusDate', 'AppDecision', 'AppDecisionDate',
+                       'DemographicsEthnicity', 'AppStatus', 'AppStatusDate', 'AppDecision', 'AppDecisionDate', 'Counselor',
                        'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular', 'Nontraditional', 'Population']
     fields_verbatim.extend([n['slate_field'] for n in CONFIG['pc_notes']])
     fields_verbatim.extend([f['slate_field']
@@ -634,7 +634,7 @@ def pc_update_demographics(app):
 
 
 def pc_update_academic(app):
-    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    app['ACADEMIC_YEAR'],
                    app['ACADEMIC_TERM'],
@@ -649,6 +649,7 @@ def pc_update_academic(app):
                    app['AppStatusDate'],
                    app['AppDecision'],
                    app['AppDecisionDate'],
+                   app['Counselor'],
                    app['COLLEGE_ATTEND'],
                    app['Extracurricular'],
                    app['CreateDateTime'])
