@@ -300,7 +300,7 @@ def format_app_sql(app):
     mapped = {}
 
     # Pass through fields
-    fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
+    fields_verbatim = ['PEOPLE_CODE_ID', 'GovernmentId', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
                        'DemographicsEthnicity', 'AppStatus', 'AppStatusDate', 'AppDecision', 'AppDecisionDate', 'Counselor',
                        'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular', 'Nontraditional', 'Population']
@@ -612,7 +612,7 @@ def pc_get_profile(app):
 
 
 def pc_update_demographics(app):
-    CURSOR.execute('execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    CURSOR.execute('execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    'SLATE',
                    app['GENDER'],
@@ -629,7 +629,8 @@ def pc_update_demographics(app):
                    app['RaceNativeHawaiian'],
                    app['RaceWhite'],
                    app['PRIMARY_LANGUAGE'],
-                   app['HOME_LANGUAGE'])
+                   app['HOME_LANGUAGE'],
+                   app['GovernmentId'])
     CNXN.commit()
 
 

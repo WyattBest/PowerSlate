@@ -14,9 +14,10 @@ GO
 -- Description:	Updates a number of fields that the PowerCampus WebAPI has issues with. Common case is an application
 --				went to HandleInquries.
 --
---  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
---	2021-02-17	Wyatt Best:	Pass @DemographicsEthnicity to [WebServices].[spSetDemographics].
---	2021-03-07	Wyatt Best: Added @PrimaryLanguage and @HomeLanguage. Don't UPDATE demographics row unless needed. Make most parameters optional.
+-- 2019-10-15 Wyatt Best:	Renamed and moved to [custom] schema.
+-- 2021-02-17 Wyatt Best:	Pass @DemographicsEthnicity to [WebServices].[spSetDemographics].
+-- 2021-03-07 Wyatt Best:	Added @PrimaryLanguage and @HomeLanguage. Don't UPDATE demographics row unless needed. Make most parameters optional.
+-- 2021-03-16 Wyatt Best:	Added @GovernmentId. For safety, existing GOVERNMENT_ID will not be overwritten with Slate-supplied value.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updDemographics] @PCID NVARCHAR(10)
 	,@Opid NVARCHAR(8)
@@ -35,6 +36,7 @@ CREATE PROCEDURE [custom].[PS_updDemographics] @PCID NVARCHAR(10)
 	,@RaceWhite BIT
 	,@PrimaryLanguage NVARCHAR(12) NULL
 	,@HomeLanguage NVARCHAR(12) NULL
+	,@GovernmentId nvarchar(40) NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -104,6 +106,43 @@ BEGIN
 		RETURN
 	END
 
+	DECLARE @DupPCID NVARCHAR(10) = (
+			SELECT PEOPLE_CODE_ID
+			FROM PEOPLE
+			WHERE GOVERNMENT_ID = @GovernmentId
+				AND PEOPLE_CODE_ID <> @PCID
+			)
+		,@ExistingGovId NVARCHAR(40) = (
+			SELECT GOVERNMENT_ID
+			FROM PEOPLE
+			WHERE PEOPLE_CODE_ID = @PCID
+			)
+
+	--Treat blanks as NULL
+	SET @ExistingGovId = NULLIF(@ExistingGovId, '')
+	SET @GovernmentId  = NULLIF(@GovernmentId, '')
+
+	IF @DupPCID IS NOT NULL
+	BEGIN
+		RAISERROR (
+				'@GovernmentId already assigned to ''%s''.'
+				,11
+				,1
+				,@DupPCID
+				)
+	END
+
+	IF @GovernmentId <> @ExistingGovId
+	BEGIN
+		RAISERROR (
+				'Existing GOVERNMENT_ID for ''%s'' does not match @GovernmentId supplied by Slate. Please reconcile manually.'
+				,11
+				,1
+				,@PCID
+				)
+	END
+
+	
 	--IPEDS Ethnicity
 	IF (@Ethnicity = 1 --Hispanic
 		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
@@ -164,8 +203,19 @@ BEGIN
 			,@HomeLanguage
 			,NULL
 
+
+	--Update GOVERNMENT_ID if needed.
+	IF @GovernmentId IS NOT NULL
+		AND NOT EXISTS (
+			SELECT *
+			FROM PEOPLE
+			WHERE PEOPLE_CODE_ID = @PCID
+				AND GOVERNMENT_ID = @GovernmentId
+			)
+		UPDATE PEOPLE
+		SET GOVERNMENT_ID = @GovernmentId
+		WHERE PEOPLE_CODE_ID = @PCID
+
 	COMMIT
 END
 GO
-
-
