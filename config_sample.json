@@ -70,6 +70,7 @@
 			"pc_column": "FIRSTGEN"
 		}
 	],
+	"pc_update_custom_academickey": true,
 	"fa_checklist": {
 		"enabled": true,
 		"slate_post": {

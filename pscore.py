@@ -300,10 +300,10 @@ def format_app_sql(app):
     mapped = {}
 
     # Pass through fields
-    fields_verbatim = ['PEOPLE_CODE_ID', 'GovernmentId', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
-                       'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
-                       'DemographicsEthnicity', 'AppStatus', 'AppStatusDate', 'AppDecision', 'AppDecisionDate', 'Counselor',
-                       'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular', 'Nontraditional', 'Population']
+    fields_verbatim = ['aid', 'PEOPLE_CODE_ID', 'GovernmentId', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican',
+                       'RaceNativeHawaiian', 'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite',
+                       'Ethnicity', 'DemographicsEthnicity', 'AppStatus', 'AppStatusDate', 'AppDecision', 'AppDecisionDate',
+                       'Counselor', 'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular', 'Nontraditional', 'Population']
     fields_verbatim.extend([n['slate_field'] for n in CONFIG['pc_notes']])
     fields_verbatim.extend([f['slate_field']
                             for f in CONFIG['pc_user_defined']])
@@ -657,6 +657,19 @@ def pc_update_academic(app):
     CNXN.commit()
 
 
+def pc_update_academic_key(app):
+    CURSOR.execute('exec [custom].[PS_updAcademicKey] ?, ?, ?, ?, ?, ?, ?, ?',
+                   app['PEOPLE_CODE_ID'],
+                   app['ACADEMIC_YEAR'],
+                   app['ACADEMIC_TERM'],
+                   app['ACADEMIC_SESSION'],
+                   app['PROGRAM'],
+                   app['DEGREE'],
+                   app['CURRICULUM'],
+                   app['aid'])
+    CNXN.commit()
+
+
 def pc_update_action(action):
     """Update a Scheduled Action in PowerCampus. Expects an action dict with 'app' key containing SQL formatted app
     {'aid': GUID, 'item': 'Transcript', 'app': {'PEOPLE_CODE_ID':...}}
@@ -791,6 +804,8 @@ def main_sync(pid=None):
             pc_update_demographics(app_pc)
             pc_update_academic(app_pc)
             pc_update_smsoptin(app_pc)
+            if CONFIG['pc_update_custom_academickey'] == True:
+                pc_update_academic_key(app_pc)
 
             # Update any PowerCampus Notes defined in config
             for note in CONFIG['pc_notes']:
