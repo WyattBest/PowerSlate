@@ -91,4 +91,10 @@ CREATE TABLE [dbo].[Datatel_maritalstatusExtensionBase] (
 	) ON [PRIMARY]
 GO
 
+CREATE TABLE [dbo].[Datatel_languageExtensionBase] (
+	[Datatel_abbreviation] [nvarchar](255) NULL
+	,[Datatel_name] [nvarchar](255) NULL
+	) ON [PRIMARY]
+GO
+
 

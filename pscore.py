@@ -151,7 +151,7 @@ def format_app_generic(app):
                    'MaritalStatus', 'ProposedDecision', 'AppStatus', 'AppStatusDate', 'AppDecision',
                    'AppDecisionDate', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
                    'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran',
-                   'Department', 'Nontraditional', 'Population', 'Extracurricular']
+                   'Counselor', 'Department', 'Nontraditional', 'Population', 'Extracurricular']
     fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                    'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid',
                    'Extracurricular']
@@ -204,8 +204,8 @@ def format_app_api(app):
                        'ProposedDecision', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
                        'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status',
                        'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
-                       'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid'
-                       'Ethnicity', 'Gender', 'YearTerm']
+                       'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid',
+                       'PrimaryLanguage', 'Ethnicity', 'Gender', 'YearTerm']
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
     # Supply empty arrays. Implementing these would require more logic.
@@ -300,9 +300,9 @@ def format_app_sql(app):
     mapped = {}
 
     # Pass through fields
-    fields_verbatim = ['PEOPLE_CODE_ID', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
+    fields_verbatim = ['PEOPLE_CODE_ID', 'GovernmentId', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
                        'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite', 'Ethnicity',
-                       'DemographicsEthnicity', 'AppStatus', 'AppStatusDate', 'AppDecision', 'AppDecisionDate',
+                       'DemographicsEthnicity', 'AppStatus', 'AppStatusDate', 'AppDecision', 'AppDecisionDate', 'Counselor',
                        'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular', 'Nontraditional', 'Population']
     fields_verbatim.extend([n['slate_field'] for n in CONFIG['pc_notes']])
     fields_verbatim.extend([f['slate_field']
@@ -350,6 +350,16 @@ def format_app_sql(app):
         mapped['MARITALSTATUS'] = RM_MAPPING['MaritalStatus'][app['MaritalStatus']]
     else:
         mapped['MARITALSTATUS'] = None
+
+    if app['PrimaryLanguage'] is not None:
+        mapped['PRIMARY_LANGUAGE'] = RM_MAPPING['Language'][app['PrimaryLanguage']]
+    else:
+        mapped['PRIMARY_LANGUAGE'] = None
+
+    if 'HomeLanguage' in app:
+        mapped['HOME_LANGUAGE'] = RM_MAPPING['Language'][app['HomeLanguage']]
+    else:
+        mapped['HOME_LANGUAGE'] = None
 
     return mapped
 
@@ -602,7 +612,7 @@ def pc_get_profile(app):
 
 
 def pc_update_demographics(app):
-    CURSOR.execute('execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    CURSOR.execute('execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    'SLATE',
                    app['GENDER'],
@@ -617,12 +627,15 @@ def pc_update_demographics(app):
                    app['RaceAmericanIndian'],
                    app['RaceAsian'],
                    app['RaceNativeHawaiian'],
-                   app['RaceWhite'])
+                   app['RaceWhite'],
+                   app['PRIMARY_LANGUAGE'],
+                   app['HOME_LANGUAGE'],
+                   app['GovernmentId'])
     CNXN.commit()
 
 
 def pc_update_academic(app):
-    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    app['ACADEMIC_YEAR'],
                    app['ACADEMIC_TERM'],
@@ -637,6 +650,7 @@ def pc_update_academic(app):
                    app['AppStatusDate'],
                    app['AppDecision'],
                    app['AppDecisionDate'],
+                   app['Counselor'],
                    app['COLLEGE_ATTEND'],
                    app['Extracurricular'],
                    app['CreateDateTime'])

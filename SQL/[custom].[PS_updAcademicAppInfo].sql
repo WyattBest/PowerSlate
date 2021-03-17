@@ -8,7 +8,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-
 -- =============================================
 -- Author:		Wyatt Best
 -- Create date: 2016-11-17
@@ -30,6 +29,7 @@ GO
 -- 2021-02-16 Wyatt Best:	Raise error if @Department is not valid.
 --							Added POPULATION.
 -- 2021-02-17 Wyatt Best:	Added AppStatusDate and AppDecisionDate. Remove dependency on WebServices.spUpdAcademicAppInfo, which doesn't support these fields.
+-- 2021-03-09 Wyatt Best:	Added Counselor. Raise error for invalid @CollegeAttend instead of silently skipping.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -45,6 +45,7 @@ CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@AppStatusDate DATE NULL
 	,@AppDecision NVARCHAR(8) NULL
 	,@AppDecisionDate DATE NULL
+	,@Counselor NVARCHAR(10) NULL
 	,@CollegeAttend NVARCHAR(4) NULL
 	,@Extracurricular BIT NULL
 	,@CreateDateTime DATETIME --Application creation date
@@ -56,6 +57,44 @@ BEGIN
 		,@Now DATETIME = dbo.fnMakeTime(GETDATE())
 
 	--Error check
+	IF (
+			@Department IS NOT NULL
+			AND NOT EXISTS (
+				SELECT *
+				FROM CODE_DEPARTMENT
+				WHERE CODE_VALUE_KEY = @Department
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@Department ''%s'' not found in CODE_DEPARTMENT.'
+				,11
+				,1
+				,@Department
+				)
+
+		RETURN
+	END
+
+	IF (
+			@Population IS NOT NULL
+			AND NOT EXISTS (
+				SELECT *
+				FROM CODE_POPULATION
+				WHERE CODE_VALUE_KEY = @Population
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@Population ''%s'' not found in CODE_POPULATION.'
+				,11
+				,1
+				,@Population
+				)
+
+		RETURN
+	END
+
 	IF (
 			@AppStatus IS NOT NULL
 			AND NOT EXISTS (
@@ -95,38 +134,38 @@ BEGIN
 	END
 
 	IF (
-			@Department IS NOT NULL
+			@Counselor IS NOT NULL
 			AND NOT EXISTS (
 				SELECT *
-				FROM CODE_DEPARTMENT
-				WHERE CODE_VALUE_KEY = @Department
+				FROM PEOPLE
+				WHERE PEOPLE_CODE_ID = @Counselor
 				)
 			)
 	BEGIN
 		RAISERROR (
-				'@Department ''%s'' not found in CODE_DEPARTMENT.'
+				'@Counselor ''%s'' not found in PEOPLE.'
 				,11
 				,1
-				,@Department
+				,@Counselor
 				)
 
 		RETURN
 	END
 
 	IF (
-			@Population IS NOT NULL
+			@CollegeAttend IS NOT NULL
 			AND NOT EXISTS (
 				SELECT *
-				FROM CODE_POPULATION
-				WHERE CODE_VALUE_KEY = @Population
+				FROM CODE_COLLEGEATTEND
+				WHERE CODE_VALUE_KEY = @CollegeAttend
 				)
 			)
 	BEGIN
 		RAISERROR (
-				'@Population ''%s'' not found in CODE_POPULATION.'
+				'@CollegeAttend ''%s'' not found in CODE_COLLEGEATTEND.'
 				,11
 				,1
-				,@Population
+				,@CollegeAttend
 				)
 
 		RETURN
@@ -262,6 +301,19 @@ BEGIN
 			OR [POPULATION] IS NULL
 			)
 
+	--Update COUNSELOR if needed
+	UPDATE ACADEMIC
+	SET COUNSELOR = @Counselor
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND APPLICATION_FLAG = 'Y'
+		AND (
+			COUNSELOR <> @Counselor
+			OR COUNSELOR IS NULL
+			)
+
 	--Update COLLEGE_ATTEND if needed
 	UPDATE ACADEMIC
 	SET COLLEGE_ATTEND = @CollegeAttend
@@ -273,11 +325,6 @@ BEGIN
 		AND (
 			COLLEGE_ATTEND <> @CollegeAttend
 			OR COLLEGE_ATTEND IS NULL
-			)
-		AND @CollegeAttend IN (
-			SELECT CODE_VALUE_KEY
-			FROM CODE_COLLEGEATTEND
-			WHERE [STATUS] = 'A'
 			)
 
 	--Update EXTRA_CURRICULAR if needed
@@ -313,4 +360,5 @@ BEGIN
 	COMMIT
 END
 GO
+
 
