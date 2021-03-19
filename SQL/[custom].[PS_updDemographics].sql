@@ -125,17 +125,18 @@ BEGIN
 	IF @DupPCID IS NOT NULL
 	BEGIN
 		RAISERROR (
-				'@GovernmentId already assigned to ''%s''.'
+				'@GovernmentId already assigned to %s. Cannot assign to %s.'
 				,11
 				,1
 				,@DupPCID
+				,@PCID
 				)
 	END
 
 	IF @GovernmentId <> @ExistingGovId
 	BEGIN
 		RAISERROR (
-				'Existing GOVERNMENT_ID for ''%s'' does not match @GovernmentId supplied by Slate. Please reconcile manually.'
+				'Existing GOVERNMENT_ID for %s does not match @GovernmentId supplied by Slate. Please reconcile manually.'
 				,11
 				,1
 				,@PCID
