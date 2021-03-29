@@ -4,7 +4,9 @@ import datetime
 import traceback
 import smtplib
 from email.mime.text import MIMEText
+from urllib.parse import urlparse
 import pscore
+
 
 
 # Attempt a sync; send failure email with traceback if error.
@@ -22,12 +24,14 @@ except Exception as e:
         current_record = None
 
     with open(sys.argv[1]) as config_file:
-        smtp_config = json.load(config_file)['smtp']
+        config = json.load(config_file)
+        smtp_config = config['smtp']
+        slate_domain = urlparse(config['slate_query_apps']['url']).netloc
     print('Exception at ' + str(datetime.datetime.now()) +
           '! Check notification email.')
     msg = MIMEText('Sync failed at ' + str(datetime.datetime.now()) + '\n\nError: '
                    + str(traceback.format_exc())
-                   + '\nCurrent Record: ' + str(current_record))
+                   + '\nCurrent Record: ' + 'https://' + slate_domain + '/manage/lookup/record?id=' + str(current_record))
     msg['Subject'] = smtp_config['subject']
     msg['From'] = smtp_config['from']
     msg['To'] = smtp_config['to']
