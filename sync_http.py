@@ -4,9 +4,16 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib
 import pscore
 import socket
+import pyodbc
 
 
 CONFIG = pscore.init_config(sys.argv[1])
+
+
+def emit_traceback():
+    message = ('Technical error. Please notify support with the following message: <br /><br />' +
+               str(traceback.format_exc()))
+    return message
 
 
 class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
@@ -28,9 +35,21 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
                 message = pscore.main_sync(q['pid'][0])
             else:
                 message = 'Error: Record not found.'
+        except pyodbc.OperationalError as ex:
+            # Catch communication link failures
+            sqlstate = ex.args[0]
+            if sqlstate in ('08S01', '08001'):
+                # Attempt to reconnect and try one more time before returning an error to the user
+                print('Attempting to recover from SQL state ' + str(sqlstate))
+                try:
+                    CONFIG = pscore.init_config(sys.argv[1])
+                    message = pscore.main_sync(q['pid'][0])
+                except Exception:
+                    message = emit_traceback()
+            else:
+                message = emit_traceback()
         except Exception:
-            message = ('Technical error. Please notify support with the following message: <br /><br />'
-                       + str(traceback.format_exc()))
+            message = emit_traceback()
 
         # Write content as utf-8 data
         self.wfile.write(message.encode("utf8"))
