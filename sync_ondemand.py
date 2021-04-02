@@ -26,12 +26,16 @@ except Exception as e:
     with open(sys.argv[1]) as config_file:
         config = json.load(config_file)
         smtp_config = config['smtp']
-        slate_domain = urlparse(config['slate_query_apps']['url']).netloc
+        if current_record:
+            slate_domain = urlparse(config['slate_query_apps']['url']).netloc
+            current_record_link = 'https://' + slate_domain + '/manage/lookup/record?id=' + str(current_record)
+        else:
+            current_record_link = 'None'
     print('Exception at ' + str(datetime.datetime.now()) +
           '! Check notification email.')
     msg = MIMEText('Sync failed at ' + str(datetime.datetime.now()) + '\n\nError: '
                    + str(traceback.format_exc())
-                   + '\nCurrent Record: ' + 'https://' + slate_domain + '/manage/lookup/record?id=' + str(current_record))
+                   + '\nCurrent Record: ' + current_record_link)
     msg['Subject'] = smtp_config['subject']
     msg['From'] = smtp_config['from']
     msg['To'] = smtp_config['to']
