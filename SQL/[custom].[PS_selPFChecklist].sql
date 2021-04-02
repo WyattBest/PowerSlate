@@ -17,7 +17,6 @@ GO
 -- 2021-04-02 Wyatt Best:	Changed @GovID datatype from INT to match PFaids column.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_selPFChecklist]
-	-- Add the parameters for the stored procedure here
 	@PCID NVARCHAR(10)
 	,@GovID VARCHAR(9)
 	,@AcademicYear NVARCHAR(4)
