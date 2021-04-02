@@ -14,11 +14,12 @@ GO
 --				award_year_token in PowerFAIDS is pulled from FIN_AID_YEAR in ACADEMICCALENDAR.
 --
 -- 2020-11-12 Wyatt Best:	Added search by TIN/SSN (@GovID) instead of just PEOPLE_CODE_ID (@PCID).
+-- 2021-04-02 Wyatt Best:	Changed @GovID datatype from INT to match PFaids column.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_selPFChecklist]
 	-- Add the parameters for the stored procedure here
 	@PCID NVARCHAR(10)
-	,@GovID INT
+	,@GovID VARCHAR(9)
 	,@AcademicYear NVARCHAR(4)
 	,@AcademicTerm NVARCHAR(10)
 	,@AcademicSession NVARCHAR(10)
