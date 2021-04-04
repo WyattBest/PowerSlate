@@ -60,16 +60,12 @@ def format_app_generic(app, cfg_fields):
     fields_bool = [k for (k, v) in ps_models.fields.items()
                    if v['type'] == bool]
     fields_int = [k for (k, v) in ps_models.fields.items()
-                  if v['type'] == bool]
+                  if v['type'] == int]
     fields_null.extend(
         ['compare_' + field for field in cfg_fields['fields_string']])
     fields_null.extend(
         ['compare_' + field for field in cfg_fields['fields_bool']])
     fields_null.extend(
-        ['compare_' + field for field in cfg_fields['fields_int']])
-    fields_bool.extend(
-        ['compare_' + field for field in cfg_fields['fields_bool']])
-    fields_int.extend(
         ['compare_' + field for field in cfg_fields['fields_int']])
 
     # Copy nullable strings from input to output, then fill in nulls

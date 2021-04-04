@@ -49,7 +49,7 @@ def verbose_print(x):
                 print(x)
 
 
-def post_api(x, cfg_strings, api_url, api_cred):
+def post_api(x, cfg_strings):
     """Post an application to PowerCampus.
     Return  PEOPLE_CODE_ID if application was automatically accepted or None for all other conditions.
 

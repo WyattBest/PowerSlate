@@ -1,7 +1,7 @@
 import sys
-import pscore
+import ps_core
 
 
-smtp_config = pscore.init(sys.argv[1])
-pscore.main_sync()
-pscore.de_init()
+smtp_config = ps_core.init(sys.argv[1])
+ps_core.main_sync()
+ps_core.de_init()
