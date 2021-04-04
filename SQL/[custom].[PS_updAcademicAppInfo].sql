@@ -30,6 +30,10 @@ GO
 --							Added POPULATION.
 -- 2021-02-17 Wyatt Best:	Added AppStatusDate and AppDecisionDate. Remove dependency on WebServices.spUpdAcademicAppInfo, which doesn't support these fields.
 -- 2021-03-09 Wyatt Best:	Added Counselor. Raise error for invalid @CollegeAttend instead of silently skipping.
+-- 2021-04-02 Wyatt Best:	Added @AdmitDate and @Matriculated. If @Matriculated is true, matric fields will be populated. Matric date will be start date from academic calendar.
+--							If @AppDecision is an accepted decision, admit fields will be populated. Admit date will be @AdmitdDate.
+-- 2021-04-03 Wyatt Best:	Fix missing PDC filters in some update statements. Could have caused multiple records to be affected if student had multiple applications in same YTS.
+--							Change primary flag logic to be more conservative. Rewrote some statements for efficiency.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -41,6 +45,8 @@ CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Department NVARCHAR(10) NULL
 	,@Nontraditional NVARCHAR(6) NULL
 	,@Population NVARCHAR(12) NULL
+	,@AdmitDate DATE NULL
+	,@Matriculated BIT NULL
 	,@AppStatus NVARCHAR(8) NULL
 	,@AppStatusDate DATE NULL
 	,@AppDecision NVARCHAR(8) NULL
@@ -55,6 +61,30 @@ BEGIN
 
 	DECLARE @Today DATETIME = dbo.fnMakeDate(GETDATE())
 		,@Now DATETIME = dbo.fnMakeTime(GETDATE())
+
+	--Setup for Matric and Admit field groups
+	IF @Matriculated = 1
+	BEGIN
+		DECLARE @MatricDate DATE = (
+				SELECT [START_DATE]
+				FROM ACADEMICCALENDAR
+				WHERE ACADEMIC_YEAR = @Year
+					AND ACADEMIC_TERM = @Term
+					AND ACADEMIC_SESSION = @Session
+				)
+	END
+
+	DECLARE @Admitted BIT = 0
+
+	IF @AppDecision IN (
+			SELECT CODE_VALUE_KEY
+			FROM CODE_APPDECISION
+			WHERE ACCEPTED_DECISION = 'Y'
+				AND [STATUS] = 'A'
+			)
+	BEGIN
+		SET @Admitted = 1
+	END
 
 	--Error check
 	IF (
@@ -208,18 +238,16 @@ BEGIN
 		AND ACADEMIC_YEAR = @Year
 		AND ACADEMIC_TERM = @Term
 		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
 		AND (
 			DEPARTMENT <> @Department
 			OR DEPARTMENT IS NULL
 			)
-		AND @Department IN (
-			SELECT CODE_VALUE_KEY
-			FROM CODE_DEPARTMENT
-			WHERE [STATUS] = 'A'
-			)
 
-	-- Set PRIMARY_FLAG if needed
+	-- Set PRIMARY_FLAG if no record with primary flag exists in YTS
 	IF NOT EXISTS (
 			SELECT *
 			FROM ACADEMIC
@@ -227,7 +255,7 @@ BEGIN
 				AND ACADEMIC_YEAR = @Year
 				AND ACADEMIC_TERM = @Term
 				AND ACADEMIC_SESSION = @Session
-				AND APPLICATION_FLAG = 'Y'
+				--AND APPLICATION_FLAG = 'Y'
 				AND PRIMARY_FLAG = 'Y'
 			)
 		UPDATE dbo.ACADEMIC
@@ -236,40 +264,40 @@ BEGIN
 			AND ACADEMIC_YEAR = @Year
 			AND ACADEMIC_TERM = @Term
 			AND ACADEMIC_SESSION = @Session
+			AND PROGRAM = @Program
+			AND DEGREE = @Degree
+			AND CURRICULUM = @Curriculum
 			AND APPLICATION_FLAG = 'Y';
 
 	-- Set ACADEMIC_FLAG if needed
-	IF EXISTS (
+	UPDATE dbo.ACADEMIC
+	SET ACADEMIC_FLAG = 'Y'
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
+		AND APPLICATION_FLAG = 'Y'
+		AND (
+			ACADEMIC_FLAG <> 'Y'
+			OR ACADEMIC_FLAG IS NULL
+			)
+		AND EXISTS (
 			SELECT *
 			FROM CODE_APPSTATUS
 			WHERE CODE_VALUE_KEY = @AppStatus
-				AND STATUS = 'A'
+				AND [STATUS] = 'A'
 				AND CONFIRMED_STATUS = 'Y'
 			)
 		AND EXISTS (
 			SELECT *
 			FROM CODE_APPDECISION
 			WHERE CODE_VALUE_KEY = @AppDecision
-				AND STATUS = 'A'
+				AND [STATUS] = 'A'
 				AND ACCEPTED_DECISION = 'Y'
 			)
-		AND NOT EXISTS (
-			SELECT *
-			FROM ACADEMIC
-			WHERE PEOPLE_CODE_ID = @PCID
-				AND ACADEMIC_YEAR = @Year
-				AND ACADEMIC_TERM = @Term
-				AND ACADEMIC_SESSION = @Session
-				AND APPLICATION_FLAG = 'Y'
-				AND ACADEMIC_FLAG = 'Y'
-			)
-		UPDATE dbo.ACADEMIC
-		SET ACADEMIC_FLAG = 'Y'
-		WHERE PEOPLE_CODE_ID = @PCID
-			AND ACADEMIC_YEAR = @Year
-			AND ACADEMIC_TERM = @Term
-			AND ACADEMIC_SESSION = @Session
-			AND APPLICATION_FLAG = 'Y';
 
 	--Update NONTRAD_PROGRAM if needed
 	UPDATE ACADEMIC
@@ -278,6 +306,9 @@ BEGIN
 		AND ACADEMIC_YEAR = @Year
 		AND ACADEMIC_TERM = @Term
 		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
 		AND (
 			NONTRAD_PROGRAM <> @Nontraditional
@@ -295,12 +326,154 @@ BEGIN
 		AND ACADEMIC_YEAR = @Year
 		AND ACADEMIC_TERM = @Term
 		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
 		AND (
 			[POPULATION] <> @Population
 			OR [POPULATION] IS NULL
 			)
 
+	--Update ADMIT fields if needed
+	UPDATE ACADEMIC
+	SET ADMIT_YEAR = CASE @Admitted
+			WHEN 1
+				THEN @Year
+			ELSE ''
+			END
+		,ADMIT_TERM = CASE @Admitted
+			WHEN 1
+				THEN @Term
+			ELSE NULL
+			END
+		,ADMIT_SESSION = CASE @Admitted
+			WHEN 1
+				THEN @Term
+			ELSE NULL
+			END
+		,ADMIT_DATE = CASE @Admitted
+			WHEN 1
+				THEN dbo.fnMakeDate(@AdmitDate)
+			ELSE NULL
+			END
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
+		AND APPLICATION_FLAG = 'Y'
+		AND (
+			(
+				@Admitted = 1
+				AND (
+					ADMIT_DATE <> @AdmitDate
+					OR ADMIT_DATE IS NULL
+					OR ADMIT_YEAR <> @Year
+					OR ADMIT_YEAR IS NULL
+					OR ADMIT_TERM <> @Term
+					OR ADMIT_TERM IS NULL
+					OR ADMIT_SESSION <> @Session
+					OR ADMIT_SESSION IS NULL
+					)
+				)
+			OR (
+				@Admitted = 0
+				AND (
+					@AdmitDate IS NOT NULL
+					OR ADMIT_YEAR IS NOT NULL
+					OR ADMIT_TERM IS NOT NULL
+					OR ADMIT_SESSION IS NOT NULL
+					)
+				)
+			)
+
+	--Update MATRIC fields if needed
+	UPDATE ACADEMIC
+	SET MATRIC = CASE @Matriculated
+			WHEN 1
+				THEN 'Y'
+			ELSE 'N'
+			END
+		,MATRIC_YEAR = CASE @Matriculated
+			WHEN 1
+				THEN @Year
+			ELSE NULL
+			END
+		,MATRIC_TERM = CASE @Matriculated
+			WHEN 1
+				THEN @Term
+			ELSE NULL
+			END
+		,MATRIC_SESSION = CASE @Matriculated
+			WHEN 1
+				THEN @Term
+			ELSE NULL
+			END
+		,MATRIC_DATE = CASE @Matriculated
+			WHEN 1
+				THEN dbo.fnMakeDate(@MatricDate)
+			ELSE NULL
+			END
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
+		AND APPLICATION_FLAG = 'Y'
+		AND @Matriculated IS NOT NULL
+		AND (
+			(
+				@Matriculated = 1
+				AND (
+					COALESCE(MATRIC, '') <> 'Y'
+					AND MATRIC_DATE <> @MatricDate
+					OR MATRIC_DATE IS NULL
+					OR MATRIC_YEAR <> @Year
+					OR MATRIC_YEAR IS NULL
+					OR MATRIC_TERM <> @Term
+					OR MATRIC_TERM IS NULL
+					OR MATRIC_SESSION <> @Session
+					OR MATRIC_SESSION IS NULL
+					)
+				)
+			OR (
+				@Matriculated = 0
+				AND (
+					COALESCE(MATRIC, '') <> 'N'
+					OR MATRIC_DATE IS NOT NULL
+					OR MATRIC_YEAR IS NOT NULL
+					OR MATRIC_TERM IS NOT NULL
+					OR MATRIC_SESSION IS NOT NULL
+					)
+				)
+			)
+
+	--AND (
+	--	(
+	--		CASE MATRIC
+	--			WHEN 'Y'
+	--				THEN 1
+	--			WHEN 'N'
+	--				THEN 0
+	--			ELSE NULL
+	--			END <> @Matriculated
+	--		)
+	--	OR (
+	--		(
+	--			MATRIC_YEAR <> @Year
+	--			AND MATRIC_TERM <> @Term
+	--			AND MATRIC_SESSION <> @Session
+	--			AND MATRIC_DATE <> @MatricDate
+	--			)
+	--		AND @Matriculated = 1
+	--		)
+	--	)
+	--AND @Matriculated IS NOT NULL
 	--Update COUNSELOR if needed
 	UPDATE ACADEMIC
 	SET COUNSELOR = @Counselor
@@ -308,6 +481,9 @@ BEGIN
 		AND ACADEMIC_YEAR = @Year
 		AND ACADEMIC_TERM = @Term
 		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
 		AND (
 			COUNSELOR <> @Counselor
@@ -321,6 +497,9 @@ BEGIN
 		AND ACADEMIC_YEAR = @Year
 		AND ACADEMIC_TERM = @Term
 		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
 		AND (
 			COLLEGE_ATTEND <> @CollegeAttend
@@ -338,6 +517,9 @@ BEGIN
 		AND ACADEMIC_YEAR = @Year
 		AND ACADEMIC_TERM = @Term
 		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
 		AND CASE EXTRA_CURRICULAR
 			WHEN 'Y'
@@ -354,6 +536,9 @@ BEGIN
 		AND ACADEMIC_YEAR = @Year
 		AND ACADEMIC_TERM = @Term
 		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
 		AND COALESCE(APPLICATION_DATE, '') <> dbo.fnMakeDate(@CreateDateTime);
 
