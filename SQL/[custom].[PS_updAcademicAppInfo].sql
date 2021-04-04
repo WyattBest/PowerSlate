@@ -349,7 +349,7 @@ BEGIN
 			END
 		,ADMIT_SESSION = CASE @Admitted
 			WHEN 1
-				THEN @Term
+				THEN @Session
 			ELSE NULL
 			END
 		,ADMIT_DATE = CASE @Admitted
@@ -409,7 +409,7 @@ BEGIN
 			END
 		,MATRIC_SESSION = CASE @Matriculated
 			WHEN 1
-				THEN @Term
+				THEN @Session
 			ELSE NULL
 			END
 		,MATRIC_DATE = CASE @Matriculated
@@ -453,27 +453,6 @@ BEGIN
 				)
 			)
 
-	--AND (
-	--	(
-	--		CASE MATRIC
-	--			WHEN 'Y'
-	--				THEN 1
-	--			WHEN 'N'
-	--				THEN 0
-	--			ELSE NULL
-	--			END <> @Matriculated
-	--		)
-	--	OR (
-	--		(
-	--			MATRIC_YEAR <> @Year
-	--			AND MATRIC_TERM <> @Term
-	--			AND MATRIC_SESSION <> @Session
-	--			AND MATRIC_DATE <> @MatricDate
-	--			)
-	--		AND @Matriculated = 1
-	--		)
-	--	)
-	--AND @Matriculated IS NOT NULL
 	--Update COUNSELOR if needed
 	UPDATE ACADEMIC
 	SET COUNSELOR = @Counselor
