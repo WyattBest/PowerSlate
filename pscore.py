@@ -1,19 +1,15 @@
 import requests
-import copy
 import json
 import xml.etree.ElementTree as ET
-import pyodbc
-from string import ascii_letters, punctuation, whitespace
+from ps_format import format_app_generic, format_app_api,  format_app_sql
+import ps_powercampus
 
 
-def init_config(config_path):
-    """Reads config file to global 'config' dict. Many frequently-used variables are copied to their own globals for convenince."""
+def init(config_path):
+    """Reads config file to global CONFIG dict. Many frequently-used variables are copied to their own globals for convenince."""
     global CONFIG
-    global PC_API_URL
-    global PC_API_CRED
+    global FIELDS
     global RM_MAPPING
-    global CNXN
-    global CURSOR
     global MSG_STRINGS
 
     # Read config file and convert to dict
@@ -63,30 +59,18 @@ def init_config(config_path):
                 RM_MAPPING[child.tag][fn3].update(
                     {row.get('RCCodeValue'): row.get(fn3)})
 
-    # PowerCampus Web API connection
-    PC_API_URL = CONFIG['pc_api']['url']
-    PC_API_CRED = (CONFIG['pc_api']['username'], CONFIG['pc_api']['password'])
-
-    # Microsoft SQL Server connection.
-    CNXN = pyodbc.connect(CONFIG['pc_database_string'])
-    CURSOR = CNXN.cursor()
+    # Init PowerCampus API and SQL connections
+    ps_powercampus.init(CONFIG)
 
     # Misc configs
     MSG_STRINGS = CONFIG['msg_strings']
-
-    # Print a test of connections
-    r = requests.get(PC_API_URL + 'api/version', auth=PC_API_CRED)
-    verbose_print('PowerCampus API Status: ' + str(r.status_code))
-    verbose_print(r.text)
-    r.raise_for_status()
-    verbose_print('Database:' + CNXN.getinfo(pyodbc.SQL_DATABASE_NAME))
 
     return CONFIG
 
 
 def de_init():
-    # Clean up connections.
-    CNXN.close()  # SQL
+    '''Release resources like open SQL connections.'''
+    ps_powercampus.de_init()
 
 
 def verbose_print(x):
@@ -99,276 +83,6 @@ def verbose_print(x):
                 print(json.dumps(x, indent=4))
             except:
                 print(x)
-
-
-def blank_to_null(x):
-    # Converts empty string to None. Accepts dicts, lists, and tuples.
-    # This function derived from radtek @ http://stackoverflow.com/a/37079737/4109658
-    # CC Attribution-ShareAlike 3.0 https://creativecommons.org/licenses/by-sa/3.0/
-    ret = copy.deepcopy(x)
-    # Handle dictionaries, lists, and tuples. Scrub all values
-    if isinstance(x, dict):
-        for k, v in ret.items():
-            ret[k] = blank_to_null(v)
-    if isinstance(x, (list, tuple)):
-        for k, v in enumerate(ret):
-            ret[k] = blank_to_null(v)
-    # Handle None
-    if x == '':
-        ret = None
-    # Finished scrubbing
-    return ret
-
-
-def format_phone_number(number):
-    """Strips anything but digits from a phone number and removes US country code."""
-    non_digits = str.maketrans(
-        {c: None for c in ascii_letters + punctuation + whitespace})
-    number = number.translate(non_digits)
-
-    if len(number) == 11 and number[:1] == '1':
-        number = number[1:]
-
-    return number
-
-
-def strtobool(s):
-    if s is not None and s.lower() in ['true', '1', 'y', 'yes']:
-        return True
-    elif s is not None and s.lower() in ['false', '0', 'n', 'no']:
-        return False
-    else:
-        return None
-
-
-def format_app_generic(app):
-    """Supply missing fields and correct datatypes. Returns a flat dict."""
-
-    mapped = blank_to_null(app)
-
-    fields_null = ['Prefix', 'MiddleName', 'LastNamePrefix', 'Suffix', 'Nickname', 'GovernmentId', 'LegalName',
-                   'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'DemographicsEthnicity',
-                   'MaritalStatus', 'ProposedDecision', 'AppStatus', 'AppStatusDate', 'AppDecision',
-                   'AppDecisionDate', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
-                   'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status', 'Veteran',
-                   'Counselor', 'Department', 'Nontraditional', 'Population', 'AdmitDate', 'Matriculated', 'Extracurricular']
-    fields_bool = ['RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
-                   'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'Matriculated',
-                   'Extracurricular']
-    fields_int = ['Ethnicity', 'Gender', 'SMSOptIn']
-    fields_null.extend(
-        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_string']])
-    fields_null.extend(
-        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_bool']])
-    fields_null.extend(
-        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_int']])
-    fields_bool.extend(
-        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_bool']])
-    fields_int.extend(
-        ['compare_' + field for field in CONFIG['slate_upload_active']['fields_int']])
-
-    # Copy nullable strings from input to output, then fill in nulls
-    mapped.update({k: v for (k, v) in app.items() if k in fields_null})
-    mapped.update({k: None for k in fields_null if k not in app})
-
-    # Convert integers and booleans
-    mapped.update({k: int(v) for (k, v) in app.items() if k in fields_int})
-    mapped.update({k: strtobool(v)
-                   for (k, v) in app.items() if k in fields_bool})
-
-    # Probably a stub in the API
-    if 'GovernmentDateOfEntry' not in app:
-        mapped['GovernmentDateOfEntry'] = '0001-01-01T00:00:00'
-    else:
-        mapped['GovernmentDateOfEntry'] = app['GovernmentDateOfEntry']
-
-    # Pass through all other fields
-    mapped.update({k: v for (k, v) in app.items() if k not in mapped})
-
-    return mapped
-
-
-def format_app_api(app):
-    """Remap application to Recruiter/Web API format.
-
-    Keyword arguments:
-    app -- an application dict
-    """
-
-    mapped = {}
-
-    # Pass through fields
-    fields_verbatim = ['FirstName',  'LastName', 'Email', 'Campus', 'BirthDate', 'CreateDateTime',
-                       'Prefix', 'MiddleName', 'LastNamePrefix', 'Suffix', 'Nickname', 'GovernmentId', 'LegalName',
-                       'Visa', 'CitizenshipStatus', 'PrimaryCitizenship', 'SecondaryCitizenship', 'MaritalStatus',
-                       'ProposedDecision', 'Religion', 'FormerLastName', 'FormerFirstName', 'PrimaryLanguage',
-                       'CountryOfBirth', 'Disabilities', 'CollegeAttendStatus', 'Commitment', 'Status',
-                       'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican', 'RaceNativeHawaiian',
-                       'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid',
-                       'PrimaryLanguage', 'Ethnicity', 'Gender', 'YearTerm']
-    mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
-
-    # Supply empty arrays. Implementing these would require more logic.
-    fields_arr = ['Relationships', 'Activities',
-                  'EmergencyContacts', 'Education']
-    mapped.update({k: [] for k in fields_arr if k not in app})
-
-    # Nest up to ten addresses as a list of dicts
-    # "Address1Line1": "123 St" becomes "Addresses": [{"Line1": "123 St"}]
-    mapped['Addresses'] = [{k[8:]: v for (k, v) in app.items()
-                            if k[0:7] == 'Address' and int(k[7:8]) - 1 == i} for i in range(10)]
-
-    # Remove empty address dicts
-    mapped['Addresses'] = [k for k in mapped['Addresses'] if len(k) > 0]
-
-    # Supply missing keys
-    for k in mapped['Addresses']:
-        if 'Type' not in k:
-            k['Type'] = 0
-        # If any of  Line1-4 are missing, insert them with value = None
-        k.update({'Line' + str(i+1): None for i in range(4)
-                  if 'Line' + str(i+1) not in k})
-        if 'City' not in k:
-            k['City'] = None
-        if 'StateProvince' not in k:
-            k['StateProvince'] = None
-        if 'PostalCode' not in k:
-            k['PostalCode'] = None
-        if 'County' not in k:
-            k['County'] = CONFIG['defaults']['address_country']
-
-    if len([k for k in app if k[:5] == 'Phone']) > 0:
-        has_phones = True
-    else:
-        has_phones = False
-
-    if has_phones == True:
-        # Nest up to 9 phone numbers as a list of dicts.
-        # Phones should be passed in as {Phone0Number: '...', Phone0Type: 1, Phone1Number: '...', Phone1Country: '...', Phone1Type: 0}
-        # First phone in the list becomes Primary in PowerCampus (I think)
-        mapped['PhoneNumbers'] = [{k[6:]: v for (k, v) in app.items(
-        ) if k[:5] == 'Phone' and int(k[5:6]) - 1 == i} for i in range(9)]
-
-        # Remove empty dicts
-        mapped['PhoneNumbers'] = [
-            k for k in mapped['PhoneNumbers'] if 'Number' in k]
-
-        # Supply missing keys and enforce datatypes
-        for i, item in enumerate(mapped['PhoneNumbers']):
-            item['Number'] = format_phone_number(item['Number'])
-
-            if 'Type' not in item:
-                item['Type'] = CONFIG['defaults']['phone_type']
-            else:
-                item['Type'] = int(item['Type'])
-
-            if 'Country' not in item:
-                item['Country'] = CONFIG['defaults']['phone_country']
-
-    else:
-        # PowerCampus WebAPI requires Type -1 instead of a blank or null when not submitting any phones.
-        mapped['PhoneNumbers'] = [
-            {'Type': -1, 'Country': None, 'Number': None}]
-
-    # Veteran has funny logic, and  API 8.8.3 is broken (passing in 1 will write 2 into [Application].[VeteranStatus]).
-    # Impact is low because custom SQL routines will fix Veteran field once person has passed Handle Applications.
-    if app['Veteran'] is None:
-        mapped['Veteran'] = 0
-        mapped['VeteranStatus'] = False
-    else:
-        mapped['Veteran'] = int(app['Veteran'])
-        mapped['VeteranStatus'] = True
-
-    # Academic program
-    mapped['Programs'] = [{'Program': app['Program'],
-                           'Degree': app['Degree'], 'Curriculum': None}]
-
-    # GUID's
-    mapped['ApplicationNumber'] = app['aid']
-    mapped['ProspectId'] = app['pid']
-
-    return mapped
-
-
-def format_app_sql(app):
-    """Remap application to PowerCampus SQL format.
-
-    Keyword arguments:
-    app -- an application dict
-    """
-
-    mapped = {}
-
-    # Pass through fields
-    fields_verbatim = ['aid', 'PEOPLE_CODE_ID', 'GovernmentId', 'RaceAmericanIndian', 'RaceAsian', 'RaceAfricanAmerican',
-                       'RaceNativeHawaiian', 'RaceWhite', 'IsInterestedInCampusHousing', 'IsInterestedInFinancialAid', 'RaceWhite',
-                       'Ethnicity', 'DemographicsEthnicity', 'AdmitDate', 'Matriculated', 'AppStatus', 'AppStatusDate', 'AppDecision', 'AppDecisionDate',
-                       'Counselor', 'CreateDateTime', 'SMSOptIn', 'Department', 'Extracurricular', 'Nontraditional', 'Population']
-    fields_verbatim.extend([n['slate_field'] for n in CONFIG['pc_notes']])
-    fields_verbatim.extend([f['slate_field']
-                            for f in CONFIG['pc_user_defined']])
-    mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
-
-    # Gender is hardcoded into the PowerCampus Web API, but [WebServices].[spSetDemographics] has different hardcoded values.
-    gender_map = {None: 3, 0: 1, 1: 2, 2: 3}
-    mapped['GENDER'] = gender_map[app['Gender']]
-
-    mapped['ACADEMIC_YEAR'] = RM_MAPPING['AcademicTerm']['PCYearCodeValue'][app['YearTerm']]
-    mapped['ACADEMIC_TERM'] = RM_MAPPING['AcademicTerm']['PCTermCodeValue'][app['YearTerm']]
-    mapped['ACADEMIC_SESSION'] = RM_MAPPING['AcademicTerm']['PCSessionCodeValue'][app['YearTerm']]
-    # Todo: Fix inconsistency of 1-field vs 2-field mappings
-    mapped['PROGRAM'] = RM_MAPPING['AcademicLevel'][app['Program']]
-    mapped['DEGREE'] = RM_MAPPING['AcademicProgram']['PCDegreeCodeValue'][app['Degree']]
-    mapped['CURRICULUM'] = RM_MAPPING['AcademicProgram']['PCCurriculumCodeValue'][app['Degree']]
-
-    if app['CitizenshipStatus'] is not None:
-        mapped['PRIMARYCITIZENSHIP'] = RM_MAPPING['CitizenshipStatus'][app['CitizenshipStatus']]
-    else:
-        mapped['PRIMARYCITIZENSHIP'] = None
-
-    if app['CollegeAttendStatus'] is not None:
-        mapped['COLLEGE_ATTEND'] = RM_MAPPING['CollegeAttend'][app['CollegeAttendStatus']]
-    else:
-        mapped['COLLEGE_ATTEND'] = None
-
-    if app['Visa'] is not None:
-        mapped['VISA'] = RM_MAPPING['Visa'][app['Visa']]
-    else:
-        mapped['VISA'] = None
-
-    if app['Veteran'] is not None:
-        mapped['VETERAN'] = RM_MAPPING['Veteran'][str(app['Veteran'])]
-    else:
-        mapped['VETERAN'] = None
-
-    if app['SecondaryCitizenship'] is not None:
-        mapped['SECONDARYCITIZENSHIP'] = RM_MAPPING['CitizenshipStatus'][app['SecondaryCitizenship']]
-    else:
-        mapped['SECONDARYCITIZENSHIP'] = None
-
-    if app['MaritalStatus'] is not None:
-        mapped['MARITALSTATUS'] = RM_MAPPING['MaritalStatus'][app['MaritalStatus']]
-    else:
-        mapped['MARITALSTATUS'] = None
-
-    if app['PrimaryLanguage'] is not None:
-        mapped['PRIMARY_LANGUAGE'] = RM_MAPPING['Language'][app['PrimaryLanguage']]
-    else:
-        mapped['PRIMARY_LANGUAGE'] = None
-
-    if 'HomeLanguage' in app:
-        mapped['HOME_LANGUAGE'] = RM_MAPPING['Language'][app['HomeLanguage']]
-    else:
-        mapped['HOME_LANGUAGE'] = None
-
-    return mapped
-
-
-def str_digits(s):
-    """Return only digits from a string."""
-    non_digits = str.maketrans(
-        {c: None for c in ascii_letters + punctuation + whitespace})
-    return s.translate(non_digits)
 
 
 def slate_get_actions(apps_list):
@@ -471,262 +185,23 @@ def slate_post_fields(apps, config_dict):
     r.raise_for_status()
 
 
-def pc_post_api(x):
-    """Post an application to PowerCampus.
-    Return  PEOPLE_CODE_ID if application was automatically accepted or None for all other conditions.
+def slate_post_fa_checklist(upload_list):
+    '''Upload Financial Aid Checklist to Slate.'''
 
-    Keyword arguments:
-    x -- an application dict
-    """
+    if len(upload_list) > 0:
+        # Slate's Checklist Import (Financial Aid) requires tab-separated files because it's old and crusty, apparently.
+        tab = '\t'
+        slate_fa_string = 'AppID' + tab + 'Code' + tab + 'Status' + tab + 'Date'
+        for i in upload_list:
+            line = i['AppID'] + tab + \
+                str(i['Code']) + tab + i['Status'] + tab + i['Date']
+            slate_fa_string = slate_fa_string + '\n' + line
 
-    # Expose error text response from API, replace useless error message(s).
-    try:
-        r = requests.post(PC_API_URL + 'api/applications',
-                          json=x, auth=PC_API_CRED)
+        creds = (CONFIG['fa_checklist']['slate_post']['username'],
+                 CONFIG['fa_checklist']['slate_post']['password'])
+        r = requests.post(CONFIG['fa_checklist']['slate_post']['url'],
+                          data=slate_fa_string, auth=creds)
         r.raise_for_status()
-    except requests.HTTPError as e:
-        # Change newline handling so response text prints nicely in emails.
-        rtext = r.text.replace('\r\n', '\n')
-
-        if 'BadRequest Object reference not set to an instance of an object.' in rtext and 'ApplicationsController.cs:line 183' in rtext:
-            raise ValueError(CONFIG['msg_strings']['error_no_phones'], e)
-        elif r.status_code == 202 or r.status_code == 400:
-            raise ValueError(rtext)
-        else:
-            raise requests.HTTPError(rtext)
-
-    if (r.text[-25:-12] == 'New People Id'):
-        try:
-            people_code = r.text[-11:-2]
-            # Error check. After slice because leading zeros need preserved.
-            int(people_code)
-            PEOPLE_CODE_ID = 'P' + people_code
-            return PEOPLE_CODE_ID
-        except:
-            return None
-    else:
-        return None
-
-
-def pc_scan_status(x):
-    """Query the PowerCampus status of a single application and return three status indicators and PowerCampus ID number, if present.
-
-    Keyword arguments:
-    x -- an application dict
-
-    Returns:
-    ra_status -- RecruiterApplication table status (int)
-    apl_status -- Application table status (int)
-    computed_status -- Descriptive status (string)
-    pcid -- PEOPLE_CODE_ID (string)
-    """
-
-    ra_status = None
-    apl_status = None
-    computed_status = None
-    pcid = None
-
-    CURSOR.execute('EXEC [custom].[PS_selRAStatus] ?', x['aid'])
-    row = CURSOR.fetchone()
-
-    if row is not None:
-        ra_status = row.ra_status
-        apl_status = row.apl_status
-        pcid = row.PEOPLE_CODE_ID
-
-        # Determine status.
-        if row.ra_status in (0, 3, 4) and row.apl_status == 2 and pcid is not None:
-            computed_status = 'Active'
-        elif row.ra_status in (0, 3, 4) and row.apl_status == 3 and pcid is None:
-            computed_status = 'Declined'
-        elif row.ra_status in (0, 3, 4) and row.apl_status == 1 and pcid is None:
-            computed_status = 'Pending'
-        elif row.ra_status == 1 and row.apl_status is None and pcid is None:
-            computed_status = 'Required field missing.'
-        elif row.ra_status == 2 and row.apl_status is None and pcid is None:
-            computed_status = 'Required field mapping is missing.'
-        else:
-            computed_status = 'Unrecognized Status: ' + str(row.ra_status)
-
-        if CONFIG['logging']['enabled']:
-            # Write errors to external database for end-user presentation via SSRS.
-            CURSOR.execute('INSERT INTO' + CONFIG['logging']['log_table'] + """
-                ([Ref],[ApplicationNumber],[ProspectId],[FirstName],[LastName],
-                [ComputedStatus],[Notes],[RecruiterApplicationStatus],[ApplicationStatus],[PEOPLE_CODE_ID])
-            VALUES
-                (?,?,?,?,?,?,?,?,?,?)""",
-                           [x['Ref'], x['aid'], x['pid'], x['FirstName'], x['LastName'], computed_status, row.ra_errormessage, row.ra_status, row.apl_status, pcid])
-            CNXN.commit()
-
-    return ra_status, apl_status, computed_status, pcid
-
-
-def pc_get_profile(app):
-    '''Fetch ACADEMIC row data and email address from PowerCampus.
-
-     Returns:
-     found -- True/False (row exists or not)
-     registered -- True/False
-     reg_date -- Date
-     readmit -- True/False
-     withdrawn -- True/False
-     credits -- string
-     campus_email -- string (None of not registered)
-    '''
-
-    found = False
-    registered = False
-    reg_date = None
-    readmit = False
-    withdrawn = False
-    credits = '0.00'
-    campus_email = None
-
-    CURSOR.execute('EXEC [custom].[PS_selProfile] ?,?,?,?,?,?,?',
-                   app['PEOPLE_CODE_ID'],
-                   app['ACADEMIC_YEAR'],
-                   app['ACADEMIC_TERM'],
-                   app['ACADEMIC_SESSION'],
-                   app['PROGRAM'],
-                   app['DEGREE'],
-                   app['CURRICULUM'])
-    row = CURSOR.fetchone()
-
-    if row is not None:
-        found = True
-
-        if row.Registered == 'Y':
-            registered = True
-            reg_date = str(row.REG_VAL_DATE)
-            credits = str(row.CREDITS)
-
-        campus_email = row.CampusEmail
-
-        if row.COLLEGE_ATTEND == CONFIG['pc_readmit_code']:
-            readmit = True
-
-        if row.Withdrawn == 'Y':
-            withdrawn = True
-
-    return found, registered, reg_date, readmit, withdrawn, credits, campus_email
-
-
-def pc_update_demographics(app):
-    CURSOR.execute('execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
-                   app['PEOPLE_CODE_ID'],
-                   'SLATE',
-                   app['GENDER'],
-                   app['Ethnicity'],
-                   app['DemographicsEthnicity'],
-                   app['MARITALSTATUS'],
-                   app['VETERAN'],
-                   app['PRIMARYCITIZENSHIP'],
-                   app['SECONDARYCITIZENSHIP'],
-                   app['VISA'],
-                   app['RaceAfricanAmerican'],
-                   app['RaceAmericanIndian'],
-                   app['RaceAsian'],
-                   app['RaceNativeHawaiian'],
-                   app['RaceWhite'],
-                   app['PRIMARY_LANGUAGE'],
-                   app['HOME_LANGUAGE'],
-                   app['GovernmentId'])
-    CNXN.commit()
-
-
-def pc_update_academic(app):
-    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
-                   app['PEOPLE_CODE_ID'],
-                   app['ACADEMIC_YEAR'],
-                   app['ACADEMIC_TERM'],
-                   app['ACADEMIC_SESSION'],
-                   app['PROGRAM'],
-                   app['DEGREE'],
-                   app['CURRICULUM'],
-                   app['Department'],
-                   app['Nontraditional'],
-                   app['Population'],
-                   app['AdmitDate'],
-                   app['Matriculated'],
-                   app['AppStatus'],
-                   app['AppStatusDate'],
-                   app['AppDecision'],
-                   app['AppDecisionDate'],
-                   app['Counselor'],
-                   app['COLLEGE_ATTEND'],
-                   app['Extracurricular'],
-                   app['CreateDateTime'])
-    CNXN.commit()
-
-
-def pc_update_academic_key(app):
-    CURSOR.execute('exec [custom].[PS_updAcademicKey] ?, ?, ?, ?, ?, ?, ?, ?',
-                   app['PEOPLE_CODE_ID'],
-                   app['ACADEMIC_YEAR'],
-                   app['ACADEMIC_TERM'],
-                   app['ACADEMIC_SESSION'],
-                   app['PROGRAM'],
-                   app['DEGREE'],
-                   app['CURRICULUM'],
-                   app['aid'])
-    CNXN.commit()
-
-
-def pc_update_action(action):
-    """Update a Scheduled Action in PowerCampus. Expects an action dict with 'app' key containing SQL formatted app
-    {'aid': GUID, 'item': 'Transcript', 'app': {'PEOPLE_CODE_ID':...}}
-    """
-    try:
-        CURSOR.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
-                       action['app']['PEOPLE_CODE_ID'],
-                       'SLATE',
-                       action['action_id'],
-                       action['item'],
-                       action['completed'],
-                       # Only the date portion is actually used.
-                       action['create_datetime'],
-                       action['app']['ACADEMIC_YEAR'],
-                       action['app']['ACADEMIC_TERM'],
-                       action['app']['ACADEMIC_SESSION'])
-        CNXN.commit()
-    except KeyError as e:
-        raise KeyError(e, 'aid: ' + action['aid'])
-
-
-def pc_update_smsoptin(app):
-    if 'SMSOptIn' in app:
-        CURSOR.execute('exec [custom].[PS_updSMSOptIn] ?, ?, ?',
-                       app['PEOPLE_CODE_ID'], 'SLATE', app['SMSOptIn'])
-        CNXN.commit()
-
-
-def pc_update_note(app, field, office, note_type):
-    CURSOR.execute('exec [custom].[PS_insNote] ?, ?, ?, ?',
-                   app['PEOPLE_CODE_ID'], office, note_type, app[field])
-    CNXN.commit()
-
-
-def pc_update_udf(app, slate_field, pc_field):
-    CURSOR.execute('exec [custom].[PS_updUserDefined] ?, ?, ?',
-                   app['PEOPLE_CODE_ID'], pc_field, app[slate_field])
-    CNXN.commit()
-
-
-def pf_get_fachecklist(pcid, govid, appid, year, term, session):
-    """Return the PowerFAIDS missing docs list for uploading to Financial Aid Checklist."""
-    checklist = []
-    CURSOR.execute(
-        'exec [custom].[PS_selPFChecklist] ?, ?, ?, ?, ?', pcid, govid, year, term, session)
-
-    columns = [column[0] for column in CURSOR.description]
-    for row in CURSOR.fetchall():
-        checklist.append(dict(zip(columns, row)))
-
-    # Pass through the Slate Application ID
-    for doc in checklist:
-        doc['AppID'] = appid
-
-    return checklist
 
 
 def main_sync(pid=None):
@@ -763,12 +238,13 @@ def main_sync(pid=None):
         'Clean up app data from Slate (datatypes, supply nulls, etc.)')
     for k, v in apps.items():
         CURRENT_RECORD = k
-        apps[k] = format_app_generic(v)
+        apps[k] = format_app_generic(v, CONFIG['slate_upload_active'])
 
     verbose_print('Check each app\'s status flags/PCID in PowerCampus')
     for k, v in apps.items():
         CURRENT_RECORD = k
-        status_ra, status_app, status_calc, pcid = pc_scan_status(v)
+        status_ra, status_app, status_calc, pcid = ps_powercampus.scan_status(
+            v)
         apps[k].update({'status_ra': status_ra, 'status_app': status_app,
                         'status_calc': status_calc})
         apps[k]['PEOPLE_CODE_ID'] = pcid
@@ -778,21 +254,16 @@ def main_sync(pid=None):
     for k, v in apps.items():
         CURRENT_RECORD = k
         if (v['status_ra'] == None) or (v['status_ra'] in (1, 2) and v['status_app'] is None):
-            pcid = pc_post_api(format_app_api(v))
+            pcid = ps_powercampus.post_api(format_app_api(
+                v, CONFIG['defaults']), MSG_STRINGS)
             apps[k]['PEOPLE_CODE_ID'] = pcid
 
             # Rescan status
-            status_ra, status_app, status_calc, pcid = pc_scan_status(v)
+            status_ra, status_app, status_calc, pcid = ps_powercampus.scan_status(
+                v)
             apps[k].update({'status_ra': status_ra, 'status_app': status_app,
                             'status_calc': status_calc})
             apps[k]['PEOPLE_CODE_ID'] = pcid
-
-    # verbose_print('Rescan statuses in PowerCampus')
-    # for k, v in apps.items():
-    #     status_ra, status_app, status_calc, pcid = pc_scan_status(v)
-    #     apps[k].update({'status_ra': status_ra, 'status_app': status_app,
-    #                     'status_calc': status_calc})
-    #     apps[k]['PEOPLE_CODE_ID'] = pcid
 
     verbose_print(
         'Update existing applications in PowerCampus and extract information')
@@ -800,28 +271,29 @@ def main_sync(pid=None):
         CURRENT_RECORD = k
         if v['status_calc'] == 'Active':
             # Transform to PowerCampus format
-            app_pc = format_app_sql(v)
+            app_pc = format_app_sql(v, RM_MAPPING, CONFIG)
 
             # Execute update sprocs
-            pc_update_demographics(app_pc)
-            pc_update_academic(app_pc)
-            pc_update_smsoptin(app_pc)
+            ps_powercampus.update_demographics(app_pc)
+            ps_powercampus.update_academic(app_pc)
+            ps_powercampus.update_smsoptin(app_pc)
             if CONFIG['pc_update_custom_academickey'] == True:
-                pc_update_academic_key(app_pc)
+                ps_powercampus.update_academic_key(app_pc)
 
             # Update any PowerCampus Notes defined in config
             for note in CONFIG['pc_notes']:
                 if note['slate_field'] in app_pc and len(app_pc[note['slate_field']]) > 0:
-                    pc_update_note(
+                    ps_powercampus.update_note(
                         app_pc, note['slate_field'], note['office'], note['note_type'])
 
             # Update any PowerCampus User Defined fields defined in config
             for udf in CONFIG['pc_user_defined']:
                 if udf['slate_field'] in app_pc and len(app_pc[udf['slate_field']]) > 0:
-                    pc_update_udf(app_pc, udf['slate_field'], udf['pc_field'])
+                    ps_powercampus.update_udf(
+                        app_pc, udf['slate_field'], udf['pc_field'])
 
             # Collect information
-            found, registered, reg_date, readmit, withdrawn, credits, campus_email = pc_get_profile(
+            found, registered, reg_date, readmit, withdrawn, credits, campus_email = ps_powercampus.get_profile(
                 app_pc)
             apps[k].update({'found': found, 'registered': registered, 'reg_date': reg_date, 'readmit': readmit,
                             'withdrawn': withdrawn, 'credits': credits, 'campus_email': campus_email})
@@ -838,8 +310,9 @@ def main_sync(pid=None):
         for action in actions_list:
             # Lookup the app each action is associated with; we need PCID and YTS
             # Nest SQL version of app underneath action
-            action['app'] = format_app_sql(apps[action['aid']])
-            pc_update_action(action)
+            action['app'] = format_app_sql(
+                apps[action['aid']], RM_MAPPING, CONFIG)
+            ps_powercampus.update_action(action)
 
     verbose_print('Upload passive fields back to Slate')
     slate_post_fields(apps, CONFIG['slate_upload_passive'])
@@ -852,32 +325,19 @@ def main_sync(pid=None):
     if CONFIG['fa_checklist']['enabled'] == True:
         verbose_print('Collect Financial Aid checklist and upload to Slate')
         slate_upload_list = []
-        slate_upload_fields = {'AppID', 'Code', 'Status', 'Date'}
+        # slate_upload_fields = {'AppID', 'Code', 'Status', 'Date'}
 
         for k, v in apps.items():
             CURRENT_RECORD = k
             if v['status_calc'] == 'Active':
                 # Transform to PowerCampus format
-                app_pc = format_app_sql(v)
+                app_pc = format_app_sql(v, RM_MAPPING, CONFIG)
 
-                fa_checklists = pf_get_fachecklist(
+                fa_checklists = ps_powercampus.pf_get_fachecklist(
                     app_pc['PEOPLE_CODE_ID'], v['GovernmentId'], v['AppID'], app_pc['ACADEMIC_YEAR'], app_pc['ACADEMIC_TERM'], app_pc['ACADEMIC_SESSION'])
 
                 slate_upload_list = slate_upload_list + fa_checklists
 
-        if len(slate_upload_list) > 0:
-            # Slate's Checklist Import (Financial Aid) requires tab-separated files because it's old and crusty, apparently.
-            tab = '\t'
-            slate_fa_string = 'AppID' + tab + 'Code' + tab + 'Status' + tab + 'Date'
-            for i in slate_upload_list:
-                line = i['AppID'] + tab + \
-                    str(i['Code']) + tab + i['Status'] + tab + i['Date']
-                slate_fa_string = slate_fa_string + '\n' + line
-
-            creds = (CONFIG['fa_checklist']['slate_post']['username'],
-                     CONFIG['fa_checklist']['slate_post']['password'])
-            r = requests.post(CONFIG['fa_checklist']['slate_post']['url'],
-                              data=slate_fa_string, auth=creds)
-            r.raise_for_status()
+        slate_post_fa_checklist(slate_upload_list)
 
     return MSG_STRINGS['sync_done']
