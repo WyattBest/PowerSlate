@@ -1,6 +1,6 @@
 import requests
+import json
 import pyodbc
-from ps_core import verbose_print
 
 
 def init(config):
@@ -35,6 +35,18 @@ def init(config):
 def de_init():
     # Clean up connections.
     CNXN.close()  # SQL
+
+
+def verbose_print(x):
+    """Attempt to print JSON without altering it, serializable objects as JSON, and anything else as default."""
+    if CONFIG['console_verbose'] and len(x) > 0:
+        if isinstance(x, str):
+            print(x)
+        else:
+            try:
+                print(json.dumps(x, indent=4))
+            except:
+                print(x)
 
 
 def post_api(x, cfg_strings, api_url, api_cred):
@@ -276,6 +288,7 @@ def update_udf(app, slate_field, pc_field):
     CURSOR.execute('exec [custom].[PS_updUserDefined] ?, ?, ?',
                    app['PEOPLE_CODE_ID'], pc_field, app[slate_field])
     CNXN.commit()
+
 
 def pf_get_fachecklist(pcid, govid, appid, year, term, session):
     """Return the PowerFAIDS missing docs list for uploading to Financial Aid Checklist."""

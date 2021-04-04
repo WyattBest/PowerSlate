@@ -1,6 +1,7 @@
 import copy
 from string import ascii_letters, punctuation, whitespace
-import ps_fields
+import ps_models
+
 
 def format_blank_to_null(x):
     # Converts empty string to None. Accepts dicts, lists, and tuples.
@@ -54,11 +55,12 @@ def format_app_generic(app, cfg_fields):
 
     mapped = format_blank_to_null(app)
 
-    fields_null = [k for (k, v) in ps_fields.fields.items()
+    fields_null = [k for (k, v) in ps_models.fields.items()
                    if v['supply_null'] == True]
-    fields_bool = [k for (k, v) in ps_fields.fields.items()
+    fields_bool = [k for (k, v) in ps_models.fields.items()
                    if v['type'] == bool]
-    fields_int = [k for (k, v) in ps_fields.fields.items() if v['type'] == bool]
+    fields_int = [k for (k, v) in ps_models.fields.items()
+                  if v['type'] == bool]
     fields_null.extend(
         ['compare_' + field for field in cfg_fields['fields_string']])
     fields_null.extend(
@@ -101,7 +103,7 @@ def format_app_api(app, cfg_defaults):
     mapped = {}
 
     # Pass through fields
-    fields_verbatim = [k for (k, v) in ps_fields.fields.items()
+    fields_verbatim = [k for (k, v) in ps_models.fields.items()
                        if v['api_verbatim'] == True]
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
@@ -198,7 +200,7 @@ def format_app_sql(app, mapping, config):
 
     # Pass through fields
     fields_verbatim = [
-        k for (k, v) in ps_fields.fields.items() if v['sql_verbatim'] == True]
+        k for (k, v) in ps_models.fields.items() if v['sql_verbatim'] == True]
     fields_verbatim.extend([n['slate_field'] for n in config['pc_notes']])
     fields_verbatim.extend([f['slate_field']
                             for f in config['pc_user_defined']])
