@@ -2,7 +2,7 @@
 An integration between PowerCampus and Slate (hence the name). Admissions applications are transmitted from PowerCampus to Slate and some data from PowerCampus is transmitted back to Slate.
 
 ## Requirements
-Python 3.x is required, along with a few packages available via pip. There are no known issues between different package versions.
+Python 3.9+ is required, along with a few packages available via pip. There are no known issues between different package versions.
 
 ## Usage
 ### Configuration
