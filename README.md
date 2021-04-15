@@ -15,5 +15,3 @@ Example for Windows PowerShell : `python.exe .\sync_ondemand.py config_sample.js
 
 ### User-Trigged Sync
 Execute `sync_http.py` and pass the name of the configuration file as an argument. It will start a webserver on port 8887 that you can link to from within Slate. The link should contain the GUID of the person as the parameter `pid`. Example: `http://server:8887/?pid=84f2060e-5d9d-437b-b5be-9558679edac4`
-
-[run_http_server.ps1](run_http_server.ps1) is provided as an example that can easily be executed by Windows Task Scheduler.
