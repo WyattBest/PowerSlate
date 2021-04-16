@@ -62,6 +62,9 @@ def post_api(x, cfg_strings):
         r = requests.post(PC_API_URL + 'api/applications',
                           json=x, auth=PC_API_CRED)
         r.raise_for_status()
+        # The API returns 202 for mapping errors. Technically 202 is appropriate, but it should bubble up to the user.
+        if r.status_code == 202:
+            raise requests.HTTPError
     except requests.HTTPError as e:
         # Change newline handling so response text prints nicely in emails.
         rtext = r.text.replace('\r\n', '\n')
