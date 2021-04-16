@@ -444,7 +444,7 @@ BEGIN
 				@Matriculated = 1
 				AND (
 					COALESCE(MATRIC, '') <> 'Y'
-					AND MATRIC_DATE <> @MatricDate
+					OR MATRIC_DATE <> @MatricDate
 					OR MATRIC_DATE IS NULL
 					OR MATRIC_YEAR <> @Year
 					OR MATRIC_YEAR IS NULL
