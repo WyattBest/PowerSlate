@@ -2,12 +2,12 @@ import sys
 import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib
-import pscore
+import ps_core
 import socket
 import pyodbc
 
 
-CONFIG = pscore.init_config(sys.argv[1])
+CONFIG = ps_core.init(sys.argv[1])
 
 
 def emit_traceback():
@@ -32,7 +32,7 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         # Check for expected HTTP parameter, then sync that particular person record
         try:
             if 'pid' in q:
-                message = pscore.main_sync(q['pid'][0])
+                message = ps_core.main_sync(q['pid'][0])
             else:
                 message = 'Error: Record not found.'
         except pyodbc.OperationalError as ex:
@@ -42,8 +42,8 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
                 # Attempt to reconnect and try one more time before returning an error to the user
                 print('Attempting to recover from SQL state ' + str(sqlstate))
                 try:
-                    CONFIG = pscore.init_config(sys.argv[1])
-                    message = pscore.main_sync(q['pid'][0])
+                    CONFIG = ps_core.init(sys.argv[1])
+                    message = ps_core.main_sync(q['pid'][0])
                 except Exception:
                     message = emit_traceback()
             else:

@@ -5,7 +5,7 @@ import traceback
 import smtplib
 from email.mime.text import MIMEText
 from urllib.parse import urlparse
-import pscore
+import ps_core
 
 
 
@@ -13,13 +13,13 @@ import pscore
 # Name of configuration is file passed via command-line
 try:
     print('Start sync at ' + str(datetime.datetime.now()))
-    pscore.init_config(sys.argv[1])
-    pscore.main_sync()
+    ps_core.init(sys.argv[1])
+    ps_core.main_sync()
     print('Done at ' + str(datetime.datetime.now()))
 except Exception as e:
     # There's got to be a better way to handle this.
     try:
-        current_record = pscore.CURRENT_RECORD
+        current_record = ps_core.CURRENT_RECORD
     except AttributeError:
         current_record = None
 

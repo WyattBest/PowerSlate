@@ -34,6 +34,7 @@ GO
 --							If @AppDecision is an accepted decision, admit fields will be populated. Admit date will be @AdmitdDate.
 -- 2021-04-03 Wyatt Best:	Fix missing PDC filters in some update statements. Could have caused multiple records to be affected if student had multiple applications in same YTS.
 --							Change primary flag logic to be more conservative. Rewrote some statements for efficiency.
+-- 2021-04-05 Wyatt Best:	Added switch to control whether @Population will overwrite existing values. Used by MCNY.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -61,6 +62,7 @@ BEGIN
 
 	DECLARE @Today DATETIME = dbo.fnMakeDate(GETDATE())
 		,@Now DATETIME = dbo.fnMakeTime(GETDATE())
+		,@OverwritePopulation BIT = 1
 
 	--Setup for Matric and Admit field groups
 	IF @Matriculated = 1
@@ -330,9 +332,20 @@ BEGIN
 		AND DEGREE = @Degree
 		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
+		AND @Population IS NOT NULL
 		AND (
-			[POPULATION] <> @Population
-			OR [POPULATION] IS NULL
+			@OverwritePopulation = 0
+			AND (
+				[POPULATION] IS NULL
+				OR [POPULATION] = ''
+				)
+			OR (
+				@OverwritePopulation = 1
+				AND (
+					[POPULATION] <> @Population
+					OR [POPULATION] IS NULL
+					)
+				)
 			)
 
 	--Update ADMIT fields if needed
@@ -349,7 +362,7 @@ BEGIN
 			END
 		,ADMIT_SESSION = CASE @Admitted
 			WHEN 1
-				THEN @Term
+				THEN @Session
 			ELSE NULL
 			END
 		,ADMIT_DATE = CASE @Admitted
@@ -409,7 +422,7 @@ BEGIN
 			END
 		,MATRIC_SESSION = CASE @Matriculated
 			WHEN 1
-				THEN @Term
+				THEN @Session
 			ELSE NULL
 			END
 		,MATRIC_DATE = CASE @Matriculated
@@ -431,7 +444,7 @@ BEGIN
 				@Matriculated = 1
 				AND (
 					COALESCE(MATRIC, '') <> 'Y'
-					AND MATRIC_DATE <> @MatricDate
+					OR MATRIC_DATE <> @MatricDate
 					OR MATRIC_DATE IS NULL
 					OR MATRIC_YEAR <> @Year
 					OR MATRIC_YEAR IS NULL
@@ -453,27 +466,6 @@ BEGIN
 				)
 			)
 
-	--AND (
-	--	(
-	--		CASE MATRIC
-	--			WHEN 'Y'
-	--				THEN 1
-	--			WHEN 'N'
-	--				THEN 0
-	--			ELSE NULL
-	--			END <> @Matriculated
-	--		)
-	--	OR (
-	--		(
-	--			MATRIC_YEAR <> @Year
-	--			AND MATRIC_TERM <> @Term
-	--			AND MATRIC_SESSION <> @Session
-	--			AND MATRIC_DATE <> @MatricDate
-	--			)
-	--		AND @Matriculated = 1
-	--		)
-	--	)
-	--AND @Matriculated IS NOT NULL
 	--Update COUNSELOR if needed
 	UPDATE ACADEMIC
 	SET COUNSELOR = @Counselor
