@@ -4,7 +4,14 @@ USE PowerCampusMapper
 -- If you pass values from Slate in PDC format, like DEGREE/CURRICULUM or similar, you can automatically generate
 -- the XML for recruiterMapping.xml without having to use the GUI tool.
 --
---Should this script automatically insert new items from ProgramOfStudy into Datatel_academicprogramExtensionBase?
+-- === List of Output Sections
+-- 1. Programs likely missing from Datatel_academicprogramExtensionBase. See Control Switch.
+-- 2. XML to paste into AcademicProgram section of recruiterMapping.xml
+-- 3. Programs for which XML couldn't be generated. Likely exists in Datatel_academicprogramExtensionBase but not ProgramOfStudy.
+--
+-- === Control Switch
+-- Should this script automatically insert new items from ProgramOfStudy into Datatel_academicprogramExtensionBase?
+-- Default is 0 (off).
 DECLARE @PopulateDatatel_academicprogramExtensionBase BIT = 0
 
 SELECT DISTINCT --CP.LONG_DESC [CP.LONG_DESC]
@@ -46,9 +53,6 @@ BEGIN
 			FROM Datatel_academicprogramExtensionBase
 			)
 END
-
-SELECT *
-FROM #POS
 
 SELECT *
 	,'<row RCCodeValue="' + Datatel_abbreviation + '" RCDesc="' + Datatel_name + '" PCDegreeCodeValue="' + (
@@ -95,6 +99,16 @@ SELECT *
 				ORDER BY @@rowcount offset 1 rows FETCH NEXT 1 rows ONLY
 				)
 		) + '" />' [xml]
+INTO #XML
 FROM Datatel_academicprogramExtensionBase D
 
+SELECT [xml]
+FROM #XML
+WHERE [xml] IS NOT NULL
+
+SELECT *
+FROM #XML
+WHERE [xml] IS NULL
+
 DROP TABLE #POS
+	,#XML
