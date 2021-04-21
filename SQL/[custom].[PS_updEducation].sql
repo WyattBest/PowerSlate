@@ -142,22 +142,54 @@ BEGIN
 			)
 		SET @RecordFound = 1
 
-	--Update existing record preserving existing values if incoming parameter is NULL
+	--Update existing record preserving existing values if incoming parameter is NULL/0
 	IF @RecordFound = 1
 	BEGIN
 		UPDATE EDUCATION
-		SET GRADEPOINT_AVERAGE = COALESCE(@GPA, GRADEPOINT_AVERAGE)
+		SET GRADEPOINT_AVERAGE = CASE 
+				WHEN @GPA = 0
+					THEN GRADEPOINT_AVERAGE
+				ELSE @GPA
+				END
 			,[START_DATE] = COALESCE(@StartDate, [START_DATE])
 			,END_DATE = COALESCE(@EndDate, END_DATE)
 			,HONORS = COALESCE(@Honors, HONORS)
 			,TRANSCRIPT_DATE = COALESCE(@TranscriptDate, TRANSCRIPT_DATE)
-			,TRANSFER_CREDITS = COALESCE(@TransferCredits, TRANSFER_CREDITS)
-			,FIN_AID_AMOUNT = COALESCE(@FinAidAmount, FIN_AID_AMOUNT)
-			,UNWEIGHTED_GPA = COALESCE(@GPAUnweighted, UNWEIGHTED_GPA)
-			,UNWEIGHTED_GPA_SCALE = COALESCE(@GPAUnweightedScale, UNWEIGHTED_GPA_SCALE)
-			,WEIGHTED_GPA = COALESCE(@GPAWeighted, WEIGHTED_GPA)
-			,WEIGHTED_GPA_SCALE = COALESCE(@GPAWeightedScale, WEIGHTED_GPA_SCALE)
-			,QUARTILE = COALESCE(@Quartile, QUARTILE)
+			,TRANSFER_CREDITS = CASE 
+				WHEN @TransferCredits = 0
+					THEN TRANSFER_CREDITS
+				ELSE @TransferCredits
+				END
+			,FIN_AID_AMOUNT = CASE 
+				WHEN @FinAidAmount = 0
+					THEN FIN_AID_AMOUNT
+				ELSE @FinAidAmount
+				END
+			,UNWEIGHTED_GPA = CASE 
+				WHEN @GPAUnweighted = 0
+					THEN UNWEIGHTED_GPA
+				ELSE @GPAUnweighted
+				END
+			,UNWEIGHTED_GPA_SCALE = CASE 
+				WHEN @GPAUnweightedScale = 0
+					THEN UNWEIGHTED_GPA_SCALE
+				ELSE @GPAUnweightedScale
+				END
+			,WEIGHTED_GPA = CASE 
+				WHEN @GPAWeighted = 0
+					THEN WEIGHTED_GPA
+				ELSE @GPAWeighted
+				END
+			,WEIGHTED_GPA_SCALE = CASE 
+				WHEN @GPAWeightedScale = 0
+					THEN WEIGHTED_GPA_SCALE
+				ELSE @GPAWeightedScale
+				END
+			,QUARTILE = CASE 
+				WHEN @Quartile = 0
+					THEN QUARTILE
+				ELSE @Quartile
+				END
 			,REVISION_DATE = @Today
 			,REVISION_TIME = @Now
 			,REVISION_OPID = 'SLATE'
