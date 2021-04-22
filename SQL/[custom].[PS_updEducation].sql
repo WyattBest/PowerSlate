@@ -15,24 +15,24 @@ GO
 --
 -- 2021-04-00 Wyatt Best:	
 -- =============================================
-ALTER PROCEDURE [custom].[PS_updEducation] @PCID NVARCHAR(10)
+CREATE PROCEDURE [custom].[PS_updEducation] @PCID NVARCHAR(10)
 	,@OrgIdentifier NVARCHAR(6)
-	,@Degree NVARCHAR(6) = ''
-	,@Curriculum NVARCHAR(6) = ''
-	,@GPA NUMERIC(7, 4) = 0
-	,@GPAUnweighted NUMERIC(8, 4) = 0
-	,@GPAUnweightedScale NUMERIC(8, 4) = 0
-	,@GPAWeighted NUMERIC(8, 4) = 0
-	,@GPAWeightedScale NUMERIC(8, 4) = 0
-	,@StartDate DATE = NULL
-	,@EndDate DATE = NULL
-	,@Honors NVARCHAR(6) = NULL
-	,@TranscriptDate DATE = NULL
-	,@ClassRank INT = NULL
-	,@ClassSize INT = NULL
-	,@TransferCredits NUMERIC(8, 3) = 0
-	,@FinAidAmount NUMERIC(18, 6) = 0
-	,@Quartile NUMERIC(5, 2) = 0
+	,@Degree NVARCHAR(6)
+	,@Curriculum NVARCHAR(6)
+	,@GPA NUMERIC(7, 4)
+	,@GPAUnweighted NUMERIC(8, 4)
+	,@GPAUnweightedScale NUMERIC(8, 4)
+	,@GPAWeighted NUMERIC(8, 4)
+	,@GPAWeightedScale NUMERIC(8, 4)
+	,@StartDate DATE
+	,@EndDate DATE
+	,@Honors NVARCHAR(6)
+	,@TranscriptDate DATE
+	,@ClassRank INT
+	,@ClassSize INT
+	,@TransferCredits NUMERIC(8, 3)
+	,@FinAidAmount NUMERIC(18, 6)
+	,@Quartile NUMERIC(5, 2)
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -52,17 +52,9 @@ BEGIN
 		RETURN
 	END
 
-	--Set parameter defaults (maybe pyodbc will support named parameters someday, but till then Python will pass NULLs)
+	--Set defaults. Other parameters have defaults that might be set later, but these are never useful as NULL
 	SET @Degree = ISNULL(@Degree, '')
 	SET @Curriculum = ISNULL(@Curriculum, '')
-	SET @GPA = ISNULL(@GPA, 0)
-	SET @GPAUnweighted = ISNULL(@GPAUnweighted, 0)
-	SET @GPAUnweightedScale = ISNULL(@GPAUnweightedScale, 0)
-	SET @GPAWeighted = ISNULL(@GPAWeighted, 0)
-	SET @GPAWeightedScale = ISNULL(@GPAWeightedScale, 0)
-	SET @TransferCredits = ISNULL(@TransferCredits, 0)
-	SET @FinAidAmount = ISNULL(@FinAidAmount, 0)
-	SET @Quartile = ISNULL(@Quartile, 0)
 
 	--Error check
 	IF (
@@ -151,54 +143,23 @@ BEGIN
 				AND DEGREE = @Degree
 				AND CURRICULUM = @Curriculum
 			)
-		--Update existing record preserving existing values if incoming parameter is NULL/0
+	BEGIN
+		--Update existing record preserving existing values if incoming parameter is NULL
 		UPDATE EDUCATION
-		SET GRADEPOINT_AVERAGE = CASE 
-				WHEN @GPA = 0
-					THEN GRADEPOINT_AVERAGE
-				ELSE @GPA
-				END
+		SET GRADEPOINT_AVERAGE = COALESCE(@GPA, GRADEPOINT_AVERAGE)
 			,[START_DATE] = COALESCE(@StartDate, [START_DATE])
 			,END_DATE = COALESCE(@EndDate, END_DATE)
 			,HONORS = COALESCE(@Honors, HONORS)
 			,TRANSCRIPT_DATE = COALESCE(@TranscriptDate, TRANSCRIPT_DATE)
 			,CLASS_RANK = COALESCE(@ClassRank, CLASS_RANK)
 			,CLASS_SIZE = COALESCE(@ClassSize, CLASS_SIZE)
-			,TRANSFER_CREDITS = CASE 
-				WHEN @TransferCredits = 0
-					THEN TRANSFER_CREDITS
-				ELSE @TransferCredits
-				END
-			,FIN_AID_AMOUNT = CASE 
-				WHEN @FinAidAmount = 0
-					THEN FIN_AID_AMOUNT
-				ELSE @FinAidAmount
-				END
-			,UNWEIGHTED_GPA = CASE 
-				WHEN @GPAUnweighted = 0
-					THEN UNWEIGHTED_GPA
-				ELSE @GPAUnweighted
-				END
-			,UNWEIGHTED_GPA_SCALE = CASE 
-				WHEN @GPAUnweightedScale = 0
-					THEN UNWEIGHTED_GPA_SCALE
-				ELSE @GPAUnweightedScale
-				END
-			,WEIGHTED_GPA = CASE 
-				WHEN @GPAWeighted = 0
-					THEN WEIGHTED_GPA
-				ELSE @GPAWeighted
-				END
-			,WEIGHTED_GPA_SCALE = CASE 
-				WHEN @GPAWeightedScale = 0
-					THEN WEIGHTED_GPA_SCALE
-				ELSE @GPAWeightedScale
-				END
-			,QUARTILE = CASE 
-				WHEN @Quartile = 0
-					THEN QUARTILE
-				ELSE @Quartile
-				END
+			,TRANSFER_CREDITS = COALESCE(@TransferCredits, TRANSFER_CREDITS)
+			,FIN_AID_AMOUNT = COALESCE(@FinAidAmount, FIN_AID_AMOUNT)
+			,UNWEIGHTED_GPA = COALESCE(@GPAUnweighted, UNWEIGHTED_GPA)
+			,UNWEIGHTED_GPA_SCALE = COALESCE(@GPAUnweightedScale, UNWEIGHTED_GPA_SCALE)
+			,WEIGHTED_GPA = COALESCE(@GPAWeighted, WEIGHTED_GPA)
+			,WEIGHTED_GPA_SCALE = COALESCE(@GPAWeightedScale, WEIGHTED_GPA_SCALE)
+			,QUARTILE = COALESCE(@Quartile, QUARTILE)
 			,REVISION_DATE = @Today
 			,REVISION_TIME = @Now
 			,REVISION_OPID = 'SLATE'
@@ -226,54 +187,34 @@ BEGIN
 				
 				EXCEPT
 				
-				SELECT CASE 
-						WHEN @GPA = 0
-							THEN GRADEPOINT_AVERAGE
-						ELSE @GPA
-						END
-					,COALESCE(@StartDate, [START_DATE])
-					,COALESCE(@EndDate, END_DATE)
-					,COALESCE(@Honors, HONORS)
-					,COALESCE(@TranscriptDate, TRANSCRIPT_DATE)
-					,COALESCE(@ClassRank, CLASS_RANK)
-					,COALESCE(@ClassSize, CLASS_SIZE)
-					,CASE 
-						WHEN @TransferCredits = 0
-							THEN TRANSFER_CREDITS
-						ELSE @TransferCredits
-						END
-					,CASE 
-						WHEN @FinAidAmount = 0
-							THEN FIN_AID_AMOUNT
-						ELSE @FinAidAmount
-						END
-					,CASE 
-						WHEN @GPAUnweighted = 0
-							THEN UNWEIGHTED_GPA
-						ELSE @GPAUnweighted
-						END
-					,CASE 
-						WHEN @GPAUnweightedScale = 0
-							THEN UNWEIGHTED_GPA_SCALE
-						ELSE @GPAUnweightedScale
-						END
-					,CASE 
-						WHEN @GPAWeighted = 0
-							THEN WEIGHTED_GPA
-						ELSE @GPAWeighted
-						END
-					,CASE 
-						WHEN @GPAWeightedScale = 0
-							THEN WEIGHTED_GPA_SCALE
-						ELSE @GPAWeightedScale
-						END
-					,CASE 
-						WHEN @Quartile = 0
-							THEN QUARTILE
-						ELSE @Quartile
-						END
+				SELECT GRADEPOINT_AVERAGE = COALESCE(@GPA, GRADEPOINT_AVERAGE)
+					,[START_DATE] = COALESCE(@StartDate, [START_DATE])
+					,END_DATE = COALESCE(@EndDate, END_DATE)
+					,HONORS = COALESCE(@Honors, HONORS)
+					,TRANSCRIPT_DATE = COALESCE(@TranscriptDate, TRANSCRIPT_DATE)
+					,CLASS_RANK = COALESCE(@ClassRank, CLASS_RANK)
+					,CLASS_SIZE = COALESCE(@ClassSize, CLASS_SIZE)
+					,TRANSFER_CREDITS = COALESCE(@TransferCredits, TRANSFER_CREDITS)
+					,FIN_AID_AMOUNT = COALESCE(@FinAidAmount, FIN_AID_AMOUNT)
+					,UNWEIGHTED_GPA = COALESCE(@GPAUnweighted, UNWEIGHTED_GPA)
+					,UNWEIGHTED_GPA_SCALE = COALESCE(@GPAUnweightedScale, UNWEIGHTED_GPA_SCALE)
+					,WEIGHTED_GPA = COALESCE(@GPAWeighted, WEIGHTED_GPA)
+					,WEIGHTED_GPA_SCALE = COALESCE(@GPAWeightedScale, WEIGHTED_GPA_SCALE)
+					,QUARTILE = COALESCE(@Quartile, QUARTILE)
 				)
+	END
 	ELSE
+	BEGIN
+		--Set defaults
+		SET @GPA = ISNULL(@GPA, 0)
+		SET @GPAUnweighted = ISNULL(@GPAUnweighted, 0)
+		SET @GPAUnweightedScale = ISNULL(@GPAUnweightedScale, 0)
+		SET @GPAWeighted = ISNULL(@GPAWeighted, 0)
+		SET @GPAWeightedScale = ISNULL(@GPAWeightedScale, 0)
+		SET @TransferCredits = ISNULL(@TransferCredits, 0)
+		SET @FinAidAmount = ISNULL(@FinAidAmount, 0)
+		SET @Quartile = ISNULL(@Quartile, 0)
+
 		--Insert new record
 		INSERT INTO [dbo].[EDUCATION] (
 			[PEOPLE_CODE]
@@ -335,6 +276,7 @@ BEGIN
 			,@GPAWeighted [WEIGHTED_GPA]
 			,@GPAWeightedScale [WEIGHTED_GPA_SCALE]
 			,@Quartile [QUARTILE]
+	END
 END
 GO
 
