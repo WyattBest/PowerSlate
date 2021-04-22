@@ -11,13 +11,11 @@ GO
 -- =============================================
 -- Author:		Wyatt Best
 -- Create date: 2021-04-20
--- Description:	Updates Status and Decision code for application from Slate.
---				Sets ACADEMIC_FLAG if needed (an API defect).
---				Sets PRIMARY_FLAG
+-- Description:	Updates or inserts an EDUCATION row. Tried to leave existing values alone if input not specified.
 --
 -- 2021-04-00 Wyatt Best:	
 -- =============================================
-CREATE PROCEDURE [custom].[PS_updEducation] @PCID NVARCHAR(10)
+ALTER PROCEDURE [custom].[PS_updEducation] @PCID NVARCHAR(10)
 	,@OrgIdentifier NVARCHAR(6)
 	,@Degree NVARCHAR(6) = ''
 	,@Curriculum NVARCHAR(6) = ''
@@ -26,9 +24,9 @@ CREATE PROCEDURE [custom].[PS_updEducation] @PCID NVARCHAR(10)
 	,@GPAUnweightedScale NUMERIC(8, 4) = 0
 	,@GPAWeighted NUMERIC(8, 4) = 0
 	,@GPAWeightedScale NUMERIC(8, 4) = 0
-	,@StartDate DATE NULL
-	,@EndDate DATE NULL
-	,@Honors NVARCHAR(6) = NULL --Code table
+	,@StartDate DATE = NULL
+	,@EndDate DATE = NULL
+	,@Honors NVARCHAR(6) = NULL
 	,@TranscriptDate DATE = NULL
 	,@ClassRank INT = NULL
 	,@ClassSize INT = NULL
@@ -39,15 +37,12 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
-	DECLARE @Today DATETIME = dbo.fnMakeDate(GETDATE())
-		,@Now DATETIME = dbo.fnMakeTime(GETDATE())
-		--Attempt to locate the org
-		,@OrgCodeId NVARCHAR(10) = (
+	--Attempt to locate the org
+	DECLARE @OrgCodeId NVARCHAR(10) = (
 			SELECT ORG_CODE_ID
 			FROM ORGANIZATION
 			WHERE ORG_IDENTIFIER = @OrgIdentifier
 			)
-		,@RecordFound BIT = 0
 
 	--Send flag and quit if Org not found
 	IF @OrgCodeId IS NULL
@@ -56,6 +51,18 @@ BEGIN
 
 		RETURN
 	END
+
+	--Set parameter defaults (maybe pyodbc will support named parameters someday, but till then Python will pass NULLs)
+	SET @Degree = ISNULL(@Degree, '')
+	SET @Curriculum = ISNULL(@Curriculum, '')
+	SET @GPA = ISNULL(@GPA, 0)
+	SET @GPAUnweighted = ISNULL(@GPAUnweighted, 0)
+	SET @GPAUnweightedScale = ISNULL(@GPAUnweightedScale, 0)
+	SET @GPAWeighted = ISNULL(@GPAWeighted, 0)
+	SET @GPAWeightedScale = ISNULL(@GPAWeightedScale, 0)
+	SET @TransferCredits = ISNULL(@TransferCredits, 0)
+	SET @FinAidAmount = ISNULL(@FinAidAmount, 0)
+	SET @Quartile = ISNULL(@Quartile, 0)
 
 	--Error check
 	IF (
@@ -76,7 +83,7 @@ BEGIN
 	END
 
 	IF (
-			@Degree IS NOT NULL
+			@Degree <> ''
 			AND NOT EXISTS (
 				SELECT *
 				FROM CODE_DEGREE
@@ -95,7 +102,7 @@ BEGIN
 	END
 
 	IF (
-			@Curriculum IS NOT NULL
+			@Curriculum <> ''
 			AND NOT EXISTS (
 				SELECT *
 				FROM CODE_CURRICULUM
@@ -132,19 +139,19 @@ BEGIN
 		RETURN
 	END
 
+	DECLARE @Today DATETIME = dbo.fnMakeDate(GETDATE())
+		,@Now DATETIME = dbo.fnMakeTime(GETDATE())
+
 	--Check whether record already exists by clustered primary key
 	IF EXISTS (
 			SELECT *
 			FROM EDUCATION
 			WHERE PEOPLE_CODE_ID = @PCID
+				AND ORG_CODE_ID = @OrgCodeId
 				AND DEGREE = @Degree
 				AND CURRICULUM = @Curriculum
 			)
-		SET @RecordFound = 1
-
-	--Update existing record preserving existing values if incoming parameter is NULL/0
-	IF @RecordFound = 1
-	BEGIN
+		--Update existing record preserving existing values if incoming parameter is NULL/0
 		UPDATE EDUCATION
 		SET GRADEPOINT_AVERAGE = CASE 
 				WHEN @GPA = 0
@@ -155,6 +162,8 @@ BEGIN
 			,END_DATE = COALESCE(@EndDate, END_DATE)
 			,HONORS = COALESCE(@Honors, HONORS)
 			,TRANSCRIPT_DATE = COALESCE(@TranscriptDate, TRANSCRIPT_DATE)
+			,CLASS_RANK = COALESCE(@ClassRank, CLASS_RANK)
+			,CLASS_SIZE = COALESCE(@ClassSize, CLASS_SIZE)
 			,TRANSFER_CREDITS = CASE 
 				WHEN @TransferCredits = 0
 					THEN TRANSFER_CREDITS
@@ -198,11 +207,74 @@ BEGIN
 			AND ORG_CODE_ID = @OrgCodeId
 			AND DEGREE = @Degree
 			AND CURRICULUM = @Curriculum
-	END
-
-	--Insert new record
-	IF @RecordFound = 0
-	BEGIN
+			--Only update if something has changed
+			AND EXISTS (
+				SELECT GRADEPOINT_AVERAGE
+					,[START_DATE]
+					,END_DATE
+					,HONORS
+					,TRANSCRIPT_DATE
+					,CLASS_RANK
+					,CLASS_SIZE
+					,TRANSFER_CREDITS
+					,FIN_AID_AMOUNT
+					,UNWEIGHTED_GPA
+					,UNWEIGHTED_GPA_SCALE
+					,WEIGHTED_GPA
+					,WEIGHTED_GPA_SCALE
+					,QUARTILE
+				
+				EXCEPT
+				
+				SELECT CASE 
+						WHEN @GPA = 0
+							THEN GRADEPOINT_AVERAGE
+						ELSE @GPA
+						END
+					,COALESCE(@StartDate, [START_DATE])
+					,COALESCE(@EndDate, END_DATE)
+					,COALESCE(@Honors, HONORS)
+					,COALESCE(@TranscriptDate, TRANSCRIPT_DATE)
+					,COALESCE(@ClassRank, CLASS_RANK)
+					,COALESCE(@ClassSize, CLASS_SIZE)
+					,CASE 
+						WHEN @TransferCredits = 0
+							THEN TRANSFER_CREDITS
+						ELSE @TransferCredits
+						END
+					,CASE 
+						WHEN @FinAidAmount = 0
+							THEN FIN_AID_AMOUNT
+						ELSE @FinAidAmount
+						END
+					,CASE 
+						WHEN @GPAUnweighted = 0
+							THEN UNWEIGHTED_GPA
+						ELSE @GPAUnweighted
+						END
+					,CASE 
+						WHEN @GPAUnweightedScale = 0
+							THEN UNWEIGHTED_GPA_SCALE
+						ELSE @GPAUnweightedScale
+						END
+					,CASE 
+						WHEN @GPAWeighted = 0
+							THEN WEIGHTED_GPA
+						ELSE @GPAWeighted
+						END
+					,CASE 
+						WHEN @GPAWeightedScale = 0
+							THEN WEIGHTED_GPA_SCALE
+						ELSE @GPAWeightedScale
+						END
+					,CASE 
+						WHEN @Quartile = 0
+							THEN QUARTILE
+						ELSE @Quartile
+						END
+				)
+	ELSE
+		--Insert new record
 		INSERT INTO [dbo].[EDUCATION] (
 			[PEOPLE_CODE]
 			,[PEOPLE_ID]
@@ -263,7 +335,6 @@ BEGIN
 			,@GPAWeighted [WEIGHTED_GPA]
 			,@GPAWeightedScale [WEIGHTED_GPA_SCALE]
 			,@Quartile [QUARTILE]
-	END
 END
 GO
 
