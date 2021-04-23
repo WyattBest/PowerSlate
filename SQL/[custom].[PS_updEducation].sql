@@ -202,6 +202,8 @@ BEGIN
 					,WEIGHTED_GPA_SCALE = COALESCE(@GPAWeightedScale, WEIGHTED_GPA_SCALE)
 					,QUARTILE = COALESCE(@Quartile, QUARTILE)
 				)
+
+		SELECT CAST(1 AS BIT) AS 'OrgFound'
 	END
 	ELSE
 	BEGIN
@@ -276,6 +278,8 @@ BEGIN
 			,@GPAWeighted [WEIGHTED_GPA]
 			,@GPAWeightedScale [WEIGHTED_GPA_SCALE]
 			,@Quartile [QUARTILE]
+
+		SELECT CAST(1 AS BIT) AS 'OrgFound'
 	END
 END
 GO

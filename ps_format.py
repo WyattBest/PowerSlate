@@ -1,4 +1,4 @@
-import copy
+from copy import deepcopy
 from string import ascii_letters, punctuation, whitespace
 import ps_models
 
@@ -7,7 +7,7 @@ def format_blank_to_null(x):
     # Converts empty string to None. Accepts dicts, lists, and tuples.
     # This function derived from radtek @ http://stackoverflow.com/a/37079737/4109658
     # CC Attribution-ShareAlike 3.0 https://creativecommons.org/licenses/by-sa/3.0/
-    ret = copy.deepcopy(x)
+    ret = deepcopy(x)
     # Handle dictionaries, lists, and tuples. Scrub all values
     if isinstance(x, dict):
         for k, v in ret.items():
@@ -253,5 +253,19 @@ def format_app_sql(app, mapping, config):
         mapped['HOME_LANGUAGE'] = mapping['Language'][app['HomeLanguage']]
     else:
         mapped['HOME_LANGUAGE'] = None
+
+    # Format arrays if present.
+    # Currently only supplies nulls; no other datatype manipulation.
+    arrays = [k for (k, v) in ps_models.arrays.items() if k in app]
+
+    for array in arrays:
+        mapped[array] = deepcopy(app[array])
+        fields_null = [
+            k for (k, v) in ps_models.arrays[array].items() if v['supply_null'] == True]
+
+        # Supply nulls
+        for item in mapped[array]:
+            item.update({k: v for (k, v) in item.items() if k in fields_null})
+            item.update({k: None for k in fields_null if k not in item})
 
     return mapped

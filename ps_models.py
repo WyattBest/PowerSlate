@@ -229,3 +229,42 @@ fields = {
             'supply_null': False,
             'type': str}
 }
+
+arrays = {
+    "Education": {
+        'OrgIdentifier': {'supply_null': False,
+                          'type': str},
+        'Degree': {'supply_null': True,
+                   'type': str},
+        'Curriculum': {'supply_null': True,
+                       'type': str},
+        'GPA': {'supply_null': True,
+                'type': str},
+        'GPAUnweighted': {'supply_null': True,
+                          'type': str},
+        'GPAUnweightedScale': {'supply_null': True,
+                               'type': str},
+        'GPAWeighted': {'supply_null': True,
+                        'type': str},
+        'GPAWeightedScale': {'supply_null': True,
+                             'type': str},
+        'StartDate': {'supply_null': True,
+                      'type': str},
+        'EndDate': {'supply_null': True,
+                    'type': str},
+        'Honors': {'supply_null': True,
+                   'type': str},
+        'TranscriptDate': {'supply_null': True,
+                           'type': str},
+        'ClassRank': {'supply_null': True,
+                      'type': str},
+        'ClassSize': {'supply_null': True,
+                      'type': str},
+        'TransferCredits': {'supply_null': True,
+                            'type': str},
+        'FinAidAmount': {'supply_null': True,
+                         'type': str},
+        'Quartile': {'supply_null': True,
+                     'type': str}
+    }
+}

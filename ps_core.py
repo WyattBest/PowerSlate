@@ -131,6 +131,17 @@ def slate_get_actions(apps_list):
     return actions_list
 
 
+def slate_post_generic(upload_list, config_dict):
+    '''Upload a simple list of dicts to Slate with no transformations.'''
+
+    # Slate requires JSON to be convertable to XML
+    upload_dict = {'row': upload_list}
+
+    creds = (config_dict['username'], config_dict['password'])
+    r = requests.post(config_dict['url'], json=upload_dict, auth=creds)
+    r.raise_for_status()
+
+
 def slate_post_fields_changed(apps, config_dict):
     # Check for changes between Slate and local state
     # Upload changed records back to Slate
@@ -267,6 +278,7 @@ def main_sync(pid=None):
 
     verbose_print(
         'Update existing applications in PowerCampus and extract information')
+    unmatched_schools = []
     for k, v in apps.items():
         CURRENT_RECORD = k
         if v['status_calc'] == 'Active':
@@ -279,6 +291,15 @@ def main_sync(pid=None):
             ps_powercampus.update_smsoptin(app_pc)
             if CONFIG['pc_update_custom_academickey'] == True:
                 ps_powercampus.update_academic_key(app_pc)
+
+            # Update PowerCampus Education records
+            apps[k]['schools_not_found'] = []
+            for edu in app_pc['Education']:
+                edu_error = ps_powercampus.update_education(
+                    app_pc['PEOPLE_CODE_ID'], edu)
+                if edu_error:
+                    unmatched_schools.extend({'school_guid': edu['GUID'],
+                                              'not_found': True})
 
             # Update any PowerCampus Notes defined in config
             for note in CONFIG['pc_notes']:
@@ -320,6 +341,10 @@ def main_sync(pid=None):
     verbose_print('Upload active (changed) fields back to Slate')
     verbose_print(slate_post_fields_changed(
         apps, CONFIG['slate_upload_active']))
+
+    verbose_print('Upload unmatched school records back to Slate')
+    if len(unmatched_schools) > 0:
+        slate_post_generic(unmatched_schools, CONFIG['slate_upload_schools'])
 
     # Collect Financial Aid checklist and upload to Slate
     if CONFIG['fa_checklist']['enabled'] == True:

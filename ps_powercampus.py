@@ -257,21 +257,18 @@ def update_action(action):
     """Update a Scheduled Action in PowerCampus. Expects an action dict with 'app' key containing SQL formatted app
     {'aid': GUID, 'item': 'Transcript', 'app': {'PEOPLE_CODE_ID':...}}
     """
-    try:
-        CURSOR.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
-                       action['app']['PEOPLE_CODE_ID'],
-                       'SLATE',
-                       action['action_id'],
-                       action['item'],
-                       action['completed'],
-                       # Only the date portion is actually used.
-                       action['create_datetime'],
-                       action['app']['ACADEMIC_YEAR'],
-                       action['app']['ACADEMIC_TERM'],
-                       action['app']['ACADEMIC_SESSION'])
-        CNXN.commit()
-    except KeyError as e:
-        raise KeyError(e, 'aid: ' + action['aid'])
+    CURSOR.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
+                    action['app']['PEOPLE_CODE_ID'],
+                    'SLATE',
+                    action['action_id'],
+                    action['item'],
+                    action['completed'],
+                    # Only the date portion is actually used.
+                    action['create_datetime'],
+                    action['app']['ACADEMIC_YEAR'],
+                    action['app']['ACADEMIC_TERM'],
+                    action['app']['ACADEMIC_SESSION'])
+    CNXN.commit()
 
 
 def update_smsoptin(app):
@@ -291,6 +288,33 @@ def update_udf(app, slate_field, pc_field):
     CURSOR.execute('exec [custom].[PS_updUserDefined] ?, ?, ?',
                    app['PEOPLE_CODE_ID'], pc_field, app[slate_field])
     CNXN.commit()
+
+
+def update_education(pcid, education):
+    CURSOR.execute('exec [custom].[PS_updEducation] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+                   pcid,
+                   education['OrgIdentifier'],
+                   education['Degree'],
+                   education['Curriculum'],
+                   education['GPA'],
+                   education['GPAUnweighted'],
+                   education['GPAUnweightedScale'],
+                   education['GPAWeighted'],
+                   education['GPAWeightedScale'],
+                   education['StartDate'],
+                   education['EndDate'],
+                   education['Honors'],
+                   education['TranscriptDate'],
+                   education['ClassRank'],
+                   education['ClassSize'],
+                   education['TransferCredits'],
+                   education['FinAidAmount'],
+                   education['Quartile'])
+    # CNXN.commit()
+    row = CURSOR.fetchone()
+    errorflag = not row[0]
+
+    return errorflag
 
 
 def pf_get_fachecklist(pcid, govid, appid, year, term, session):
