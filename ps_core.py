@@ -1,5 +1,6 @@
 import requests
 import json
+from copy import deepcopy
 import xml.etree.ElementTree as ET
 from ps_format import format_app_generic, format_app_api,  format_app_sql
 import ps_powercampus
@@ -148,7 +149,7 @@ def slate_post_fields_changed(apps, config_dict):
 
     # Build list of flat app dicts with only certain fields included
     upload_list = []
-    fields = config_dict['fields_string']
+    fields = deepcopy(config_dict['fields_string'])
     fields.extend(config_dict['fields_bool'])
     fields.extend(config_dict['fields_int'])
 
