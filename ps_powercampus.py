@@ -310,7 +310,6 @@ def update_education(pcid, education):
                    education['TransferCredits'],
                    education['FinAidAmount'],
                    education['Quartile'])
-    # CNXN.commit()
     row = CURSOR.fetchone()
     errorflag = not row[0]
 

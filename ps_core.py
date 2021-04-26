@@ -298,7 +298,7 @@ def main_sync(pid=None):
                 edu_error = ps_powercampus.update_education(
                     app_pc['PEOPLE_CODE_ID'], edu)
                 if edu_error:
-                    unmatched_schools.extend({'school_guid': edu['GUID'],
+                    unmatched_schools.append({'school_guid': edu['GUID'],
                                               'not_found': True})
 
             # Update any PowerCampus Notes defined in config
