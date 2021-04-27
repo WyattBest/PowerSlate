@@ -63,6 +63,10 @@ def format_app_generic(app, cfg_fields):
                   if v['type'] == int]
     fields_null.extend(
         ['compare_' + field for field in cfg_fields['fields_string']])
+    fields_null.extend(
+        ['compare_' + field for field in cfg_fields['fields_bool']])
+    fields_null.extend(
+        ['compare_' + field for field in cfg_fields['fields_int']])
     fields_bool.extend(
         ['compare_' + field for field in cfg_fields['fields_bool']])
     fields_int.extend(
