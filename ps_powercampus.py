@@ -258,16 +258,16 @@ def update_action(action):
     {'aid': GUID, 'item': 'Transcript', 'app': {'PEOPLE_CODE_ID':...}}
     """
     CURSOR.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
-                    action['app']['PEOPLE_CODE_ID'],
-                    'SLATE',
-                    action['action_id'],
-                    action['item'],
-                    action['completed'],
-                    # Only the date portion is actually used.
-                    action['create_datetime'],
-                    action['app']['ACADEMIC_YEAR'],
-                    action['app']['ACADEMIC_TERM'],
-                    action['app']['ACADEMIC_SESSION'])
+                   action['app']['PEOPLE_CODE_ID'],
+                   'SLATE',
+                   action['action_id'],
+                   action['item'],
+                   action['completed'],
+                   # Only the date portion is actually used.
+                   action['create_datetime'],
+                   action['app']['ACADEMIC_YEAR'],
+                   action['app']['ACADEMIC_TERM'],
+                   action['app']['ACADEMIC_SESSION'])
     CNXN.commit()
 
 
@@ -290,7 +290,7 @@ def update_udf(app, slate_field, pc_field):
     CNXN.commit()
 
 
-def update_education(pcid, education):
+def update_education(pcid, pid, education):
     CURSOR.execute('exec [custom].[PS_updEducation] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    pcid,
                    education['OrgIdentifier'],
@@ -313,7 +313,13 @@ def update_education(pcid, education):
     row = CURSOR.fetchone()
     errorflag = not row[0]
 
-    return errorflag
+    unmatched_school = None
+    if errorflag:
+        unmatched_school = {'pid': pid,
+                            'school_guid': education['GUID'],
+                            'not_found': True}
+
+    return unmatched_school
 
 
 def pf_get_fachecklist(pcid, govid, appid, year, term, session):

@@ -227,11 +227,17 @@ fields = {
     'aid': {'api_verbatim': False,
             'sql_verbatim': True,
             'supply_null': False,
+            'type': str},
+    'pid': {'api_verbatim': False,
+            'sql_verbatim': True,
+            'supply_null': False,
             'type': str}
 }
 
 arrays = {
     "Education": {
+        'GUID': {'supply_null': False,
+                 'type': str},
         'OrgIdentifier': {'supply_null': False,
                           'type': str},
         'Degree': {'supply_null': True,
