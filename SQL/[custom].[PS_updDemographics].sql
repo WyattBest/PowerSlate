@@ -1,12 +1,13 @@
 USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [custom].[PS_updDemographics]    Script Date: 2/15/2021 10:19:03 PM ******/
+/****** Object:  StoredProcedure [custom].[PS_updDemographics]    Script Date: 2021-04-27 14:20:27 ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
+
 
 -- =============================================
 -- Author:		Wyatt Best
@@ -18,6 +19,7 @@ GO
 -- 2021-02-17 Wyatt Best:	Pass @DemographicsEthnicity to [WebServices].[spSetDemographics].
 -- 2021-03-07 Wyatt Best:	Added @PrimaryLanguage and @HomeLanguage. Don't UPDATE demographics row unless needed. Make most parameters optional.
 -- 2021-03-16 Wyatt Best:	Added @GovernmentId. For safety, existing GOVERNMENT_ID will not be overwritten with Slate-supplied value.
+-- 2021-04-27 Wyatt Best:	Added TOP 1 to existing people search by GOVERNMENT_ID to avoid subquery error.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updDemographics] @PCID NVARCHAR(10)
 	,@Opid NVARCHAR(8)
@@ -107,7 +109,7 @@ BEGIN
 	END
 
 	DECLARE @DupPCID NVARCHAR(10) = (
-			SELECT PEOPLE_CODE_ID
+			SELECT TOP 1 PEOPLE_CODE_ID
 			FROM PEOPLE
 			WHERE GOVERNMENT_ID = @GovernmentId
 				AND PEOPLE_CODE_ID <> @PCID
@@ -220,3 +222,4 @@ BEGIN
 	COMMIT
 END
 GO
+
