@@ -110,7 +110,7 @@ def format_app_api(app, cfg_defaults):
     # Supply empty arrays. Implementing these would require more logic.
     fields_arr = ['Relationships', 'Activities',
                   'EmergencyContacts', 'Education']
-    mapped.update({k: [] for k in fields_arr if k not in app})
+    mapped.update({k: [] for k in fields_arr})
 
     # Nest up to ten addresses as a list of dicts
     # "Address1Line1": "123 St" becomes "Addresses": [{"Line1": "123 St"}]

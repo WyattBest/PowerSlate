@@ -70,7 +70,7 @@ def post_api(x, cfg_strings):
         rtext = r.text.replace('\r\n', '\n')
 
         if 'BadRequest Object reference not set to an instance of an object.' in rtext and 'ApplicationsController.cs:line 183' in rtext:
-            raise ValueError(cfg_strings['error_no_phones'], e)
+            raise ValueError(rtext, cfg_strings['error_no_phones'], e)
         elif r.status_code == 202 or r.status_code == 400:
             raise ValueError(rtext)
         else:
