@@ -294,10 +294,11 @@ def main_sync(pid=None):
                 ps_powercampus.update_academic_key(app_pc)
 
             # Update PowerCampus Education records
-            apps[k]['schools_not_found'] = []
-            for edu in app_pc['Education']:
-                unmatched_schools.append(ps_powercampus.update_education(
-                    app_pc['PEOPLE_CODE_ID'], app_pc['pid'], edu))
+            if 'Education' in app_pc:
+                apps[k]['schools_not_found'] = []
+                for edu in app_pc['Education']:
+                    unmatched_schools.append(ps_powercampus.update_education(
+                        app_pc['PEOPLE_CODE_ID'], app_pc['pid'], edu))
 
             # Update any PowerCampus Notes defined in config
             for note in CONFIG['pc_notes']:
@@ -340,8 +341,8 @@ def main_sync(pid=None):
     verbose_print(slate_post_fields_changed(
         apps, CONFIG['slate_upload_active']))
 
-    verbose_print('Upload unmatched school records back to Slate')
     if len(unmatched_schools) > 0:
+        verbose_print('Upload unmatched school records back to Slate')
         slate_post_generic(unmatched_schools, CONFIG['slate_upload_schools'])
 
     # Collect Financial Aid checklist and upload to Slate
