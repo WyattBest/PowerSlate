@@ -41,6 +41,11 @@
 		"username": "service_user",
 		"password": "astrongpassword"
 	},
+	"slate_upload_schools": {
+		"url": "https://apply.school.edu/manage/service/import?cmd=load&format=xxxx",
+		"username": "service_user",
+		"password": "astrongpassword"
+	},
 	"smtp": {
 		"subject": "PowerSlate Notification",
 		"from": "sender@school.edu",

@@ -1,5 +1,6 @@
 import requests
 import json
+from copy import deepcopy
 import xml.etree.ElementTree as ET
 from ps_format import format_app_generic, format_app_api,  format_app_sql
 import ps_powercampus
@@ -131,13 +132,24 @@ def slate_get_actions(apps_list):
     return actions_list
 
 
+def slate_post_generic(upload_list, config_dict):
+    '''Upload a simple list of dicts to Slate with no transformations.'''
+
+    # Slate requires JSON to be convertable to XML
+    upload_dict = {'row': upload_list}
+
+    creds = (config_dict['username'], config_dict['password'])
+    r = requests.post(config_dict['url'], json=upload_dict, auth=creds)
+    r.raise_for_status()
+
+
 def slate_post_fields_changed(apps, config_dict):
     # Check for changes between Slate and local state
     # Upload changed records back to Slate
 
     # Build list of flat app dicts with only certain fields included
     upload_list = []
-    fields = config_dict['fields_string']
+    fields = deepcopy(config_dict['fields_string'])
     fields.extend(config_dict['fields_bool'])
     fields.extend(config_dict['fields_int'])
 
@@ -267,6 +279,7 @@ def main_sync(pid=None):
 
     verbose_print(
         'Update existing applications in PowerCampus and extract information')
+    unmatched_schools = []
     for k, v in apps.items():
         CURRENT_RECORD = k
         if v['status_calc'] == 'Active':
@@ -279,6 +292,13 @@ def main_sync(pid=None):
             ps_powercampus.update_smsoptin(app_pc)
             if CONFIG['pc_update_custom_academickey'] == True:
                 ps_powercampus.update_academic_key(app_pc)
+
+            # Update PowerCampus Education records
+            if 'Education' in app_pc:
+                apps[k]['schools_not_found'] = []
+                for edu in app_pc['Education']:
+                    unmatched_schools.append(ps_powercampus.update_education(
+                        app_pc['PEOPLE_CODE_ID'], app_pc['pid'], edu))
 
             # Update any PowerCampus Notes defined in config
             for note in CONFIG['pc_notes']:
@@ -320,6 +340,10 @@ def main_sync(pid=None):
     verbose_print('Upload active (changed) fields back to Slate')
     verbose_print(slate_post_fields_changed(
         apps, CONFIG['slate_upload_active']))
+
+    if len(unmatched_schools) > 0:
+        verbose_print('Upload unmatched school records back to Slate')
+        slate_post_generic(unmatched_schools, CONFIG['slate_upload_schools'])
 
     # Collect Financial Aid checklist and upload to Slate
     if CONFIG['fa_checklist']['enabled'] == True:
