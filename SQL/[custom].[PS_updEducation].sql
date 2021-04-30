@@ -1,19 +1,20 @@
 USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 2/18/2021 3:20:41 PM ******/
+/****** Object:  StoredProcedure [custom].[PS_updEducation]    Script Date: 4/28/2021 9:05:20 PM ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
 
+
 -- =============================================
 -- Author:		Wyatt Best
 -- Create date: 2021-04-20
 -- Description:	Updates or inserts an EDUCATION row. Tried to leave existing values alone if input not specified.
 --
--- 2021-04-00 Wyatt Best:	
+-- 2021-04-28 Wyatt Best:	Added error check for multiple organizations with the same @OrgIdentifier.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updEducation] @PCID NVARCHAR(10)
 	,@OrgIdentifier NVARCHAR(6)
@@ -36,13 +37,35 @@ CREATE PROCEDURE [custom].[PS_updEducation] @PCID NVARCHAR(10)
 AS
 BEGIN
 	SET NOCOUNT ON;
+	--Set defaults. Other parameters have defaults that might be set later, but these are never useful as NULL
+	SET @Degree = ISNULL(@Degree, '')
+	SET @Curriculum = ISNULL(@Curriculum, '')
 
-	--Attempt to locate the org
-	DECLARE @OrgCodeId NVARCHAR(10) = (
-			SELECT ORG_CODE_ID
-			FROM ORGANIZATION
-			WHERE ORG_IDENTIFIER = @OrgIdentifier
-			)
+	--Attempt to locate the org; error if multiple matches. Quit if zero matches.
+	SELECT ORG_CODE_ID
+	INTO #FoundOrg
+	FROM ORGANIZATION
+	WHERE ORG_IDENTIFIER = @OrgIdentifier
+
+	IF (
+			SELECT COUNT(*)
+			FROM #FoundOrg
+			) > 1
+	BEGIN
+		RAISERROR (
+				'Multiple organizations found for Org Identifier ''%s''.'
+				,11
+				,1
+				,@OrgIdentifier
+				)
+
+		RETURN
+	END
+	ELSE
+		DECLARE @OrgCodeId NVARCHAR(10) = (
+				SELECT ORG_CODE_ID
+				FROM #FoundOrg
+				)
 
 	--Send flag and quit if Org not found
 	IF @OrgCodeId IS NULL
@@ -52,11 +75,7 @@ BEGIN
 		RETURN
 	END
 
-	--Set defaults. Other parameters have defaults that might be set later, but these are never useful as NULL
-	SET @Degree = ISNULL(@Degree, '')
-	SET @Curriculum = ISNULL(@Curriculum, '')
-
-	--Error check
+	--Other error checks
 	IF (
 			NOT EXISTS (
 				SELECT *
@@ -281,7 +300,8 @@ BEGIN
 
 		SELECT CAST(1 AS BIT) AS 'OrgFound'
 	END
+
+	DROP TABLE #FoundOrg
 END
 GO
-
 
