@@ -1,6 +1,7 @@
 import requests
 import json
 import pyodbc
+import ps_models
 
 
 def init(config):
@@ -320,6 +321,60 @@ def update_education(pcid, pid, education):
                             'not_found': True}
 
     return unmatched_school
+
+
+def update_test_scores(pcid, test):
+    """Insert or update a Test Scores row in PowerCampus."""
+    # Identify which scores are present.
+
+    # Get list of numeric ScoreType fields from model
+    score_types = [k for k in ps_models.arrays['TestScoresNumeric']
+                   if k[:5] == 'Score' and k[-4:] == "Type" and k != 'ScoreAlphaType']
+    score_values = [k[:-4] for k in score_types]
+
+    # Find the ScoreType to attach ScoreAlpha to
+    # Error if ScoreAlphaType matches more than one ScoreType
+    alpha_type_match = [k for (k, v) in test.items(
+    ) if k in score_types and v == test['AlphaScoreType']]
+    if len(alpha_type_match) > 1:
+        raise ValueError(
+            'For numeric test types, AlphaScoreType cannot match more than one ScoreType.', alpha_type_match)
+
+    scores_present = [k for k in test if k in score_types]
+
+    for k in scores_present:
+        score_name = test[k[:-4]]
+        CURSOR.execute('exec [custom].[PS_updTestscore] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+                       pcid,
+                       test['TestType'],
+                       k,
+                       test['TestDate'],
+                       test[score_name],
+                       test[score_name + 'ConversionFactor'],
+                       test[score_name + 'Converted'],
+                       test[score_name + 'TranscriptPrint'],
+                       None,
+                       None,
+                       None,
+                       None
+                       )
+
+    if test['ScoreAlpha'] is not None:
+        score_name = alpha_type_match[0]
+        CURSOR.execute('exec [custom].[PS_updTestscore] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+                       pcid,
+                       test['TestType'],
+                       k,
+                       test['TestDate'],
+                       None,
+                       None,
+                       None,
+                       test[score_name + 'TranscriptPrint'],
+                       test['ScoreAlpha'],
+                       None,
+                       None,
+                       None
+                       )
 
 
 def pf_get_fachecklist(pcid, govid, appid, year, term, session):

@@ -1,16 +1,3 @@
-# class Field:
-#     def __init__(self, name, nullable, datatype, use_api, use_sql):
-#         self.name = name
-#         self.nullable = nullable
-#         self.datatype = datatype
-#         self.use_api = use_api
-#         self.use_sql = use_sql
-
-
-# fields = []
-# fields.extend(Field("AdmitDate", True, "generic", False, True))
-# fields.extend(Field("Extracurricular", True, "boolean", False, True))
-
 fields = {
     'AdmitDate': {'api_verbatim': False,
                   'sql_verbatim': True,
@@ -235,7 +222,7 @@ fields = {
 }
 
 arrays = {
-    "Education": {
+    'Education': {
         'GUID': {'supply_null': False,
                  'type': str},
         'OrgIdentifier': {'supply_null': False,
@@ -273,82 +260,77 @@ arrays = {
         'Quartile': {'supply_null': True,
                      'type': str}
     },
-    "TestScores": {
-        "TestType": {'supply_null': False,
-                     'type': str},
-        "TestDate": {'supply_null': False,
-                     'type': str},
-        "Score1": {'supply_null': True,
-                   'type': str},
-        "Score1Type": {'supply_null': True,
-                       'type': str},
-        "Score2": {'supply_null': True,
-                   'type': str},
-        "Score2Type": {'supply_null': True,
-                       'type': str},
-        "Score3": {'supply_null': True,
-                   'type': str},
-        "Score3Type": {'supply_null': True,
-                       'type': str},
-        "Score4": {'supply_null': True,
-                   'type': str},
-        "Score4Type": {'supply_null': True,
-                       'type': str},
-        "Score5": {'supply_null': True,
-                   'type': str},
-        "Score5Type": {'supply_null': True,
-                       'type': str},
-        "Score6": {'supply_null': True,
-                   'type': str},
-        "Score6Type": {'supply_null': True,
-                       'type': str},
-        "Score7": {'supply_null': True,
-                   'type': str},
-        "Score7Type": {'supply_null': True,
-                       'type': str},
-        "Score8": {'supply_null': True,
-                   'type': str},
-        "Score8Type": {'supply_null': True,
-                       'type': str},
-        "Score9": {'supply_null': True,
-                   'type': str},
-        "Score9Type": {'supply_null': True,
-                       'type': str},
-        "Score10": {'supply_null': True,
-                    'type': str},
-        "Score10Type": {'supply_null': True,
-                        'type': str},
-        "Score11": {'supply_null': True,
-                    'type': str},
-        "Score11Type": {'supply_null': True,
-                        'type': str},
-        "Score12": {'supply_null': True,
-                    'type': str},
-        "Score12Type": {'supply_null': True,
-                        'type': str},
-        "Score13": {'supply_null': True,
-                    'type': str},
-        "Score13Type": {'supply_null': True,
-                        'type': str},
-        "Score14": {'supply_null': True,
-                    'type': str},
-        "Score14Type": {'supply_null': True,
-                        'type': str},
-        "Score15": {'supply_null': True,
-                    'type': str},
-        "Score15Type": {'supply_null': True,
-                        'type': str},
-        "Score16": {'supply_null': True,
-                    'type': str},
-        "Score16Type": {'supply_null': True,
-                        'type': str},
-        "Score17": {'supply_null': True,
-                    'type': str},
-        "Score17Type": {'supply_null': True,
-                        'type': str},
-        "ScoreAlpha": {'supply_null': True,
-                       'type': str},
-        "ScoreAlphaType": {'supply_null': True,
-                           'type': str},
+    'TestScoresNumeric': {
+        'ScoreTemplate': {'fields':
+                          [
+                              'ScoreType',
+                              'Score',
+                              'ScoreConversionFactor',
+                              'ScoreConverted',
+                              'ScoreTranscriptPrint',
+                          ],
+                          'value': {
+                              'supply_null': True,
+                              'type': str
+                          },
+                          'count': 17
+                          },
+        'other': {
+            'TestType': {
+                'supply_null': False,
+                'type': str
+            },
+            'TestDate': {
+                'supply_null': False,
+                'type': str
+            },
+            'ScoreAlpha': {
+                'supply_null': True,
+                'type': str
+            },
+            'ScoreAlphaType': {
+                'supply_null': True,
+                'type': str
+            }
+        }
     }
 }
+
+
+def get_model(model_type, model_name):
+    if model_type == 'array' and model_name == 'Education':
+        return arrays['Education']
+
+    elif model_type == 'array' and model_name == 'TestScoresNumeric':
+        # I didn't want to type out all 17 score field groupings.
+        score_template = arrays['TestScoresNumeric']['ScoreTemplate']
+
+        score_keys = []
+        i = 1
+        while i <= score_template['count']:
+            score_keys.extend(['Score'+str(i)+k[5:]
+                               for k in score_template['fields']])
+            i += 1
+
+        model = arrays['TestScoresNumeric']['other']
+        model = model | {k: score_template['value'] for k in score_keys}
+        return model
+
+    else:
+        return None
+
+
+class ArrayModels:
+    def __init__():
+        a = arrays.keys()
+        model_arrays = {}
+
+        for k in a:
+            model_arrays[a] = get_model('array', a)
+
+        return model_arrays
+
+
+class FieldsModels:
+    def __init__():
+        return fields

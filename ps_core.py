@@ -299,6 +299,11 @@ def main_sync(pid=None):
                 for edu in app_pc['Education']:
                     unmatched_schools.append(ps_powercampus.update_education(
                         app_pc['PEOPLE_CODE_ID'], app_pc['pid'], edu))
+            
+            # Update PowerCampus Test Score records
+            if 'TestScoresNumeric' in app_pc:
+                for test in app_pc['TestScoresNumeric']:
+                    ps_powercampus.update_test_scores(app_pc['PEOPLE_CODE_ID'], test)
 
             # Update any PowerCampus Notes defined in config
             for note in CONFIG['pc_notes']:
