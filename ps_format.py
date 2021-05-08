@@ -260,7 +260,7 @@ def format_app_sql(app, mapping, config):
 
     # Format arrays if present. This should probably be moved into a class in ps_models.
     # Currently only supplies nulls; no datatype manipulations performed.
-    array_models = ps_models.ArrayModels()
+    array_models = ps_models.get_arrays()
     array_names = [k for (k, v) in array_models.items() if k in app]
 
     for array in array_names:

@@ -326,28 +326,26 @@ def update_education(pcid, pid, education):
 def update_test_scores(pcid, test):
     """Insert or update a Test Scores row in PowerCampus."""
     # Identify which scores are present.
-
-    # Get list of numeric ScoreType fields from model
-    score_types = [k for k in ps_models.arrays['TestScoresNumeric']
+    score_types = [k for k in ps_models.get_arrays()['TestScoresNumeric']
                    if k[:5] == 'Score' and k[-4:] == "Type" and k != 'ScoreAlphaType']
-    score_values = [k[:-4] for k in score_types]
 
     # Find the ScoreType to attach ScoreAlpha to
     # Error if ScoreAlphaType matches more than one ScoreType
-    alpha_type_match = [k for (k, v) in test.items(
-    ) if k in score_types and v == test['AlphaScoreType']]
-    if len(alpha_type_match) > 1:
-        raise ValueError(
-            'For numeric test types, AlphaScoreType cannot match more than one ScoreType.', alpha_type_match)
-
-    scores_present = [k for k in test if k in score_types]
+    if test['ScoreAlphaType'] is not None:
+        alpha_type_match = [k for (k, v) in test.items() if k in score_types and v == test['ScoreAlphaType']]
+        if len(alpha_type_match) > 1:
+            raise ValueError('For numeric test types, AlphaScoreType cannot match more than one ScoreType.', alpha_type_match)
+    else:
+        alpha_type_match = None
+    
+    scores_present = [k for k in test if k in score_types if test[k[:-4]] is not None]
 
     for k in scores_present:
-        score_name = test[k[:-4]]
+        score_name = k[:-4]
         CURSOR.execute('exec [custom].[PS_updTestscore] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                        pcid,
                        test['TestType'],
-                       k,
+                       test[k],
                        test['TestDate'],
                        test[score_name],
                        test[score_name + 'ConversionFactor'],
@@ -375,6 +373,7 @@ def update_test_scores(pcid, test):
                        None,
                        None
                        )
+    CNXN.commit()
 
 
 def pf_get_fachecklist(pcid, govid, appid, year, term, session):

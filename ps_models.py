@@ -1,3 +1,6 @@
+# Should I perhaps have a class like ApplicationRecord that handles datatype transformations, supplying nulls, etc?
+
+
 fields = {
     'AdmitDate': {'api_verbatim': False,
                   'sql_verbatim': True,
@@ -306,7 +309,7 @@ def get_model(model_type, model_name):
         score_template = arrays['TestScoresNumeric']['ScoreTemplate']
 
         score_keys = []
-        i = 1
+        i = 0
         while i <= score_template['count']:
             score_keys.extend(['Score'+str(i)+k[5:]
                                for k in score_template['fields']])
@@ -320,17 +323,11 @@ def get_model(model_type, model_name):
         return None
 
 
-class ArrayModels:
-    def __init__():
-        a = arrays.keys()
-        model_arrays = {}
+def get_arrays():
+    a = arrays.keys()
+    model_arrays = {}
 
-        for k in a:
-            model_arrays[a] = get_model('array', a)
+    for k in a:
+        model_arrays[k] = get_model('array', k)
 
-        return model_arrays
-
-
-class FieldsModels:
-    def __init__():
-        return fields
+    return model_arrays
