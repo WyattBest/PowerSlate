@@ -1,15 +1,5 @@
-# class Field:
-#     def __init__(self, name, nullable, datatype, use_api, use_sql):
-#         self.name = name
-#         self.nullable = nullable
-#         self.datatype = datatype
-#         self.use_api = use_api
-#         self.use_sql = use_sql
+# Should I perhaps have a class like ApplicationRecord that handles datatype transformations, supplying nulls, etc?
 
-
-# fields = []
-# fields.extend(Field("AdmitDate", True, "generic", False, True))
-# fields.extend(Field("Extracurricular", True, "boolean", False, True))
 
 fields = {
     'AdmitDate': {'api_verbatim': False,
@@ -235,7 +225,7 @@ fields = {
 }
 
 arrays = {
-    "Education": {
+    'Education': {
         'GUID': {'supply_null': False,
                  'type': str},
         'OrgIdentifier': {'supply_null': False,
@@ -272,5 +262,72 @@ arrays = {
                          'type': str},
         'Quartile': {'supply_null': True,
                      'type': str}
+    },
+    'TestScoresNumeric': {
+        'ScoreTemplate': {'fields':
+                          [
+                              'ScoreType',
+                              'Score',
+                              'ScoreConversionFactor',
+                              'ScoreConverted',
+                              'ScoreTranscriptPrint',
+                          ],
+                          'value': {
+                              'supply_null': True,
+                              'type': str
+                          },
+                          'count': 17
+                          },
+        'other': {
+            'TestType': {
+                'supply_null': False,
+                'type': str
+            },
+            'TestDate': {
+                'supply_null': False,
+                'type': str
+            },
+            'ScoreAlpha': {
+                'supply_null': True,
+                'type': str
+            },
+            'ScoreAlphaType': {
+                'supply_null': True,
+                'type': str
+            }
+        }
     }
 }
+
+
+def get_model(model_type, model_name):
+    if model_type == 'array' and model_name == 'Education':
+        return arrays['Education']
+
+    elif model_type == 'array' and model_name == 'TestScoresNumeric':
+        # I didn't want to type out all 17 score field groupings.
+        score_template = arrays['TestScoresNumeric']['ScoreTemplate']
+
+        score_keys = []
+        i = 0
+        while i <= score_template['count']:
+            score_keys.extend(['Score'+str(i)+k[5:]
+                               for k in score_template['fields']])
+            i += 1
+
+        model = arrays['TestScoresNumeric']['other']
+        model = model | {k: score_template['value'] for k in score_keys}
+        return model
+
+    else:
+        return None
+
+
+def get_arrays():
+    a = arrays.keys()
+    model_arrays = {}
+
+    for k in a:
+        model_arrays[k] = get_model('array', k)
+
+    return model_arrays

@@ -258,14 +258,15 @@ def format_app_sql(app, mapping, config):
     else:
         mapped['HOME_LANGUAGE'] = None
 
-    # Format arrays if present.
-    # Currently only supplies nulls; no other datatype manipulation.
-    arrays = [k for (k, v) in ps_models.arrays.items() if k in app]
+    # Format arrays if present. This should probably be moved into a class in ps_models.
+    # Currently only supplies nulls; no datatype manipulations performed.
+    array_models = ps_models.get_arrays()
+    array_names = [k for (k, v) in array_models.items() if k in app]
 
-    for array in arrays:
+    for array in array_names:
         mapped[array] = deepcopy(app[array])
         fields_null = [
-            k for (k, v) in ps_models.arrays[array].items() if v['supply_null'] == True]
+            k for (k, v) in array_models[array].items() if v['supply_null'] == True]
 
         # Supply nulls
         for item in mapped[array]:
