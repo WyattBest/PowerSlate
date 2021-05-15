@@ -252,6 +252,10 @@ def main_sync(pid=None):
         CURRENT_RECORD = k
         apps[k] = format_app_generic(v, CONFIG['slate_upload_active'])
 
+    if CONFIG['autoconfigure_mappings']:
+        verbose_print(
+            'Automatically update ProgramOfStudy and recruiterMapping.xml')
+
     verbose_print('Check each app\'s status flags/PCID in PowerCampus')
     for k, v in apps.items():
         CURRENT_RECORD = k

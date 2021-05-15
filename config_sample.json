@@ -6,6 +6,10 @@
 	},
 	"pc_database_string": "Driver={ODBC Driver 17 for SQL Server};Server=servername;Database=campus6;Trusted_Connection=yes;ServerSPN=MSSQLSvc/servername.local.domain.edu;",
 	"mapping_file_location": "\\\\servername\\PowerCampus Mapper\\recruiterMapping.xml",
+	"autoconfigure_mappings": {
+		"enabled": false,
+		"minimum_degreq_year": "2021"
+	},
 	"console_verbose": true,
 	"logging": {
 		"enabled": true,

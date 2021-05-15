@@ -48,6 +48,18 @@ def verbose_print(x):
                 print(json.dumps(x, indent=4))
             except:
                 print(x)
+                
+
+def autoconfigure_mappings(pdc_list, minimum_degreq_year):
+    '''
+    Automatically insert new Program/Degree/Curriculum combinations into ProgramOfStudy and recruiterMapping.xml
+    Requires Degree values from Slate to like 'DEGREE/CURRICULUM' and correspond to PowerCampus code values.
+    Will check against DEGREQ for sanity using minimum_degreq_year.
+    '''
+    # Insert new PDC combos into ProgramOfStudy. SQL required? Move to ps_powercampus?
+    # Isolate just DC combos. Insert new ones into recruiterMapping.xml.
+
+    pass
 
 
 def post_api(x, cfg_strings):
