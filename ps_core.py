@@ -17,48 +17,8 @@ def init(config_path):
     with open(config_path) as config_path:
         CONFIG = json.loads(config_path.read())
 
-    # We will use recruiterMapping.xml to translate Recruiter values to PowerCampus values for direct SQL operations.
-    # The file path can be local or remote. Obviously, a remote file must have proper network share and permissions set up.
-    # Remote is more convenient, as local requires you to manually copy the file whenever you change it with the
-    # PowerCampus Mapping Tool. Note: The tool produces UTF-8 BOM encoded files, so I explicity specify utf-8-sig.
-
-    # Parse XML mapping file into dict rm_mapping
-    with open(CONFIG['mapping_file_location'], encoding='utf-8-sig') as treeFile:
-        tree = ET.parse(treeFile)
-        doc = tree.getroot()
-    RM_MAPPING = {}
-
-    for child in doc:
-        if child.get('NumberOfPowerCampusFieldsMapped') == '1':
-            RM_MAPPING[child.tag] = {}
-            for row in child:
-                RM_MAPPING[child.tag].update(
-                    {row.get('RCCodeValue'): row.get('PCCodeValue')})
-
-        if child.get('NumberOfPowerCampusFieldsMapped') == '2':
-            fn1 = 'PC' + str(child.get('PCFirstField')) + 'CodeValue'
-            fn2 = 'PC' + str(child.get('PCSecondField')) + 'CodeValue'
-            RM_MAPPING[child.tag] = {fn1: {}, fn2: {}}
-
-            for row in child:
-                RM_MAPPING[child.tag][fn1].update(
-                    {row.get('RCCodeValue'): row.get(fn1)})
-                RM_MAPPING[child.tag][fn2].update(
-                    {row.get('RCCodeValue'): row.get(fn2)})
-
-        if child.get('NumberOfPowerCampusFieldsMapped') == '3':
-            fn1 = 'PC' + str(child.get('PCFirstField')) + 'CodeValue'
-            fn2 = 'PC' + str(child.get('PCSecondField')) + 'CodeValue'
-            fn3 = 'PC' + str(child.get('PCThirdField')) + 'CodeValue'
-            RM_MAPPING[child.tag] = {fn1: {}, fn2: {}, fn3: {}}
-
-            for row in child:
-                RM_MAPPING[child.tag][fn1].update(
-                    {row.get('RCCodeValue'): row.get(fn1)})
-                RM_MAPPING[child.tag][fn2].update(
-                    {row.get('RCCodeValue'): row.get(fn2)})
-                RM_MAPPING[child.tag][fn3].update(
-                    {row.get('RCCodeValue'): row.get(fn3)})
+    RM_MAPPING = ps_powercampus.get_recruiter_mapping(
+        CONFIG['mapping_file_location'])
 
     # Init PowerCampus API and SQL connections
     ps_powercampus.init(CONFIG)
@@ -252,9 +212,14 @@ def main_sync(pid=None):
         CURRENT_RECORD = k
         apps[k] = format_app_generic(v, CONFIG['slate_upload_active'])
 
-    if CONFIG['autoconfigure_mappings']:
-        verbose_print(
-            'Automatically update ProgramOfStudy and recruiterMapping.xml')
+    if CONFIG['autoconfigure_mappings']['enabled']:
+        verbose_print('Auto-configure ProgramOfStudy and recruiterMapping.xml')
+        mfl = CONFIG['mapping_file_location']
+        mdy = CONFIG['autoconfigure_mappings']['minimum_degreq_year']
+        dp_list = [(app['Program'], app['Degree']) for app in apps]
+
+        if ps_powercampus.autoconfigure_mappings(dp_list, mdy, mfl):
+            RM_MAPPING = ps_powercampus.get_recruiter_mapping(mfl)
 
     verbose_print('Check each app\'s status flags/PCID in PowerCampus')
     for k, v in apps.items():
@@ -303,11 +268,12 @@ def main_sync(pid=None):
                 for edu in app_pc['Education']:
                     unmatched_schools.append(ps_powercampus.update_education(
                         app_pc['PEOPLE_CODE_ID'], app_pc['pid'], edu))
-            
+
             # Update PowerCampus Test Score records
             if 'TestScoresNumeric' in app_pc:
                 for test in app_pc['TestScoresNumeric']:
-                    ps_powercampus.update_test_scores(app_pc['PEOPLE_CODE_ID'], test)
+                    ps_powercampus.update_test_scores(
+                        app_pc['PEOPLE_CODE_ID'], test)
 
             # Update any PowerCampus Notes defined in config
             for note in CONFIG['pc_notes']:

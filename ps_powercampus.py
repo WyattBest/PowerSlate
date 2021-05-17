@@ -1,6 +1,7 @@
 import requests
 import json
 import pyodbc
+import xml.etree.ElementTree as ET
 import ps_models
 
 
@@ -48,18 +49,122 @@ def verbose_print(x):
                 print(json.dumps(x, indent=4))
             except:
                 print(x)
-                
 
-def autoconfigure_mappings(pdc_list, minimum_degreq_year):
+
+def autoconfigure_mappings(dp_list, minimum_degreq_year, mapping_file_location):
     '''
     Automatically insert new Program/Degree/Curriculum combinations into ProgramOfStudy and recruiterMapping.xml
-    Requires Degree values from Slate to like 'DEGREE/CURRICULUM' and correspond to PowerCampus code values.
+    Assumes Degree values from Slate are concatenated PowerCampus code values like DEGREE/CURRICULUM.
     Will check against DEGREQ for sanity using minimum_degreq_year.
+
+    Keyword aguments:
+    dp_list -- a list of tuples like [('PROGRAM','DEGREE/CURRICULUM'), (...)]
+    minimum_degreq_year -- str
+
+    Returns True if XML mapping changed.
     '''
     # Insert new PDC combos into ProgramOfStudy. SQL required? Move to ps_powercampus?
     # Isolate just DC combos. Insert new ones into recruiterMapping.xml.
 
-    pass
+    dp_set = set(dp_list)
+
+    # Create set of tuples like {('PROGRAM','DEGREE', 'CURRICULUM'), (...)}
+    pdc_set = set()
+    for dp in dp_set:
+        pdc = [dp[0]]
+        for dc in dp[1].split('/'):
+            pdc.append(dc)
+        pdc_set.add(tuple(pdc))
+
+    # Create set of tuples like {('DEGREE', 'CURRICULUM'), (...)}
+    dc_set = set()
+    for pdc in pdc_set:
+        dc = (pdc[1], pdc[2])
+        dc_set.add(dc)
+
+    # Update ProgramOfStudy table
+    for pdc in pdc_set:
+        CURSOR.execute('execute [custom].[PS_updProgramOfStudy] ?, ?, ?, ?',
+                       pdc[0],
+                       pdc[1],
+                       pdc[2],
+                       minimum_degreq_year)
+    CNXN.commit()
+
+    # Update recruiterMapping.xml
+    xml_changed = False
+    with open(mapping_file_location, encoding='utf-8-sig', mode='+') as treeFile:
+        tree = ET.parse(treeFile)
+        root = tree.getroot()
+
+    aca_prog = root.find('AcademicProgram')
+    root.findall("AcademicProgram/row[@PCDegreeCodeValue='BBA']")
+
+    # Check for duplicate RCCodeValues
+    rc_codes = [row.get('RCCodeValue') for row in aca_prog.findall('row')]
+    if len(rc_codes) != len(set(rc_codes)):
+        raise ValueError(
+            'recruiterMapping.xml contains duplicate RCCodeValue keys in node AcademicProgram.')
+
+    for dc in dc_set:
+        rc_code = dc[0] + '/' + dc[1]
+        if aca_prog.find("./row[@RCCodeValue='" + rc_code + "']") is None:
+            xml_changed = True
+            attrib = {'RCCodeValue': rc_code, 'RCDesc': '', 'PCDegreeCodeValue':
+                      dc[0], 'PCDegreeDesc': '', 'PCCurriculumCodeValue': dc[1], 'PCCurriculumDesc': ''}
+            ET.SubElement(aca_prog, 'row', attrib=attrib)
+
+    if xml_changed:
+        tree.write(mapping_file_location+'_', encoding='utf-8-sig')
+
+    return xml_changed
+
+
+def get_recruiter_mapping(mapping_file_location):
+    '''
+    Return a dict translating Recruiter values to PowerCampus values for direct SQL operations.
+
+    mapping_file_location - Network path to recruiterMapping.xml
+    '''
+    # PowerCampus Mapping Tool produces UTF-8 BOM encoded files.
+    with open(mapping_file_location, encoding='utf-8-sig') as treeFile:
+        tree = ET.parse(treeFile)
+        root = tree.getroot()
+    rm_mapping = {}
+
+    for child in root:
+        if child.get('NumberOfPowerCampusFieldsMapped') == '1':
+            rm_mapping[child.tag] = {}
+            for row in child:
+                rm_mapping[child.tag].update(
+                    {row.get('RCCodeValue'): row.get('PCCodeValue')})
+
+        if child.get('NumberOfPowerCampusFieldsMapped') == '2':
+            fn1 = 'PC' + str(child.get('PCFirstField')) + 'CodeValue'
+            fn2 = 'PC' + str(child.get('PCSecondField')) + 'CodeValue'
+            rm_mapping[child.tag] = {fn1: {}, fn2: {}}
+
+            for row in child:
+                rm_mapping[child.tag][fn1].update(
+                    {row.get('RCCodeValue'): row.get(fn1)})
+                rm_mapping[child.tag][fn2].update(
+                    {row.get('RCCodeValue'): row.get(fn2)})
+
+        if child.get('NumberOfPowerCampusFieldsMapped') == '3':
+            fn1 = 'PC' + str(child.get('PCFirstField')) + 'CodeValue'
+            fn2 = 'PC' + str(child.get('PCSecondField')) + 'CodeValue'
+            fn3 = 'PC' + str(child.get('PCThirdField')) + 'CodeValue'
+            rm_mapping[child.tag] = {fn1: {}, fn2: {}, fn3: {}}
+
+            for row in child:
+                rm_mapping[child.tag][fn1].update(
+                    {row.get('RCCodeValue'): row.get(fn1)})
+                rm_mapping[child.tag][fn2].update(
+                    {row.get('RCCodeValue'): row.get(fn2)})
+                rm_mapping[child.tag][fn3].update(
+                    {row.get('RCCodeValue'): row.get(fn3)})
+
+    return rm_mapping
 
 
 def post_api(x, cfg_strings):
@@ -344,13 +449,16 @@ def update_test_scores(pcid, test):
     # Find the ScoreType to attach ScoreAlpha to
     # Error if ScoreAlphaType matches more than one ScoreType
     if test['ScoreAlphaType'] is not None:
-        alpha_type_match = [k for (k, v) in test.items() if k in score_types and v == test['ScoreAlphaType']]
+        alpha_type_match = [k for (k, v) in test.items(
+        ) if k in score_types and v == test['ScoreAlphaType']]
         if len(alpha_type_match) > 1:
-            raise ValueError('For numeric test types, AlphaScoreType cannot match more than one ScoreType.', alpha_type_match)
+            raise ValueError(
+                'For numeric test types, AlphaScoreType cannot match more than one ScoreType.', alpha_type_match)
     else:
         alpha_type_match = None
-    
-    scores_present = [k for k in test if k in score_types if test[k[:-4]] is not None]
+
+    scores_present = [
+        k for k in test if k in score_types if test[k[:-4]] is not None]
 
     for k in scores_present:
         score_name = k[:-4]
