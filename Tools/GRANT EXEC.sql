@@ -12,6 +12,7 @@ GRANT EXEC ON [custom].[PS_insNote] to PowerSlate
 GRANT EXEC ON [custom].[PS_updUserDefined] to PowerSlate
 GRANT EXEC ON [custom].[PS_updEducation] to PowerSlate
 GRANT EXEC ON [custom].[PS_updTestscore] to PowerSlate
+GRANT EXEC ON [custom].[PS_updProgramOfStudy] to PowerSlate
 GRANT SELECT, UPDATE, VIEW DEFINITION ON [USERDEFINEDIND]  to PowerSlate
 
 USE [PowerCampusMapper]
