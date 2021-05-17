@@ -8,6 +8,7 @@
 	"mapping_file_location": "\\\\servername\\PowerCampus Mapper\\recruiterMapping.xml",
 	"autoconfigure_mappings": {
 		"enabled": false,
+		"validate_degreq": true,
 		"minimum_degreq_year": "2021"
 	},
 	"console_verbose": true,

@@ -51,19 +51,21 @@ def verbose_print(x):
                 print(x)
 
 
-def autoconfigure_mappings(dp_list, minimum_degreq_year, mapping_file_location):
+def autoconfigure_mappings(dp_list, validate_degreq, minimum_degreq_year, mapping_file_location):
     '''
     Automatically insert new Program/Degree/Curriculum combinations into ProgramOfStudy and recruiterMapping.xml
     Assumes Degree values from Slate are concatenated PowerCampus code values like DEGREE/CURRICULUM.
-    Will check against DEGREQ for sanity using minimum_degreq_year.
 
     Keyword aguments:
     dp_list -- a list of tuples like [('PROGRAM','DEGREE/CURRICULUM'), (...)]
+    validate_degreq -- bool. If True, check against DEGREQ for sanity using minimum_degreq_year.
     minimum_degreq_year -- str
 
     Returns True if XML mapping changed.
     '''
     dp_set = set(dp_list)
+    if validate_degreq == False:
+        minimum_degreq_year = None
 
     # Create set of tuples like {('PROGRAM','DEGREE', 'CURRICULUM'), (...)}
     pdc_set = set()
@@ -112,7 +114,8 @@ def autoconfigure_mappings(dp_list, minimum_degreq_year, mapping_file_location):
             ET.SubElement(aca_prog, 'row', attrib=attrib)
 
     if xml_changed:
-        tree.write(mapping_file_location, encoding='utf-8', xml_declaration=True)
+        tree.write(mapping_file_location,
+                   encoding='utf-8', xml_declaration=True)
 
     return xml_changed
 

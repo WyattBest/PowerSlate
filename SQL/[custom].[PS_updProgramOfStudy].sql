@@ -1,23 +1,23 @@
 USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [custom].[PS_updProgramOfStudy]    Script Date: 2021-05-17 11:24:19 ******/
+/****** Object:  StoredProcedure [custom].[PS_updProgramOfStudy]    Script Date: 5/17/2021 3:38:27 PM ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
 
-
 -- =============================================
 -- Author:		Wyatt Best
 -- Create date: 2021-05-17
 -- Description:	Inserts a PDC combination into ProgramOfStudy if it doesn't already exist.
+--				If @DegReqMinYear is not null, PDC combination will be valided against DEGREQ.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updProgramOfStudy] @Program NVARCHAR(6)
 	,@Degree NVARCHAR(6)
 	,@Curriculum NVARCHAR(6)
-	,@DegReqMinYear NVARCHAR(4)
+	,@DegReqMinYear NVARCHAR(4) = NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -75,7 +75,8 @@ BEGIN
 		RETURN
 	END
 
-	IF NOT EXISTS (
+	IF @DegReqMinYear IS NOT NULL
+		AND NOT EXISTS (
 			SELECT *
 			FROM ACADEMICCALENDAR
 			WHERE ACADEMIC_YEAR = @DegReqMinYear
@@ -91,8 +92,7 @@ BEGIN
 		RETURN
 	END
 
-	--Check for existing ProgramOfStudy row.
-	--If not exists, check against DEGREQ and either throw error or insert new ProgramOfStudy row.
+	--Check for existing ProgramOfStudy row
 	IF NOT EXISTS (
 			SELECT *
 			FROM ProgramOfStudy
@@ -101,7 +101,9 @@ BEGIN
 				AND Curriculum = @CurriculumId
 			)
 	BEGIN
-		IF NOT EXISTS (
+		--Optionally check against DEGREQ
+		IF @DegReqMinYear IS NOT NULL
+			AND NOT EXISTS (
 				SELECT *
 				FROM DEGREQ
 				WHERE MATRIC_YEAR = @DegReqMinYear
@@ -123,6 +125,7 @@ BEGIN
 			RETURN
 		END
 
+		--Insert new ProgramOfStudy 
 		INSERT INTO ProgramOfStudy (
 			Program
 			,Degree
@@ -135,6 +138,3 @@ BEGIN
 			)
 	END
 END
-GO
-
-
