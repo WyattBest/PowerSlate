@@ -183,6 +183,7 @@ def main_sync(pid=None):
     pid -- specific application GUID to sync (default None)
     """
     global CURRENT_RECORD
+    global RM_MAPPING
 
     verbose_print('Get applicants from Slate...')
     creds = (CONFIG['slate_query_apps']['username'],
@@ -216,7 +217,7 @@ def main_sync(pid=None):
         verbose_print('Auto-configure ProgramOfStudy and recruiterMapping.xml')
         mfl = CONFIG['mapping_file_location']
         mdy = CONFIG['autoconfigure_mappings']['minimum_degreq_year']
-        dp_list = [(app['Program'], app['Degree']) for app in apps]
+        dp_list = [(apps[app]['Program'], apps[app]['Degree']) for app in apps]
 
         if ps_powercampus.autoconfigure_mappings(dp_list, mdy, mfl):
             RM_MAPPING = ps_powercampus.get_recruiter_mapping(mfl)

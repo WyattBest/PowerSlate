@@ -63,9 +63,6 @@ def autoconfigure_mappings(dp_list, minimum_degreq_year, mapping_file_location):
 
     Returns True if XML mapping changed.
     '''
-    # Insert new PDC combos into ProgramOfStudy. SQL required? Move to ps_powercampus?
-    # Isolate just DC combos. Insert new ones into recruiterMapping.xml.
-
     dp_set = set(dp_list)
 
     # Create set of tuples like {('PROGRAM','DEGREE', 'CURRICULUM'), (...)}
@@ -93,7 +90,7 @@ def autoconfigure_mappings(dp_list, minimum_degreq_year, mapping_file_location):
 
     # Update recruiterMapping.xml
     xml_changed = False
-    with open(mapping_file_location, encoding='utf-8-sig', mode='+') as treeFile:
+    with open(mapping_file_location, encoding='utf-8-sig') as treeFile:
         tree = ET.parse(treeFile)
         root = tree.getroot()
 
@@ -115,7 +112,7 @@ def autoconfigure_mappings(dp_list, minimum_degreq_year, mapping_file_location):
             ET.SubElement(aca_prog, 'row', attrib=attrib)
 
     if xml_changed:
-        tree.write(mapping_file_location+'_', encoding='utf-8-sig')
+        tree.write(mapping_file_location, encoding='utf-8', xml_declaration=True)
 
     return xml_changed
 
