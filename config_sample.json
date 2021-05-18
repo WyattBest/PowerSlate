@@ -60,7 +60,7 @@
 		"password": "astrongpassword"
 	},
 	"scheduled_actions": {
-		"enabled": true,
+		"enabled": false,
 		"slate_get": {
 			"url": "https://apply.school.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
 			"username": "username",
@@ -77,10 +77,10 @@
 	"pc_user_defined": [
 		{
 			"slate_field": "FirstGeneration",
-			"pc_column": "FIRSTGEN"
+			"pc_field": "FIRSTGEN"
 		}
 	],
-	"pc_update_custom_academickey": true,
+	"pc_update_custom_academickey": false,
 	"fa_checklist": {
 		"enabled": true,
 		"slate_post": {
