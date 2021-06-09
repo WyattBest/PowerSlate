@@ -14,7 +14,6 @@ GO
 -- Description:	Inserts or updates a test score. Scores are converted unless supplied pre-converted.
 --				Defaults are loaded from code tables if not supplied. Transcript Print will be left as-is unless supplied.
 --
--- 2021-04-28 Wyatt Best:	
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updTestscore] @PCID NVARCHAR(10)
 	,@TestId NVARCHAR(6)
