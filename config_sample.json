@@ -65,7 +65,12 @@
 			"url": "https://apply.school.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
 			"username": "username",
 			"password": "astrongpassword"
-		}
+		},
+		"admissions_action_codes": [
+			"ADIMMUN",
+			"ADTRANS",
+			"ADESSAY"
+		]
 	},
 	"pc_notes": [
 		{

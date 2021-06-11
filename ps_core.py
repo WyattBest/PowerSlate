@@ -248,6 +248,13 @@ def main_sync(pid=None):
                             'status_calc': status_calc})
             apps[k]['PEOPLE_CODE_ID'] = pcid
 
+    verbose_print('Get scheduled actions from Slate')
+    if CONFIG['scheduled_actions']['enabled'] == True:
+        CURRENT_RECORD = None
+        # Send list of app GUID's to Slate; get back checklist items
+        actions_list = slate_get_actions(
+            [k for (k, v) in apps.items() if v['status_calc'] == 'Active'])
+
     verbose_print(
         'Update existing applications in PowerCampus and extract information')
     unmatched_schools = []
@@ -256,26 +263,39 @@ def main_sync(pid=None):
         if v['status_calc'] == 'Active':
             # Transform to PowerCampus format
             app_pc = format_app_sql(v, RM_MAPPING, CONFIG)
+            pcid = app_pc['PEOPLE_CODE_ID']
+            academic_year = app_pc['ACADEMIC_YEAR']
+            academic_term = app_pc['ACADEMIC_TERM']
+            academic_session = app_pc['ACADEMIC_SESSION']
 
-            # Execute update sprocs
+            # Single-row updates
             ps_powercampus.update_demographics(app_pc)
             ps_powercampus.update_academic(app_pc)
             ps_powercampus.update_smsoptin(app_pc)
             if CONFIG['pc_update_custom_academickey'] == True:
                 ps_powercampus.update_academic_key(app_pc)
 
+            # Update PowerCampus Scheduled Actions
+            if CONFIG['scheduled_actions']['enabled'] == True:
+                for action in actions_list:
+                    ps_powercampus.update_action(
+                        action, pcid, academic_year, academic_term, academic_session)
+
+                app_actions = [k for k in actions_list if k['aid'] == v['aid']]
+                ps_powercampus.cleanup_actions(
+                    CONFIG['scheduled_actions']['admissions_action_codes'], app_actions, pcid, academic_year, academic_term, academic_session)
+
             # Update PowerCampus Education records
             if 'Education' in app_pc:
                 apps[k]['schools_not_found'] = []
                 for edu in app_pc['Education']:
-                    unmatched_schools.append(ps_powercampus.update_education(
-                        app_pc['PEOPLE_CODE_ID'], app_pc['pid'], edu))
+                    unmatched_schools.append(
+                        ps_powercampus.update_education(pcid, app_pc['pid'], edu))
 
             # Update PowerCampus Test Score records
             if 'TestScoresNumeric' in app_pc:
                 for test in app_pc['TestScoresNumeric']:
-                    ps_powercampus.update_test_scores(
-                        app_pc['PEOPLE_CODE_ID'], test)
+                    ps_powercampus.update_test_scores(pcid, test)
 
             # Update any PowerCampus Notes defined in config
             for note in CONFIG['pc_notes']:
@@ -292,24 +312,13 @@ def main_sync(pid=None):
             # Collect information
             found, registered, reg_date, readmit, withdrawn, credits, campus_email = ps_powercampus.get_profile(
                 app_pc)
-            apps[k].update({'found': found, 'registered': registered, 'reg_date': reg_date, 'readmit': readmit,
-                            'withdrawn': withdrawn, 'credits': credits, 'campus_email': campus_email})
-
-    # Update PowerCampus Scheduled Actions
-    # Querying each app individually would introduce significant network overhead, so query Slate in bulk
-    if CONFIG['scheduled_actions']['enabled'] == True:
-        verbose_print('Update PowerCampus Scheduled Actions')
-        # Make a list of App GUID's
-        apps_for_sa = [k for (k, v) in apps.items()
-                       if v['status_calc'] == 'Active']
-        actions_list = slate_get_actions(apps_for_sa)
-
-        for action in actions_list:
-            # Lookup the app each action is associated with; we need PCID and YTS
-            # Nest SQL version of app underneath action
-            action['app'] = format_app_sql(
-                apps[action['aid']], RM_MAPPING, CONFIG)
-            ps_powercampus.update_action(action)
+            apps[k].update({'found': found,
+                            'registered': registered,
+                            'reg_date': reg_date,
+                            'readmit': readmit,
+                            'withdrawn': withdrawn,
+                            'credits': credits,
+                            'campus_email': campus_email})
 
     verbose_print('Upload passive fields back to Slate')
     slate_post_fields(apps, CONFIG['slate_upload_passive'])

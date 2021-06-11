@@ -1,3 +1,4 @@
+import imp
 import requests
 import json
 import pyodbc
@@ -52,7 +53,7 @@ def verbose_print(x):
 
 
 def autoconfigure_mappings(dp_list, validate_degreq, minimum_degreq_year, mapping_file_location):
-    '''
+    """
     Automatically insert new Program/Degree/Curriculum combinations into ProgramOfStudy and recruiterMapping.xml
     Assumes Degree values from Slate are concatenated PowerCampus code values like DEGREE/CURRICULUM.
 
@@ -62,7 +63,7 @@ def autoconfigure_mappings(dp_list, validate_degreq, minimum_degreq_year, mappin
     minimum_degreq_year -- str
 
     Returns True if XML mapping changed.
-    '''
+    """
     dp_set = set(dp_list)
     if validate_degreq == False:
         minimum_degreq_year = None
@@ -121,11 +122,11 @@ def autoconfigure_mappings(dp_list, validate_degreq, minimum_degreq_year, mappin
 
 
 def get_recruiter_mapping(mapping_file_location):
-    '''
+    """
     Return a dict translating Recruiter values to PowerCampus values for direct SQL operations.
 
     mapping_file_location - Network path to recruiterMapping.xml
-    '''
+    """
     # PowerCampus Mapping Tool produces UTF-8 BOM encoded files.
     with open(mapping_file_location, encoding='utf-8-sig') as treeFile:
         tree = ET.parse(treeFile)
@@ -371,22 +372,77 @@ def update_academic_key(app):
     CNXN.commit()
 
 
-def update_action(action):
-    """Update a Scheduled Action in PowerCampus. Expects an action dict with 'app' key containing SQL formatted app
-    {'aid': GUID, 'item': 'Transcript', 'app': {'PEOPLE_CODE_ID':...}}
+def update_action(action, pcid, academic_year, academic_term, academic_session):
+    """Update a Scheduled Action in PowerCampus.
+
+    Keyword arguments:
+    action -- dict like {'aid': GUID, 'item': 'Transcript', 'action_id': 'ADTRAN', ...}
+    pcid -- string
+    academic_year -- string
+    academic_term -- string
+    academic_session -- string
     """
+
     CURSOR.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
-                   action['app']['PEOPLE_CODE_ID'],
+                   pcid,
                    'SLATE',
                    action['action_id'],
                    action['item'],
                    action['completed'],
                    # Only the date portion is actually used.
                    action['create_datetime'],
-                   action['app']['ACADEMIC_YEAR'],
-                   action['app']['ACADEMIC_TERM'],
-                   action['app']['ACADEMIC_SESSION'])
+                   academic_year,
+                   academic_term,
+                   academic_session)
     CNXN.commit()
+
+
+def cleanup_actions(admissions_action_codes, app_actions, pcid, academic_year, academic_term, academic_session):
+    """
+    Delete orphaned Scheduled Actions from PowerCampus.
+
+    admissions_actions -- list of action_id's to consider
+    app_actions -- list of dicts from Slate, each representing a scheduled action
+    pcid -- string PEOPLE_CODE_ID
+    academic_year -- string
+    academic_term -- string
+    academic_session -- string
+    """
+
+    # Only keep keys we care about in app_actions
+    keys = ['action_id', 'item']
+    app_actions2 = []
+    for action in app_actions:
+        app_actions2.append({k: v for (k, v) in action.items() if k in keys})
+
+    # Get actions from PowerCampus
+    pc_actions = {}
+    CURSOR.execute('exec [custom].[PS_selActions] ?, ?, ?, ?, ?',
+                   pcid,
+                   'SLATE',
+                   academic_year,
+                   academic_term,
+                   academic_session
+                   )
+    for row in CURSOR.fetchall():
+        pc_actions[row.ACTIONSCHEDULE_ID] = {
+            'action_id': row.action_id,
+            'item': row.item
+        }
+
+    # Ignore actions types that are not part of admissions_action_codes
+    pc_actions = {k: v for (k, v) in pc_actions.items()
+                  if v['action_id'] in admissions_action_codes}
+
+    # Find actions in pc_actions but not in app_actions
+    # This depends on exact matching between the dicts
+    orphan_actions = [k for (k, v) in pc_actions.items()
+                      if v not in app_actions2]
+
+    # Delete each orphaned action
+    for actionschedule_id in orphan_actions:
+        CURSOR.execute('exec [custom].[PS_delAction] ?', actionschedule_id)
+        CNXN.commit()
 
 
 def update_smsoptin(app):
