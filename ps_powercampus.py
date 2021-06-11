@@ -372,6 +372,13 @@ def update_academic_key(app):
     CNXN.commit()
 
 
+def get_action_definition(action_id):
+    CURSOR.execute('exec [custom].[PS_selActionDefinition] ?', action_id)
+    row = CURSOR.fetchone()
+
+    return row
+
+
 def update_action(action, pcid, academic_year, academic_term, academic_session):
     """Update a Scheduled Action in PowerCampus.
 

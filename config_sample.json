@@ -66,6 +66,7 @@
 			"username": "username",
 			"password": "astrongpassword"
 		},
+		"autolearn_action_codes": true,
 		"admissions_action_codes": [
 			"ADIMMUN",
 			"ADTRANS",

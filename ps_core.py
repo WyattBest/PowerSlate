@@ -9,13 +9,15 @@ import ps_powercampus
 def init(config_path):
     """Reads config file to global CONFIG dict. Many frequently-used variables are copied to their own globals for convenince."""
     global CONFIG
+    global CONFIG_PATH
     global FIELDS
     global RM_MAPPING
     global MSG_STRINGS
 
+    CONFIG_PATH = config_path
     # Read config file and convert to dict
-    with open(config_path) as config_path:
-        CONFIG = json.loads(config_path.read())
+    with open(CONFIG_PATH) as file:
+        CONFIG = json.loads(file.read())
 
     RM_MAPPING = ps_powercampus.get_recruiter_mapping(
         CONFIG['mapping_file_location'])
@@ -30,7 +32,7 @@ def init(config_path):
 
 
 def de_init():
-    '''Release resources like open SQL connections.'''
+    """Release resources like open SQL connections."""
     ps_powercampus.de_init()
 
 
@@ -93,7 +95,7 @@ def slate_get_actions(apps_list):
 
 
 def slate_post_generic(upload_list, config_dict):
-    '''Upload a simple list of dicts to Slate with no transformations.'''
+    """Upload a simple list of dicts to Slate with no transformations."""
 
     # Slate requires JSON to be convertable to XML
     upload_dict = {'row': upload_list}
@@ -158,7 +160,7 @@ def slate_post_fields(apps, config_dict):
 
 
 def slate_post_fa_checklist(upload_list):
-    '''Upload Financial Aid Checklist to Slate.'''
+    """Upload Financial Aid Checklist to Slate."""
 
     if len(upload_list) > 0:
         # Slate's Checklist Import (Financial Aid) requires tab-separated files because it's old and crusty, apparently.
@@ -174,6 +176,34 @@ def slate_post_fa_checklist(upload_list):
         r = requests.post(CONFIG['fa_checklist']['slate_post']['url'],
                           data=slate_fa_string, auth=creds)
         r.raise_for_status()
+
+
+def learn_actions(actions_list):
+    global CONFIG
+    action_ids = []
+    admissions_action_codes = CONFIG['scheduled_actions']['admissions_action_codes']
+
+    for action_id in actions_list:
+        for k, v in action_id.items():
+            if k == "action_id":
+                action_ids.append(v)
+    learned_actions = [
+        k for k in action_ids if k not in admissions_action_codes]
+
+    # Dedupe
+    learned_actions = list(set(learned_actions))
+
+    # Sanity check against PowerCampus
+    for action_id in learned_actions:
+        action_def = ps_powercampus.get_action_definition(action_id)
+        if len(action_def) < 1:
+            learned_actions.remove(action_id)
+
+    admissions_action_codes += learned_actions
+
+    # Write new config
+    with open(CONFIG_PATH, mode='w') as file:
+        json.dump(CONFIG, file, indent='\t')
 
 
 def main_sync(pid=None):
@@ -254,6 +284,9 @@ def main_sync(pid=None):
         # Send list of app GUID's to Slate; get back checklist items
         actions_list = slate_get_actions(
             [k for (k, v) in apps.items() if v['status_calc'] == 'Active'])
+
+        if CONFIG['scheduled_actions']['autolearn_action_codes'] == True:
+            learn_actions(actions_list)
 
     verbose_print(
         'Update existing applications in PowerCampus and extract information')
