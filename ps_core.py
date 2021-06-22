@@ -311,7 +311,7 @@ def main_sync(pid=None):
 
             # Update PowerCampus Scheduled Actions
             if CONFIG['scheduled_actions']['enabled'] == True:
-                app_actions = [k for k in actions_list if k['aid'] == v['aid']]
+                app_actions = [k for k in actions_list if k['aid'] == v['aid'] and 'action_id' in k]
 
                 for action in app_actions:
                     ps_powercampus.update_action(
