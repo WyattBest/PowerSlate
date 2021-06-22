@@ -196,7 +196,7 @@ def learn_actions(actions_list):
     # Sanity check against PowerCampus
     for action_id in learned_actions:
         action_def = ps_powercampus.get_action_definition(action_id)
-        if len(action_def) < 1:
+        if action_def is None:
             learned_actions.remove(action_id)
 
     admissions_action_codes += learned_actions
@@ -310,11 +310,12 @@ def main_sync(pid=None):
 
             # Update PowerCampus Scheduled Actions
             if CONFIG['scheduled_actions']['enabled'] == True:
-                for action in actions_list:
+                app_actions = [k for k in actions_list if k['aid'] == v['aid']]
+
+                for action in app_actions:
                     ps_powercampus.update_action(
                         action, pcid, academic_year, academic_term, academic_session)
-
-                app_actions = [k for k in actions_list if k['aid'] == v['aid']]
+                
                 ps_powercampus.cleanup_actions(
                     CONFIG['scheduled_actions']['admissions_action_codes'], app_actions, pcid, academic_year, academic_term, academic_session)
 

@@ -390,14 +390,15 @@ def update_action(action, pcid, academic_year, academic_term, academic_session):
     academic_session -- string
     """
 
-    CURSOR.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    CURSOR.execute('EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    pcid,
                    'SLATE',
                    action['action_id'],
                    action['item'],
+                   pcid,
+                   action['scheduled_date'],
                    action['completed'],
-                   # Only the date portion is actually used.
-                   action['create_datetime'],
+                   action['completed_date'],
                    academic_year,
                    academic_term,
                    academic_session)

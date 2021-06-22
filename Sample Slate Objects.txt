@@ -2,13 +2,16 @@
 Note that these queries leave much to be desired at this time.
 Phone number types are static instead of dynamic and many new fields are not being exported.
 
+PowerSlate CJ Library: e6f215a4-099c-5c1a-2668-2f2337d103bf@mcn
+Contains some MCNY-specific translations.
+
 PowerSlate 24 hr: ab57a5a3-416f-3212-491d-61556409c3d7@mcn
 Can use for 15-minute sync if you enable Application Update Queue.
 
 PowerSlate HTTP: 14cefa84-b09e-7310-2cb0-66687ec62be1@mcn
 Used for HTTP sync. Accepts a person GUID parameter 'pid'.
 
-PowerSlate Scheduled Actions: ace96b41-82e0-1bc9-4d7b-306e29f1b95f@mcn
+PowerSlate Scheduled Actions: 37481add-13be-9dd0-88de-6956376eb032@mcn
 Custom SQL query for Scheduled Actions. Might be replaceable with Configurable Joins.
 Contains some MCNY-specific ACTION_ID's.
 

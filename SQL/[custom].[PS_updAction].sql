@@ -16,16 +16,16 @@ GO
 -- 2017-10-11 Wyatt Best:		Changed WAIVED_REASON from SLATE to ADMIS.
 --								Fixed the 'updated waived after inserting new' section.
 -- 2019-10-15	Wyatt Best:		Renamed and moved to [custom] schema.
--- 2021-06-14	Wyatt Best:		Rewrite to remove dependency on MCNY_SP_insert_action. New optional parameters @Responsible and @CompletedDate.
+-- 2021-06-21	Wyatt Best:		Rewrite to remove dependency on MCNY_SP_insert_action. New parameters @Responsible (optional) and @CompletedDate.
 -- =============================================
-ALTER PROCEDURE [custom].[PS_updAction] @PCID NVARCHAR(10)
+CREATE PROCEDURE [custom].[PS_updAction] @PCID NVARCHAR(10)
 	,@Opid NVARCHAR(8)
 	,@ActionID NVARCHAR(8)
 	,@ActionName NVARCHAR(50)
 	,@Responsible NVARCHAR(10) = NULL
+	,@ScheduledDate DATE --Slate effective date or application creation date
 	,@Completed NVARCHAR(1) --Y, N, W (waived)
-	,@CompletedDate DATETIME = NULL
-	,@ScheduledDate DATETIME --Slate checklist item added date
+	,@CompletedDate DATE --Slate activity date
 	,@AcademicYear NVARCHAR(4)
 	,@AcademicTerm NVARCHAR(10)
 	,@AcademicSession NVARCHAR(10)
@@ -211,7 +211,7 @@ BEGIN
 			,@Completed [COMPLETED]
 			,@Waived [WAIVED]
 			,@WaivedReason [WAIVED_REASON]
-			,NULL [CANCELED]
+			,'N' [CANCELED]
 			,NULL [CANCELED_REASON]
 			,0 [NUM_OF_REMINDERS]
 			,@AcademicYear [ACADEMIC_YEAR]
