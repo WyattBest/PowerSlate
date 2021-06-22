@@ -35,21 +35,14 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
                 message = ps_core.main_sync(q['pid'][0])
             else:
                 message = 'Error: Record not found.'
-        except pyodbc.OperationalError as ex:
-            # Catch communication link failures
-            sqlstate = ex.args[0]
-            if sqlstate in ('08S01', '08001'):
-                # Attempt to reconnect and try one more time before returning an error to the user
-                print('Attempting to recover from SQL state ' + str(sqlstate))
-                try:
-                    CONFIG = ps_core.init(sys.argv[1])
-                    message = ps_core.main_sync(q['pid'][0])
-                except Exception:
-                    message = emit_traceback()
-            else:
+        except Exception as ex:
+            # Re-initialize and try one more time before returning an error to the user
+            print('Attempting to recover from error:', emit_traceback())
+            try:
+                CONFIG = ps_core.init(sys.argv[1])
+                message = ps_core.main_sync(q['pid'][0])
+            except Exception:
                 message = emit_traceback()
-        except Exception:
-            message = emit_traceback()
 
         # Write content as utf-8 data
         self.wfile.write(message.encode("utf8"))
@@ -70,5 +63,4 @@ def run_server():
     httpd.serve_forever()
 
 
-if __name__ == '__main__':
-    run_server()
+run_server()

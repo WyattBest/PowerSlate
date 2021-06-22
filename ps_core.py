@@ -245,10 +245,11 @@ def main_sync(pid=None):
 
     if CONFIG['autoconfigure_mappings']['enabled']:
         verbose_print('Auto-configure ProgramOfStudy and recruiterMapping.xml')
+        CURRENT_RECORD = None
         mfl = CONFIG['mapping_file_location']
         vd = CONFIG['autoconfigure_mappings']['validate_degreq']
         mdy = CONFIG['autoconfigure_mappings']['minimum_degreq_year']
-        dp_list = [(apps[app]['Program'], apps[app]['Degree']) for app in apps]
+        dp_list = [(apps[app]['Program'], apps[app]['Degree']) for app in apps if 'Degree' in apps[app]]
 
         if ps_powercampus.autoconfigure_mappings(dp_list, vd, mdy, mfl):
             RM_MAPPING = ps_powercampus.get_recruiter_mapping(mfl)
