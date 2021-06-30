@@ -493,6 +493,7 @@ def update_education(pcid, pid, education):
                    education['FinAidAmount'],
                    education['Quartile'])
     row = CURSOR.fetchone()
+    CNXN.commit()
     errorflag = not row[0]
 
     unmatched_school = None
