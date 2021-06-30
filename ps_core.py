@@ -362,8 +362,9 @@ def main_sync(pid=None):
     verbose_print(slate_post_fields_changed(
         apps, CONFIG['slate_upload_active']))
 
+    verbose_print('Upload unmatched school records back to Slate')
+    unmatched_schools = [k for k in unmatched_schools if k[0] is not None]
     if len(unmatched_schools) > 0:
-        verbose_print('Upload unmatched school records back to Slate')
         slate_post_generic(unmatched_schools, CONFIG['slate_upload_schools'])
 
     # Collect Financial Aid checklist and upload to Slate
