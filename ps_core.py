@@ -362,7 +362,7 @@ def main_sync(pid=None):
     verbose_print(slate_post_fields_changed(
         apps, CONFIG['slate_upload_active']))
 
-    if len(unmatched_schools) > 0:
+    if len(unmatched_schools) > 0 and unmatched_schools[0] is not None:
         verbose_print('Upload unmatched school records back to Slate')
         slate_post_generic(unmatched_schools, CONFIG['slate_upload_schools'])
 
