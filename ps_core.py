@@ -249,7 +249,8 @@ def main_sync(pid=None):
         mfl = CONFIG['mapping_file_location']
         vd = CONFIG['autoconfigure_mappings']['validate_degreq']
         mdy = CONFIG['autoconfigure_mappings']['minimum_degreq_year']
-        dp_list = [(apps[app]['Program'], apps[app]['Degree']) for app in apps if 'Degree' in apps[app]]
+        dp_list = [(apps[app]['Program'], apps[app]['Degree'])
+                   for app in apps if 'Degree' in apps[app]]
 
         if ps_powercampus.autoconfigure_mappings(dp_list, vd, mdy, mfl):
             RM_MAPPING = ps_powercampus.get_recruiter_mapping(mfl)
@@ -311,12 +312,13 @@ def main_sync(pid=None):
 
             # Update PowerCampus Scheduled Actions
             if CONFIG['scheduled_actions']['enabled'] == True:
-                app_actions = [k for k in actions_list if k['aid'] == v['aid'] and 'action_id' in k]
+                app_actions = [k for k in actions_list if k['aid']
+                               == v['aid'] and 'action_id' in k]
 
                 for action in app_actions:
                     ps_powercampus.update_action(
                         action, pcid, academic_year, academic_term, academic_session)
-                
+
                 ps_powercampus.cleanup_actions(
                     CONFIG['scheduled_actions']['admissions_action_codes'], app_actions, pcid, academic_year, academic_term, academic_session)
 
