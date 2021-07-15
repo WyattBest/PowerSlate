@@ -281,6 +281,7 @@ def get_profile(app):
     withdrawn = False
     credits = '0.00'
     campus_email = None
+    advisor = None
 
     CURSOR.execute('EXEC [custom].[PS_selProfile] ?,?,?,?,?,?,?',
                    app['PEOPLE_CODE_ID'],
@@ -301,6 +302,7 @@ def get_profile(app):
             credits = str(row.CREDITS)
 
         campus_email = row.CampusEmail
+        advisor = row.AdvisorUsername
 
         if row.COLLEGE_ATTEND == CONFIG['pc_readmit_code']:
             readmit = True
@@ -308,7 +310,7 @@ def get_profile(app):
         if row.Withdrawn == 'Y':
             withdrawn = True
 
-    return found, registered, reg_date, readmit, withdrawn, credits, campus_email
+    return found, registered, reg_date, readmit, withdrawn, credits, campus_email, advisor
 
 
 def update_demographics(app):

@@ -40,7 +40,8 @@
 	"slate_upload_passive": {
 		"fields": [
 			"PEOPLE_CODE_ID",
-			"campus_email"
+			"campus_email",
+			"advisor"
 		],
 		"url": "https://apply.school.edu/manage/service/import?cmd=load&format=xxxx",
 		"username": "service_user",

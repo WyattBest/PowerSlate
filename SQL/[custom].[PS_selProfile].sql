@@ -1,7 +1,7 @@
 USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [custom].[PS_selProfile]    Script Date: 2/5/2021 12:17:22 PM ******/
+/****** Object:  StoredProcedure [custom].[PS_selProfile]    Script Date: 2021-07-15 11:38:29 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -22,6 +22,7 @@ GO
 --	2020-05-18	Wyatt Best:	Added REG_VAL_DATE.
 --	2020-06-17	Wyatt Best: Coalesce PREREG_VAL_DATE, REG_VAL_DATE.
 --	2021-03-02	Wyatt Best: Made more generic. Still has MCNY-specific code values for PROGRAM and EmailType.
+--	2021-07-15	Wyatt Best: Return AdvisorUsername.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_selProfile] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -86,6 +87,11 @@ BEGIN
 			WHERE CODE_VALUE_KEY = A.ENROLL_SEPARATION
 			) AS Withdrawn
 		,oE.Email AS CampusEmail
+		,(
+			SELECT NonQualifiedUserName
+			FROM PersonUser
+			WHERE PersonId = dbo.fnGetPersonId(A.ADVISOR)
+			) [AdvisorUsername]
 	FROM ACADEMIC A
 	OUTER APPLY (
 		SELECT TOP 1 Email
