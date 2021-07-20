@@ -41,7 +41,8 @@
 		"fields": [
 			"PEOPLE_CODE_ID",
 			"campus_email",
-			"advisor"
+			"advisor",
+			"moodle_orientation_complete"
 		],
 		"url": "https://apply.school.edu/manage/service/import?cmd=load&format=xxxx",
 		"username": "service_user",

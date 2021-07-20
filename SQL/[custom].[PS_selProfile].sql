@@ -22,7 +22,7 @@ GO
 --	2020-05-18	Wyatt Best:	Added REG_VAL_DATE.
 --	2020-06-17	Wyatt Best: Coalesce PREREG_VAL_DATE, REG_VAL_DATE.
 --	2021-03-02	Wyatt Best: Made more generic. Still has MCNY-specific code values for PROGRAM and EmailType.
---	2021-07-15	Wyatt Best: Return AdvisorUsername.
+--	2021-07-15	Wyatt Best: Return AdvisorUsername and MoodleOrientationComplete fields to Slate.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_selProfile] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -92,6 +92,18 @@ BEGIN
 			FROM PersonUser
 			WHERE PersonId = dbo.fnGetPersonId(A.ADVISOR)
 			) [AdvisorUsername]
+		,CASE 
+			WHEN EXISTS (
+					SELECT *
+					FROM TESTSCORES T
+					WHERE TEST_ID = 'MOOD'
+						AND TEST_TYPE = 'STU'
+						AND ALPHA_SCORE_1 = 'P'
+						AND T.PEOPLE_CODE_ID = A.PEOPLE_CODE_ID
+					)
+				THEN 'Y'
+			ELSE 'N'
+			END [MoodleOrientationComplete]
 	FROM ACADEMIC A
 	OUTER APPLY (
 		SELECT TOP 1 Email

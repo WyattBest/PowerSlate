@@ -282,6 +282,7 @@ def get_profile(app):
     credits = '0.00'
     campus_email = None
     advisor = None
+    moodle_orientation_complete = None
 
     CURSOR.execute('EXEC [custom].[PS_selProfile] ?,?,?,?,?,?,?',
                    app['PEOPLE_CODE_ID'],
@@ -303,6 +304,7 @@ def get_profile(app):
 
         campus_email = row.CampusEmail
         advisor = row.AdvisorUsername
+        moodle_orientation_complete = row.MoodleOrientationComplete
 
         if row.COLLEGE_ATTEND == CONFIG['pc_readmit_code']:
             readmit = True
@@ -310,7 +312,7 @@ def get_profile(app):
         if row.Withdrawn == 'Y':
             withdrawn = True
 
-    return found, registered, reg_date, readmit, withdrawn, credits, campus_email, advisor
+    return found, registered, reg_date, readmit, withdrawn, credits, campus_email, advisor, moodle_orientation_complete
 
 
 def update_demographics(app):
