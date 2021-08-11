@@ -1,4 +1,4 @@
-USE [Campus6_test]
+USE [Campus6]
 GO
 
 /****** Object:  StoredProcedure [custom].[PS_updApplicationFormSetting]    Script Date: 2021-08-11 15:27:32 ******/

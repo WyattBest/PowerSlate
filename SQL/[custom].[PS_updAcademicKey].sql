@@ -23,7 +23,8 @@ CREATE PROCEDURE [custom].[PS_updAcademicKey] @PCID NVARCHAR(10)
 	,@aid UNIQUEIDENTIFIER NULL
 AS
 BEGIN
-	--SET NOCOUNT ON;
+	SET NOCOUNT ON;
+
 	--Update AcademicKey if needed
 	IF NOT EXISTS (
 			SELECT *
