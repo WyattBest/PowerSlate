@@ -531,7 +531,7 @@ def update_test_scores(pcid, test):
 
     for k in scores_present:
         score_name = k[:-4]
-        CURSOR.execute('exec [custom].[PS_updTestscore] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+        CURSOR.execute('exec [custom].[PS_updTestscore] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                        pcid,
                        test['TestType'],
                        test[k],
@@ -543,12 +543,13 @@ def update_test_scores(pcid, test):
                        None,
                        None,
                        None,
-                       None
+                       None,
+                       'SLATE'
                        )
 
     if test['ScoreAlpha'] is not None:
         score_name = alpha_type_match[0]
-        CURSOR.execute('exec [custom].[PS_updTestscore] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+        CURSOR.execute('exec [custom].[PS_updTestscore] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                        pcid,
                        test['TestType'],
                        k,
@@ -560,7 +561,8 @@ def update_test_scores(pcid, test):
                        test['ScoreAlpha'],
                        None,
                        None,
-                       None
+                       None,
+                       'SLATE'
                        )
     CNXN.commit()
 

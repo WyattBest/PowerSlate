@@ -14,6 +14,7 @@ GO
 -- Description:	Inserts or updates a test score. Scores are converted unless supplied pre-converted.
 --				Defaults are loaded from code tables if not supplied. Transcript Print will be left as-is unless supplied.
 --
+-- 2021-08-03 Wyatt Best: Added @Opid (OPERATOR_ID)
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updTestscore] @PCID NVARCHAR(10)
 	,@TestId NVARCHAR(6)
@@ -27,6 +28,7 @@ CREATE PROCEDURE [custom].[PS_updTestscore] @PCID NVARCHAR(10)
 	,@AlphaScore1 NVARCHAR(5) = NULL
 	,@AlphaScore2 NVARCHAR(5) = NULL
 	,@AlphaScore3 NVARCHAR(5) = NULL
+	,@Opid NVARCHAR(8)
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -196,7 +198,7 @@ BEGIN
 			,[ALPHA_SCORE_3] = @AlphaScore3
 			,REVISION_DATE = @Today
 			,REVISION_TIME = @Now
-			,REVISION_OPID = 'SLATE'
+			,REVISION_OPID = @Opid
 			,REVISION_TERMINAL = '0001'
 		WHERE PEOPLE_CODE_ID = @PCID
 			AND TEST_ID = @TestId
@@ -275,11 +277,11 @@ BEGIN
 			,@TranscriptPrintFlag [TRANSCRIPT_PRINT]
 			,@Today [CREATE_DATE]
 			,@Now [CREATE_TIME]
-			,'SLATE' [CREATE_OPID]
+			,@Opid [CREATE_OPID]
 			,'0001' [CREATE_TERMINAL]
 			,@Today [REVISION_DATE]
 			,@Now [REVISION_TIME]
-			,'SLATE' [REVISION_OPID]
+			,@Opid [REVISION_OPID]
 			,'0001' [REVISION_TERMINAL]
 			,'*' [ABT_JOIN]
 			,@AlphaScore [ALPHA_SCORE]
