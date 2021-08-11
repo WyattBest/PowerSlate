@@ -1,7 +1,7 @@
 USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 2/18/2021 3:20:41 PM ******/
+/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 2021-08-11 10:01:39 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -12,8 +12,8 @@ GO
 -- Author:		Wyatt Best
 -- Create date: 2016-11-17
 -- Description:	Updates Status and Decision code for application from Slate.
---				Sets ACADEMIC_FLAG if needed (an API defect).
---				Sets PRIMARY_FLAG
+--				Sets ACADEMIC_FLAG, PRIMARY_FLAG, ENROLL_SEPARATION, DEPARTMENT, POPULATION, COUNSELOR, EXTRA_CURRICULAR, COLLEGE_ATTEND, APPLICATION_DATE.
+--				Sets ADMIT and MATRIC field groups.
 --
 -- 2016-12-15 Wyatt Best:	Added 'Defer' ProposedDecision type.
 -- 2016-12-28 Wyatt Best:	Changed translation CODE_APPDECISION for Waiver from 'ACCP' to 'WAIV'
@@ -271,9 +271,30 @@ BEGIN
 			AND CURRICULUM = @Curriculum
 			AND APPLICATION_FLAG = 'Y';
 
-	-- Set ACADEMIC_FLAG if needed
+	--Update ACADEMIC_FLAG if needed
+	DECLARE @AcademicFlag NVARCHAR(1) = (
+			SELECT CASE 
+					WHEN EXISTS (
+							SELECT *
+							FROM CODE_APPSTATUS
+							WHERE CODE_VALUE_KEY = @AppStatus
+								AND [STATUS] = 'A'
+								AND CONFIRMED_STATUS = 'Y'
+							)
+						AND EXISTS (
+							SELECT *
+							FROM CODE_APPDECISION
+							WHERE CODE_VALUE_KEY = @AppDecision
+								AND [STATUS] = 'A'
+								AND ACCEPTED_DECISION = 'Y'
+							)
+						THEN 'Y'
+					ELSE 'N'
+					END
+			)
+
 	UPDATE dbo.ACADEMIC
-	SET ACADEMIC_FLAG = 'Y'
+	SET ACADEMIC_FLAG = @AcademicFlag
 	WHERE PEOPLE_CODE_ID = @PCID
 		AND ACADEMIC_YEAR = @Year
 		AND ACADEMIC_TERM = @Term
@@ -283,23 +304,43 @@ BEGIN
 		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
 		AND (
-			ACADEMIC_FLAG <> 'Y'
+			ACADEMIC_FLAG <> @AcademicFlag
 			OR ACADEMIC_FLAG IS NULL
 			)
-		AND EXISTS (
-			SELECT *
-			FROM CODE_APPSTATUS
-			WHERE CODE_VALUE_KEY = @AppStatus
-				AND [STATUS] = 'A'
-				AND CONFIRMED_STATUS = 'Y'
-			)
-		AND EXISTS (
-			SELECT *
-			FROM CODE_APPDECISION
-			WHERE CODE_VALUE_KEY = @AppDecision
-				AND [STATUS] = 'A'
-				AND ACCEPTED_DECISION = 'Y'
-			)
+
+	--Update ENROLL_SEPARATION if needed
+	DECLARE @pdc NVARCHAR(25) = (@program + '/' + @degree + '/' + @curriculum)
+		,@pdc1 NVARCHAR(25) = (@program + '/' + @degree + '/')
+		,@pdc2 NVARCHAR(25) = (@program + '//')
+		,@pdc3 NVARCHAR(25) = ('//')
+		,@EnrollSeparation NVARCHAR(4) = NULL
+
+	IF @AcademicFlag = 'Y'
+		SET @EnrollSeparation = (
+				SELECT TOP 1 LEFT(SETTING, 4)
+				FROM ABT_SETTINGS
+				WHERE AREA_NAME = 'ACA_RECORDS'
+					AND SECTION_NAME = 'STUDENT_CODING_ENROLLED'
+					AND LABEL_NAME IN (
+						@pdc
+						,@pdc1
+						,@pdc2
+						,@pdc3
+						)
+				ORDER BY LABEL_NAME DESC
+				)
+
+	UPDATE dbo.ACADEMIC
+	SET ENROLL_SEPARATION = @EnrollSeparation
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
+		AND APPLICATION_FLAG = 'Y'
+		AND COALESCE(ENROLL_SEPARATION, '') <> COALESCE(@EnrollSeparation, '')
 
 	--Update NONTRAD_PROGRAM if needed
 	UPDATE ACADEMIC
@@ -536,6 +577,3 @@ BEGIN
 
 	COMMIT
 END
-GO
-
-
