@@ -270,7 +270,7 @@ def main_sync(pid=None):
         CURRENT_RECORD = k
         if (v['status_ra'] == None) or (v['status_ra'] in (1, 2) and v['status_app'] is None):
             pcid = ps_powercampus.post_api(format_app_api(
-                v, CONFIG['defaults']), MSG_STRINGS)
+                v, CONFIG['defaults']), MSG_STRINGS, CONFIG['pc_app_form_setting_id'])
             apps[k]['PEOPLE_CODE_ID'] = pcid
 
             # Rescan status
