@@ -8,15 +8,13 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-
 -- =============================================
 -- Author:		Wyatt Best
 -- Create date: 2021-08-11
 -- Description:	Check for duplicate person records. Initially checks by SSN only.
 --
 -- =============================================
-CREATE PROCEDURE [custom].[PS_selPersonDuplicate] @PCID NVARCHAR(10)
-	,@GovernmentId NVARCHAR(20)
+CREATE PROCEDURE [custom].[PS_selPersonDuplicate] @GovernmentId NVARCHAR(20)
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -33,4 +31,5 @@ BEGIN
 			END [DuplicateFound]
 END
 GO
+
 

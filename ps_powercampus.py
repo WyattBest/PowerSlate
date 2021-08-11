@@ -34,6 +34,9 @@ def init(config):
     r.raise_for_status()
     verbose_print('Database:' + CNXN.getinfo(pyodbc.SQL_DATABASE_NAME))
 
+    # Enable ApplicationFormSetting's ProcessAutomatically in case program exited abnormally last time with setting toggled off.
+    update_app_form_autoprocess(config['pc_app_form_setting_id'], True)
+
 
 def de_init():
     # Clean up connections.
@@ -168,13 +171,22 @@ def get_recruiter_mapping(mapping_file_location):
     return rm_mapping
 
 
-def post_api(x, cfg_strings):
+def post_api(x, cfg_strings, app_form_setting_id):
     """Post an application to PowerCampus.
     Return  PEOPLE_CODE_ID if application was automatically accepted or None for all other conditions.
 
     Keyword arguments:
     x -- an application dict
     """
+
+    # Check for duplicate person. If found, temporarily toggle auto-process off.
+    dup_found = False
+    CURSOR.execute('EXEC [custom].[PS_selPersonDuplicate] ?',
+                   x['GovernmentId'])
+    row = CURSOR.fetchone()
+    dup_found = row.DuplicateFound
+    if dup_found:
+        update_app_form_autoprocess(app_form_setting_id, False)
 
     # Expose error text response from API, replace useless error message(s).
     try:
@@ -188,12 +200,18 @@ def post_api(x, cfg_strings):
         # Change newline handling so response text prints nicely in emails.
         rtext = r.text.replace('\r\n', '\n')
 
+        if dup_found:
+            update_app_form_autoprocess(app_form_setting_id, True)
+
         if 'BadRequest Object reference not set to an instance of an object.' in rtext and 'ApplicationsController.cs:line 183' in rtext:
             raise ValueError(rtext, cfg_strings['error_no_phones'], e)
         elif r.status_code == 202 or r.status_code == 400:
             raise ValueError(rtext)
         else:
             raise requests.HTTPError(rtext)
+
+    if dup_found:
+        update_app_form_autoprocess(app_form_setting_id, True)
 
     if (r.text[-25:-12] == 'New People Id'):
         try:
@@ -564,6 +582,13 @@ def update_test_scores(pcid, test):
                        None,
                        'SLATE'
                        )
+    CNXN.commit()
+
+
+def update_app_form_autoprocess(app_form_setting_id, autoprocess):
+    CURSOR.execute('EXEC [custom].[PS_updApplicationFormSetting] ?,?',
+                   app_form_setting_id,
+                   bool(autoprocess))
     CNXN.commit()
 
 

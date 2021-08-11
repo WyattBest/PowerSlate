@@ -5,6 +5,7 @@
 		"password": "astrongpassword"
 	},
 	"pc_database_string": "Driver={ODBC Driver 17 for SQL Server};Server=servername;Database=campus6;Trusted_Connection=yes;ServerSPN=MSSQLSvc/servername.local.domain.edu;",
+	"pc_app_form_setting_id": 3,
 	"mapping_file_location": "\\\\servername\\PowerCampus Mapper\\recruiterMapping.xml",
 	"autoconfigure_mappings": {
 		"enabled": false,
