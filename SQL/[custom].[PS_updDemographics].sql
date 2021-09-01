@@ -20,6 +20,7 @@ GO
 -- 2021-03-07 Wyatt Best:	Added @PrimaryLanguage and @HomeLanguage. Don't UPDATE demographics row unless needed. Make most parameters optional.
 -- 2021-03-16 Wyatt Best:	Added @GovernmentId. For safety, existing GOVERNMENT_ID will not be overwritten with Slate-supplied value.
 -- 2021-04-27 Wyatt Best:	Added TOP 1 to existing people search by GOVERNMENT_ID to avoid subquery error.
+-- 2021-09-01 Wyatt Best:	Named transaction.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updDemographics] @PCID NVARCHAR(10)
 	,@Opid NVARCHAR(8)
@@ -43,7 +44,7 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
-	BEGIN TRANSACTION
+	BEGIN TRANSACTION PS_updDemographics
 
 	DECLARE @PersonId INT = dbo.fnGetPersonId(@PCID)
 		,@getdate DATETIME = getdate()
@@ -219,7 +220,7 @@ BEGIN
 		SET GOVERNMENT_ID = @GovernmentId
 		WHERE PEOPLE_CODE_ID = @PCID
 
-	COMMIT
+	COMMIT TRANSACTION PS_updDemographics
 END
 GO
 

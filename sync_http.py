@@ -36,12 +36,16 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
             else:
                 message = 'Error: Record not found.'
         except Exception as ex:
+            # Close SQL connections
+            ps_core.de_init()
+            
             # Re-initialize and try one more time before returning an error to the user
             print('Attempting to recover from error:', emit_traceback())
             try:
                 CONFIG = ps_core.init(sys.argv[1])
                 message = ps_core.main_sync(q['pid'][0])
             except Exception:
+                ps_core.de_init()
                 message = emit_traceback()
 
         # Write content as utf-8 data

@@ -23,6 +23,9 @@ if __name__ == '__main__':
         except AttributeError:
             current_record = None
 
+        # Close SQL connections
+        ps_core.de_init()
+
         with open(sys.argv[1]) as config_file:
             config = json.load(config_file)
             smtp_config = config['smtp']
