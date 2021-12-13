@@ -347,7 +347,7 @@ def main_sync(pid=None):
                         app_pc, udf['slate_field'], udf['pc_field'])
 
             # Collect information
-            found, registered, reg_date, readmit, withdrawn, credits, campus_email, advisor, moodle_orientation_complete = ps_powercampus.get_profile(
+            found, registered, reg_date, readmit, withdrawn, credits, campus_email, advisor, custom_1, custom_2, custom_3, custom_4, custom_5 = ps_powercampus.get_profile(
                 app_pc)
             apps[k].update({'found': found,
                             'registered': registered,
@@ -357,7 +357,11 @@ def main_sync(pid=None):
                             'credits': credits,
                             'campus_email': campus_email,
                             'advisor': advisor,
-                            'moodle_orientation_complete': moodle_orientation_complete})
+                            'custom_1': custom_1,
+                            'custom_2': custom_2,
+                            'custom_3': custom_3,
+                            'custom_4': custom_4,
+                            'custom_5': custom_5})
 
     verbose_print('Upload passive fields back to Slate')
     slate_post_fields(apps, CONFIG['slate_upload_passive'])

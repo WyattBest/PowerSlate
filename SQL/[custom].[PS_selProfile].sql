@@ -14,15 +14,16 @@ GO
 -- Description:	Returns information for an ACADEMIC row, such as registration and readmit flag.
 --				This sp is also used to detect changed primary keys (YTSPDC) and invalid COLLEGE_ATTEND values.
 --
---	2017-11-03 Wyatt Best:	Updated to better handle multiple apps. Gave up on a generic method of handling CASAC.
---  2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
---	2020-01-13	Wyatt Best: Get credits from rollup record instead of session.
---	2020-04-10	Wyatt Best: Added Withdrawn and CampusEmail.
---	2020-04-21	Wyatt Best: Registration check only considers PROGRAM = CERT instead of full PDC. Allows noncredit programs besides CASAC.
---	2020-05-18	Wyatt Best:	Added REG_VAL_DATE.
---	2020-06-17	Wyatt Best: Coalesce PREREG_VAL_DATE, REG_VAL_DATE.
---	2021-03-02	Wyatt Best: Made more generic. Still has MCNY-specific code values for PROGRAM and EmailType.
---	2021-07-15	Wyatt Best: Return AdvisorUsername and MoodleOrientationComplete fields to Slate (MCNY-specific).
+-- 2017-11-03	Wyatt Best:	Updated to better handle multiple apps. Gave up on a generic method of handling CASAC.
+-- 2019-10-15	Wyatt Best:	Renamed and moved to [custom] schema.
+-- 2020-01-13	Wyatt Best: Get credits from rollup record instead of session.
+-- 2020-04-10	Wyatt Best: Added Withdrawn and CampusEmail.
+-- 2020-04-21	Wyatt Best: Registration check only considers PROGRAM = CERT instead of full PDC. Allows noncredit programs besides CASAC.
+-- 2020-05-18	Wyatt Best:	Added REG_VAL_DATE.
+-- 2020-06-17	Wyatt Best: Coalesce PREREG_VAL_DATE, REG_VAL_DATE.
+-- 2021-03-02	Wyatt Best: Made more generic. Still has MCNY-specific code values for PROGRAM and EmailType.
+-- 2021-07-15	Wyatt Best: Return AdvisorUsername and MoodleOrientationComplete fields to Slate (MCNY-specific).
+-- 2021-12-01	Wyatt Best: Renamed MoodleOrientationComplete to custom_1 and added 4 more custom fields.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_selProfile] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -103,7 +104,11 @@ BEGIN
 					)
 				THEN 'Y'
 			ELSE 'N'
-			END [MoodleOrientationComplete]
+			END [custom_1]
+		,NULL [custom_2]
+		,NULL [custom_3]
+		,NULL [custom_4]
+		,NULL [custom_5]
 	FROM ACADEMIC A
 	OUTER APPLY (
 		SELECT TOP 1 Email
