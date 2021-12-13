@@ -38,6 +38,7 @@ GO
 -- 2021-08-13 Wyatt Best:	Added logic to update ENROLL_SEPARATION.
 -- 2021-12-13 Wyatt Best:	Added @OrganizationId (Campus) to work around CR-XXXXXXXXX, where the campus passed to the API isn't written to ACADEMIC.
 --							If ACADEMIC_FLAG isn't yet set to Y, update ACADEMIC.ORG_CODE_ID based on the passed OrganizationId.
+-- 2021-12-13 Wyatt Best:	Ability to set NONTRAD_PROGRAM back to blank (NULL isn't allowed). Formerly, a bad @Nontraditional value later set to NULL in Slate would remain in PowerCampus.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -132,6 +133,44 @@ BEGIN
 	END
 
 	IF (
+			@Nontraditional > ''
+			AND NOT EXISTS (
+				SELECT *
+				FROM NONTRADITIONAL
+				WHERE NONTRAD_PROGRAM = @Nontraditional
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@Nontraditional ''%s'' not found in CODE_POPULATION.'
+				,11
+				,1
+				,@Nontraditional
+				)
+
+		RETURN
+	END
+
+	IF (
+			@OrganizationId IS NOT NULL
+			AND NOT EXISTS (
+				SELECT *
+				FROM ORGANIZATION
+				WHERE OrganizationId = @OrganizationId
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@OrganizationId ''%s'' not found in ORGANIZATION.'
+				,11
+				,1
+				,@OrganizationId
+				)
+
+		RETURN
+	END
+
+	IF (
 			@AppStatus IS NOT NULL
 			AND NOT EXISTS (
 				SELECT *
@@ -202,25 +241,6 @@ BEGIN
 				,11
 				,1
 				,@CollegeAttend
-				)
-
-		RETURN
-	END
-
-	IF (
-			@OrganizationId IS NOT NULL
-			AND NOT EXISTS (
-				SELECT *
-				FROM ORGANIZATION
-				WHERE OrganizationId = @OrganizationId
-				)
-			)
-	BEGIN
-		RAISERROR (
-				'@OrganizationId ''%s'' not found in ORGANIZATION.'
-				,11
-				,1
-				,@OrganizationId
 				)
 
 		RETURN
@@ -373,14 +393,8 @@ BEGIN
 		AND DEGREE = @Degree
 		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
-		AND (
-			NONTRAD_PROGRAM <> @Nontraditional
-			OR NONTRAD_PROGRAM IS NULL
-			)
-		AND @Nontraditional IN (
-			SELECT NONTRAD_PROGRAM
-			FROM NONTRADITIONAL
-			)
+		AND NONTRAD_PROGRAM <> @Nontraditional
+		AND NONTRAD_PROGRAM IS NOT NULL
 
 	--Update POPULATION if needed
 	UPDATE ACADEMIC
@@ -609,7 +623,7 @@ BEGIN
 		AND DEGREE = @Degree
 		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
-	 	AND A.ACADEMIC_FLAG <> 'Y'
+		AND A.ACADEMIC_FLAG <> 'Y'
 		AND A.ORG_CODE_ID <> O.ORG_CODE_ID
 
 	COMMIT
