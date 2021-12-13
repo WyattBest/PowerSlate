@@ -36,6 +36,8 @@ GO
 --							Change primary flag logic to be more conservative. Rewrote some statements for efficiency.
 -- 2021-04-05 Wyatt Best:	Added switch to control whether @Population will overwrite existing values. Used by MCNY.
 -- 2021-08-13 Wyatt Best:	Added logic to update ENROLL_SEPARATION.
+-- 2021-12-13 Wyatt Best:	Added @OrganizationId (Campus) to work around CR-XXXXXXXXX, where the campus passed to the API isn't written to ACADEMIC.
+--							If ACADEMIC_FLAG isn't yet set to Y, update ACADEMIC.ORG_CODE_ID based on the passed OrganizationId.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -49,6 +51,7 @@ CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Population NVARCHAR(12) NULL
 	,@AdmitDate DATE NULL
 	,@Matriculated BIT NULL
+	,@OrganizationId INT NULL
 	,@AppStatus NVARCHAR(8) NULL
 	,@AppStatusDate DATE NULL
 	,@AppDecision NVARCHAR(8) NULL
@@ -89,7 +92,7 @@ BEGIN
 		SET @Admitted = 1
 	END
 
-	--Error check
+	--Error checks
 	IF (
 			@Department IS NOT NULL
 			AND NOT EXISTS (
@@ -199,6 +202,25 @@ BEGIN
 				,11
 				,1
 				,@CollegeAttend
+				)
+
+		RETURN
+	END
+
+	IF (
+			@OrganizationId IS NOT NULL
+			AND NOT EXISTS (
+				SELECT *
+				FROM ORGANIZATION
+				WHERE OrganizationId = @OrganizationId
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@OrganizationId ''%s'' not found in ORGANIZATION.'
+				,11
+				,1
+				,@OrganizationId
 				)
 
 		RETURN
@@ -572,6 +594,23 @@ BEGIN
 		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
 		AND COALESCE(APPLICATION_DATE, '') <> dbo.fnMakeDate(@CreateDateTime);
+
+	--Update ORG_CODE_ID to work around CR-XXXXXXXXX
+	UPDATE A
+	SET ORG_CODE_ID = O.ORG_CODE_ID
+	FROM ACADEMIC A
+	INNER JOIN ORGANIZATION O
+		ON O.OrganizationId = @OrganizationId
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
+		AND APPLICATION_FLAG = 'Y'
+	 	AND A.ACADEMIC_FLAG <> 'Y'
+		AND A.ORG_CODE_ID <> O.ORG_CODE_ID
 
 	COMMIT
 END

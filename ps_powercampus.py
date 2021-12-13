@@ -213,6 +213,9 @@ def post_api(x, cfg_strings, app_form_setting_id):
     if dup_found:
         update_app_form_autoprocess(app_form_setting_id, True)
 
+    # Populate ApplicationCampus table
+    update_application_campus(x['aid'])
+
     if (r.text[-25:-12] == 'New People Id'):
         try:
             people_code = r.text[-11:-2]
@@ -365,7 +368,12 @@ def update_demographics(app):
 
 
 def update_academic(app):
-    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
+    """"
+    Update ACADEMIC row data in PowerCampus.
+    Work around PowerCampus defect CR-XXXXXXXXX, where the campus passed to the API isn't written to ACADEMIC:
+        If ACADEMIC_FLAG isn't yet set to Y, update ACADEMIC.ORG_CODE_ID based on the passed OrganizationId.
+    """
+    CURSOR.execute('exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?',
                    app['PEOPLE_CODE_ID'],
                    app['ACADEMIC_YEAR'],
                    app['ACADEMIC_TERM'],
@@ -378,6 +386,7 @@ def update_academic(app):
                    app['Population'],
                    app['AdmitDate'],
                    app['Matriculated'],
+                   app['OrganizationId'],
                    app['AppStatus'],
                    app['AppStatusDate'],
                    app['AppDecision'],
@@ -385,7 +394,8 @@ def update_academic(app):
                    app['Counselor'],
                    app['COLLEGE_ATTEND'],
                    app['Extracurricular'],
-                   app['CreateDateTime'])
+                   app['CreateDateTime']
+                   )
     CNXN.commit()
 
 
