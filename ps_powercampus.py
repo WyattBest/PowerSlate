@@ -213,9 +213,6 @@ def post_api(x, cfg_strings, app_form_setting_id):
     if dup_found:
         update_app_form_autoprocess(app_form_setting_id, True)
 
-    # Populate ApplicationCampus table
-    update_application_campus(x['aid'])
-
     if (r.text[-25:-12] == 'New People Id'):
         try:
             people_code = r.text[-11:-2]
