@@ -260,6 +260,8 @@ def format_app_sql(app, mapping, config):
 
     if 'Campus' in app:
         mapped['OrganizationId'] = mapping['Campus'][app['Campus']]
+    else:
+        mapped['OrganizationId'] = None
 
     # Format arrays if present. This should probably be moved into a class in ps_models.
     # Currently only supplies nulls; no datatype manipulations performed.
