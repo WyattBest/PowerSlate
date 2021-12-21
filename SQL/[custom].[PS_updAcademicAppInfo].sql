@@ -36,7 +36,7 @@ GO
 --							Change primary flag logic to be more conservative. Rewrote some statements for efficiency.
 -- 2021-04-05 Wyatt Best:	Added switch to control whether @Population will overwrite existing values. Used by MCNY.
 -- 2021-08-13 Wyatt Best:	Added logic to update ENROLL_SEPARATION.
--- 2021-12-13 Wyatt Best:	Added @OrganizationId (Campus) to work around CR-XXXXXXXXX, where the campus passed to the API isn't written to ACADEMIC.
+-- 2021-12-13 Wyatt Best:	Added @OrganizationId (Campus) to work around CR-000182917, where the campus passed to the API isn't written to ACADEMIC.
 --							If ACADEMIC_FLAG isn't yet set to Y, update ACADEMIC.ORG_CODE_ID based on the passed OrganizationId.
 -- 2021-12-13 Wyatt Best:	Ability to set NONTRAD_PROGRAM back to blank (NULL isn't allowed). Formerly, a bad @Nontraditional value later set to NULL in Slate would remain in PowerCampus.
 -- =============================================
@@ -248,7 +248,7 @@ BEGIN
 
 	BEGIN TRANSACTION
 
-	--Update ORG_CODE_ID to work around CR-XXXXXXXXX
+	--Update ORG_CODE_ID to work around CR-000182917
 	UPDATE A
 	SET ORG_CODE_ID = O.ORG_CODE_ID
 	FROM ACADEMIC A
