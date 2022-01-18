@@ -3,7 +3,6 @@ import requests
 import json
 import datetime
 import pyodbc
-import time
 import traceback
 import smtplib
 from email.mime.text import MIMEText
@@ -28,18 +27,22 @@ def init_config(x):
         # print(json.dumps(config, indent = 4, sort_keys = True)) # Debug: print config object
 
     # Slate web service connections
-    sq_govid_url = config['slate_query_govid']['url']
-    sq_govid_cred = (config['slate_query_govid']['username'],
-                     config['slate_query_govid']['password'])
-    s_upload_url = config['slate_upload']['url']
-    s_upload_cred = (config['slate_upload']['username'],
-                     config['slate_upload']['password'])
+    sq_govid_url = config["slate_query_govid"]["url"]
+    sq_govid_cred = (
+        config["slate_query_govid"]["username"],
+        config["slate_query_govid"]["password"],
+    )
+    s_upload_url = config["slate_upload"]["url"]
+    s_upload_cred = (
+        config["slate_upload"]["username"],
+        config["slate_upload"]["password"],
+    )
 
     # Email crash handler notification settings
-    smtp_config = config['smtp']
+    smtp_config = config["smtp"]
 
     # Microsoft SQL Server connection. Requires ODBC connection provisioned on the local machine.
-    cnxn = pyodbc.connect(config['pf_database_string'])
+    cnxn = pyodbc.connect(config["pf_database_string"])
     cursor = cnxn.cursor()
 
 
@@ -58,20 +61,20 @@ def doit(config_file):
 
     # Convert Slate JSON response into Python list.
     # Since the initial Slate response is a dict with a single key, isolate the single value, which is a list.
-    x = json.loads(r.text)['row']
+    x = json.loads(r.text)["row"]
     slate_upload_list = []
 
     # Execute SQL stored precedure for each id and add result to list to be uploaded back to Slate.
     for k, v in enumerate(x):
-        cursor.execute('EXEC [custom].[PS_selISIR] ?', x[k]['govid'])
+        cursor.execute("EXEC [custom].[PS_selISIR] ?", x[k]["govid"])
         row = cursor.fetchone()
 
         # If the stored procedure returns something, append that to new list
         if row is not None:
-            slate_upload_list.append({'pid': x[k]['pid'], 'isir': row.ISIR})
+            slate_upload_list.append({"pid": x[k]["pid"], "isir": row.ISIR})
 
     # Slate must have a root element for some reason, so nest the dict inside another dict and list.
-    slate_upload_dict = {'row': slate_upload_list}
+    slate_upload_dict = {"row": slate_upload_list}
 
     # Upload dict back to Slate
     r = requests.post(s_upload_url, json=slate_upload_dict, auth=s_upload_cred)
@@ -82,19 +85,24 @@ def doit(config_file):
 
 # Attempt a sync; send failure email with traceback if error.
 try:
-    print('Start sync at ' + str(datetime.datetime.now()))
+    print("Start sync at " + str(datetime.datetime.now()))
     doit(sys.argv[1])
 except Exception as e:
     # Send a failure email with traceback on exceptions
-    print('Exception at ' + str(datetime.datetime.now()) +
-          '! Check notification email.')
-    msg = MIMEText('Sync failed at ' + str(datetime.datetime.now()) + '\n\nError: '
-                   + str(traceback.format_exc()))
-    msg['Subject'] = smtp_config['subject']
-    msg['From'] = smtp_config['from']
-    msg['To'] = smtp_config['to']
+    print(
+        "Exception at " + str(datetime.datetime.now()) + "! Check notification email."
+    )
+    msg = MIMEText(
+        "Sync failed at "
+        + str(datetime.datetime.now())
+        + "\n\nError: "
+        + str(traceback.format_exc())
+    )
+    msg["Subject"] = smtp_config["subject"]
+    msg["From"] = smtp_config["from"]
+    msg["To"] = smtp_config["to"]
 
-    with smtplib.SMTP(smtp_config['server']) as smtp:
+    with smtplib.SMTP(smtp_config["server"]) as smtp:
         smtp.starttls()
-        smtp.login(smtp_config['username'], smtp_config['password'])
+        smtp.login(smtp_config["username"], smtp_config["password"])
         smtp.send_message(msg)
