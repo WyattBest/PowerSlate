@@ -587,6 +587,7 @@ def update_udf(app, slate_field, pc_field):
 
 
 def update_education(pcid, pid, education):
+    """Insert or update a row in the EDUCATION table. Return whether or not the org identifier was found in PowerCampus."""
     CURSOR.execute(
         "exec [custom].[PS_updEducation] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
         pcid,
@@ -610,17 +611,15 @@ def update_education(pcid, pid, education):
     )
     row = CURSOR.fetchone()
     CNXN.commit()
-    errorflag = not row[0]
+    org_found = row[0]
 
-    unmatched_school = None
-    if errorflag:
-        unmatched_school = {
-            "pid": pid,
-            "school_guid": education["GUID"],
-            "not_found": True,
-        }
+    output = {
+        "pid": pid,
+        "school_guid": education["GUID"],
+        "org_found": org_found,
+    }
 
-    return unmatched_school
+    return output
 
 
 def update_test_scores(pcid, test):

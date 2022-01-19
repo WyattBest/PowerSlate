@@ -3,6 +3,27 @@ from string import ascii_letters, punctuation, whitespace
 import ps_models
 
 
+class Edu_sync_result:
+    def __init__(self, sync_result):
+        self.pid = sync_result["pid"]
+        self.school_guid = sync_result["school_guid"]
+        self.org_found = bool(sync_result["org_found"])
+        if "compare_org_found" in sync_result:
+            self.compare_org_found = format_strtobool(sync_result["compare_org_found"])
+        else:
+            self.compare_org_found = None
+
+    def dump_to_slate(self):
+        return {
+            "pid": self.pid,
+            "school_guid": self.school_guid,
+            "org_found": self.org_found,
+        }
+
+
+# Should I perhaps have a class like ApplicationRecord that handles datatype transformations, supplying nulls, etc?
+
+
 def format_blank_to_null(x):
     # Converts empty string to None. Accepts dicts, lists, and tuples.
     # This function derived from radtek @ http://stackoverflow.com/a/37079737/4109658

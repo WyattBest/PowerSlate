@@ -1,8 +1,9 @@
+from distutils.command.upload import upload
 import requests
 import json
 from copy import deepcopy
 import xml.etree.ElementTree as ET
-from ps_format import format_app_generic, format_app_api, format_app_sql
+from ps_format import format_app_generic, format_app_api, format_app_sql, Edu_sync_result
 import ps_powercampus
 
 
@@ -93,7 +94,10 @@ def slate_get_actions(apps_list):
 
 
 def slate_post_generic(upload_list, config_dict):
-    """Upload a simple list of dicts to Slate with no transformations."""
+    """Upload a simple list of dicts to Slate."""
+
+    # Dedup list
+    upload_list = [dict(t) for t in {tuple(sorted(d.items())) for d in upload_list}]
 
     # Slate requires JSON to be convertable to XML
     upload_dict = {"row": upload_list}
@@ -103,7 +107,7 @@ def slate_post_generic(upload_list, config_dict):
     r.raise_for_status()
 
 
-def slate_post_fields_changed(apps, config_dict):
+def slate_post_apps_changed(apps, config_dict):
     # Check for changes between Slate and local state
     # Upload changed records back to Slate
 
@@ -186,6 +190,29 @@ def slate_post_fa_checklist(upload_list):
             auth=creds,
         )
         r.raise_for_status()
+
+
+def slate_post_education_changed(edu_list, config_dict):
+    """Upload changed School records back to Slate."""
+
+    upload_list = []
+
+    for e in edu_list:
+        e = Edu_sync_result(e)
+        if e.org_found != e.compare_org_found:
+            upload_list.append(e.dump_to_slate())
+
+    if len(upload_list) > 0:
+        slate_post_generic(upload_list, config_dict)
+
+    msg = (
+        "\t"
+        + str(len(upload_list))
+        + " of "
+        + str(len(edu_list))
+        + " education records had changed fields"
+    )
+    return msg
 
 
 def learn_actions(actions_list):
@@ -318,7 +345,7 @@ def main_sync(pid=None):
             learn_actions(actions_list)
 
     verbose_print("Update existing applications in PowerCampus and extract information")
-    unmatched_schools = []
+    edu_sync_results = []
     for k, v in apps.items():
         CURRENT_RECORD = k
         if v["status_calc"] == "Active":
@@ -360,8 +387,9 @@ def main_sync(pid=None):
             if "Education" in app_pc:
                 apps[k]["schools_not_found"] = []
                 for edu in app_pc["Education"]:
-                    unmatched_schools.append(
+                    edu_sync_results.append(
                         ps_powercampus.update_education(pcid, app_pc["pid"], edu)
+                        | {k: v for (k, v) in edu.items() if k == "compare_org_found"}
                     )
 
             # Update PowerCampus Test Score records
@@ -424,11 +452,15 @@ def main_sync(pid=None):
     slate_post_fields(apps, CONFIG["slate_upload_passive"])
 
     verbose_print("Upload active (changed) fields back to Slate")
-    verbose_print(slate_post_fields_changed(apps, CONFIG["slate_upload_active"]))
+    verbose_print(slate_post_apps_changed(apps, CONFIG["slate_upload_active"]))
 
-    if len(unmatched_schools) > 0 and unmatched_schools[0] is not None:
-        verbose_print("Upload unmatched school records back to Slate")
-        slate_post_generic(unmatched_schools, CONFIG["slate_upload_schools"])
+    if len(edu_sync_results) > 0 and edu_sync_results[0] is not None:
+        verbose_print("Upload education records sync status back to Slate")
+        verbose_print(
+            slate_post_education_changed(
+                edu_sync_results, CONFIG["slate_upload_schools"]
+            )
+        )
 
     # Collect Financial Aid checklist and upload to Slate
     if CONFIG["fa_checklist"]["enabled"] == True:

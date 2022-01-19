@@ -1,6 +1,3 @@
-# Should I perhaps have a class like ApplicationRecord that handles datatype transformations, supplying nulls, etc?
-
-
 fields = {
     "AdmitDate": {
         "api_verbatim": False,

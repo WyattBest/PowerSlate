@@ -2,7 +2,7 @@
 Note that these queries leave much to be desired at this time.
 Phone number types are static instead of dynamic and many new fields are not being exported.
 
-PowerSlate CJ Library: e6f215a4-099c-5c1a-2668-2f2337d103bf@mcn
+PowerSlate CJ Library: 60f7caf4-ddd9-d3d0-985b-c939bb315141@mcn
 Contains some MCNY-specific translations.
 
 PowerSlate 24 hr: ab57a5a3-416f-3212-491d-61556409c3d7@mcn
@@ -16,6 +16,8 @@ Custom SQL query for Scheduled Actions. Might be replaceable with Configurable J
 Contains some MCNY-specific ACTION_ID's.
 
 ==Source Formats==
-PowerSlate Web Post (Active): 6bbb288b-133c-7720-790c-41af8d83d503@mcn
+PowerSlate Web Post (Passive): 6bbb288b-133c-7720-790c-41af8d83d503@mcn
 
 PowerSlate Web Post (Active): 74ba4968-7672-3d29-31e4-09ce7d280584@mcn
+
+PowerSlate School Records: 1693adcb-9391-e648-a0b0-0af122440699@mcn
