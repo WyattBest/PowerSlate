@@ -24,6 +24,7 @@ GO
 -- 2021-03-02	Wyatt Best: Made more generic. Still has MCNY-specific code values for PROGRAM and EmailType.
 -- 2021-07-15	Wyatt Best: Return AdvisorUsername and MoodleOrientationComplete fields to Slate (MCNY-specific).
 -- 2021-12-01	Wyatt Best: Renamed MoodleOrientationComplete to custom_1 and added 4 more custom fields.
+-- 2022-02-16	Wyatt Best:	Added @EmailType parameter.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_selProfile] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -32,9 +33,30 @@ CREATE PROCEDURE [custom].[PS_selProfile] @PCID NVARCHAR(10)
 	,@Program NVARCHAR(6)
 	,@Degree NVARCHAR(6)
 	,@Curriculum NVARCHAR(6)
+	,@EmailType NVARCHAR(10)
 AS
 BEGIN
 	SET NOCOUNT ON;
+
+	--Error check
+	IF (
+			@EmailType IS NOT NULL
+			AND NOT EXISTS (
+				SELECT *
+				FROM CODE_EMAILTYPE
+				WHERE CODE_VALUE_KEY = @EmailType
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@EmailType ''%s'' not found in CODE_EMAILTYPE.'
+				,11
+				,1
+				,@EmailType
+				)
+
+		RETURN
+	END
 
 	--Select credits from rollup to avoid duplicate hits to table
 	DECLARE @Credits NUMERIC(6, 2) = (
@@ -114,7 +136,7 @@ BEGIN
 		SELECT TOP 1 Email
 		FROM EmailAddress E
 		WHERE E.PeopleOrgCodeId = A.PEOPLE_CODE_ID
-			AND E.EmailType = 'Campus'
+			AND E.EmailType = @EmailType
 			AND E.IsActive = 1
 		ORDER BY E.REVISION_DATE DESC
 			,REVISION_TIME DESC

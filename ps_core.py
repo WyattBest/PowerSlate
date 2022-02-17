@@ -1,9 +1,12 @@
-from distutils.command.upload import upload
 import requests
 import json
 from copy import deepcopy
-import xml.etree.ElementTree as ET
-from ps_format import format_app_generic, format_app_api, format_app_sql, Edu_sync_result
+from ps_format import (
+    format_app_generic,
+    format_app_api,
+    format_app_sql,
+    Edu_sync_result,
+)
 import ps_powercampus
 
 
@@ -429,7 +432,7 @@ def main_sync(pid=None):
                 custom_3,
                 custom_4,
                 custom_5,
-            ) = ps_powercampus.get_profile(app_pc)
+            ) = ps_powercampus.get_profile(app_pc, CONFIG["pc_campus_emailtype"])
             apps[k].update(
                 {
                     "found": found,

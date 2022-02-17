@@ -310,7 +310,7 @@ def scan_status(x):
     return ra_status, apl_status, computed_status, pcid
 
 
-def get_profile(app):
+def get_profile(app, campus_email_type):
     """Fetch ACADEMIC row data and email address from PowerCampus.
 
     Returns:
@@ -338,7 +338,7 @@ def get_profile(app):
     custom_5 = None
 
     CURSOR.execute(
-        "EXEC [custom].[PS_selProfile] ?,?,?,?,?,?,?",
+        "EXEC [custom].[PS_selProfile] ?,?,?,?,?,?,?,?",
         app["PEOPLE_CODE_ID"],
         app["ACADEMIC_YEAR"],
         app["ACADEMIC_TERM"],
@@ -346,6 +346,7 @@ def get_profile(app):
         app["PROGRAM"],
         app["DEGREE"],
         app["CURRICULUM"],
+        campus_email_type,
     )
     row = CURSOR.fetchone()
 
