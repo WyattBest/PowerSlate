@@ -6,6 +6,7 @@ from ps_format import (
     format_app_api,
     format_app_sql,
     Edu_sync_result,
+    Stop_from_Slate,
 )
 import ps_powercampus
 
@@ -416,6 +417,12 @@ def main_sync(pid=None):
                     ps_powercampus.update_udf(
                         app_pc, udf["slate_field"], udf["pc_field"]
                     )
+
+            # Update PowerCampus Stops
+            if "Stops" in app_pc:
+                for stop in app_pc["Stops"]:
+                    stop = Stop_from_Slate(stop)
+                    ps_powercampus.update_stop(pcid, stop)
 
             # Collect information
             (

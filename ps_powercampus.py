@@ -690,6 +690,22 @@ def update_test_scores(pcid, test):
     CNXN.commit()
 
 
+def update_stop(pcid, stop):
+    """Insert or update a row in STOPLIST.
+    If StopCode and StopDate match an existing row, update the row. Otherwise, insert a new row.
+    """
+    CURSOR.execute(
+        "exec [custom].[PS_updStop] ?, ?, ?, ?, ? ,?",
+        pcid,
+        stop["StopCode"],
+        stop["StopDate"],
+        stop["Cleared"],
+        stop["ClearedDate"],
+        stop["Comments"],
+    )
+    CNXN.commit()
+
+
 def update_app_form_autoprocess(app_form_setting_id, autoprocess):
     CURSOR.execute(
         "EXEC [custom].[PS_updApplicationFormSetting] ?,?",

@@ -19,6 +19,7 @@ GRANT EXEC ON [custom].[PS_selActionDefinition] to PowerSlate
 GRANT SELECT, UPDATE, VIEW DEFINITION ON [USERDEFINEDIND]  to PowerSlate
 GRANT EXEC ON [custom].[PS_selPersonDuplicate] to PowerSlate
 GRANT EXEC ON [custom].[PS_updApplicationFormSetting] to PowerSlate
+GRANT EXEC ON [custom].[PS_updStop] to PowerSlate
 
 USE [PowerCampusMapper]
 GRANT INSERT ON PowerSlate_AppStatus_Log TO PowerSlate

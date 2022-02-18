@@ -2,7 +2,7 @@ from copy import deepcopy
 from string import ascii_letters, punctuation, whitespace
 import ps_models
 
-
+# Newer data points are implemented as classes. Older ones are implemented in ps_models.py
 class Edu_sync_result:
     def __init__(self, sync_result):
         self.pid = sync_result["pid"]
@@ -19,6 +19,20 @@ class Edu_sync_result:
             "school_guid": self.school_guid,
             "org_found": self.org_found,
         }
+
+
+class Stop_from_Slate:
+    def __init__(self, stop):
+        self.stop_code = stop["StopCode"]
+        self.cleared = format_strtobool(stop["Cleared"])
+        if "cleared_date" in stop:
+            self.cleared_date = stop["cleared_date"]
+        else:
+            self.cleared_date = None
+        if "comments" in stop:
+            self.comments = stop["comments"]
+        else:
+            self.comments = None
 
 
 # Should I perhaps have a class like ApplicationRecord that handles datatype transformations, supplying nulls, etc?
