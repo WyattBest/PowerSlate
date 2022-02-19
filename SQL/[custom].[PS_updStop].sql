@@ -1,19 +1,18 @@
-USE [Campus6_odyssey]
+USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [custom].[PS_updStop]    Script Date: 2022-02-18 10:09:55 AM ******/
+/****** Object:  StoredProcedure [custom].[PS_updStop]    Script Date: 2/19/2022 10:44:34 AM ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
 
-
 -- =============================================
 -- Author:		Wyatt Best
 -- Create date: 2022-02-18
 -- Description:	Insert or update a row in STOPLIST.
---				If StopReason and StopDate match an existing row, update the row. Otherwise, insert a new row.
+--				If StopCode and StopDate match an existing row, update the row. Otherwise, insert a new row.
 --
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updStop] @PCID NVARCHAR(10)
@@ -31,7 +30,12 @@ BEGIN
 	DECLARE @Today DATETIME = dbo.fnMakeDate(@getdate)
 		,@Now DATETIME = dbo.fnMakeTime(@getdate)
 		,@Cleared NVARCHAR(1) = (
-			SELECT CASE @ClearedBit WHEN 1 THEN 'Y' WHEN 0 THEN 'N' END
+			SELECT CASE @ClearedBit
+					WHEN 1
+						THEN 'Y'
+					WHEN 0
+						THEN 'N'
+					END
 			);
 
 	IF @ClearedBit = 0
@@ -84,10 +88,21 @@ BEGIN
 		UPDATE [STOPLIST]
 		SET CLEARED = @Cleared
 			,CLEARED_DATE = @ClearedDate
-			,COMMENTS = @Comments
+			,COMMENTS = COALESCE(@Comments, COMMENTS)
 			,REVISION_OPID = @Opid
 			,REVISION_DATE = @Today
 			,REVISION_TIME = @Now
+		WHERE PEOPLE_CODE_ID = @PCID
+			AND STOP_REASON = @StopReason
+			AND CAST(STOP_DATE AS DATE) = @StopDate
+			AND (
+				CLEARED <> @Cleared
+				OR CLEARED_DATE <> @ClearedDate
+				OR (
+					@Comments IS NOT NULL
+					AND COALESCE(COMMENTS, '') <> @Comments
+					)
+				)
 	END
 	ELSE
 	BEGIN
@@ -123,12 +138,10 @@ BEGIN
 			,@Now AS [CREATE_TIME]
 			,@Opid AS [CREATE_OPID]
 			,'0001' AS [CREATE_TERMINAL]
-			,@Comments AS [REVISION_DATE]
-			,@Today AS [REVISION_TIME]
-			,@Now AS [REVISION_OPID]
-			,@Opid AS [REVISION_TERMINAL]
+			,@Today AS [REVISION_DATE]
+			,@Now AS [REVISION_TIME]
+			,@Opid AS [REVISION_OPID]
+			,'0001' AS [REVISION_TERMINAL]
 			,'*' AS [ABT_JOIN]
 	END
 END
-GO
-

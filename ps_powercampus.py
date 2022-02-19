@@ -695,13 +695,14 @@ def update_stop(pcid, stop):
     If StopCode and StopDate match an existing row, update the row. Otherwise, insert a new row.
     """
     CURSOR.execute(
-        "exec [custom].[PS_updStop] ?, ?, ?, ?, ? ,?",
+        "exec [custom].[PS_updStop] ?, ?, ?, ?, ? ,? ,?",
         pcid,
-        stop["StopCode"],
-        stop["StopDate"],
-        stop["Cleared"],
-        stop["ClearedDate"],
-        stop["Comments"],
+        stop.stop_code,
+        stop.stop_date,
+        stop.cleared,
+        stop.cleared_date,
+        stop.comments,
+        "SLATE",
     )
     CNXN.commit()
 
