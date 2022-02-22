@@ -1,10 +1,8 @@
 USE [Campus6]
 GO
-
-/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 2021-08-13 11:14:01 ******/
+/****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 2022-02-22 8:22:53 AM ******/
 SET ANSI_NULLS ON
 GO
-
 SET QUOTED_IDENTIFIER ON
 GO
 
@@ -142,7 +140,7 @@ BEGIN
 			)
 	BEGIN
 		RAISERROR (
-				'@Nontraditional ''%s'' not found in CODE_POPULATION.'
+				'@Nontraditional ''%s'' not found in NONTRADITIONAL.'
 				,11
 				,1
 				,@Nontraditional
