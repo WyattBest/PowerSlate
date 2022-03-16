@@ -43,7 +43,8 @@
 			"PEOPLE_CODE_ID",
 			"campus_email",
 			"advisor",
-			"moodle_orientation_complete"
+			"fa_awards",
+			"fa_status"
 		],
 		"url": "https://apply.school.edu/manage/service/import?cmd=load&format=xxxx",
 		"username": "service_user",
@@ -97,6 +98,9 @@
 			"username": "username",
 			"password": "astrongpassword"
 		}
+	},
+	"fa_awards": {
+		"enabled": true
 	},
 	"defaults": {
 		"address_country": null,

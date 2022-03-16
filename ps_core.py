@@ -10,6 +10,15 @@ from ps_format import (
 )
 import ps_powercampus
 
+# The Settings class should replace the CONFIG global in all new code.
+class Settings:
+    def __init__(self, config):
+        self.fa_awards = self.FA_Awards(config)
+
+    class FA_Awards:
+        def __init__(self, config):
+            self.enabled = config["fa_awards"]["enabled"]
+
 
 def init(config_path):
     """Reads config file to global CONFIG dict. Many frequently-used variables are copied to their own globals for convenince."""
@@ -18,6 +27,7 @@ def init(config_path):
     global FIELDS
     global RM_MAPPING
     global MSG_STRINGS
+    global settings  # New global for Settings class
 
     CONFIG_PATH = config_path
     with open(CONFIG_PATH) as file:
@@ -27,6 +37,8 @@ def init(config_path):
 
     # Init PowerCampus API and SQL connections
     ps_powercampus.init(CONFIG)
+
+    settings = Settings(CONFIG)
 
     return CONFIG
 
@@ -457,6 +469,17 @@ def main_sync(pid=None):
                     "custom_5": custom_5,
                 }
             )
+
+            # Get PowerFAIDS awards and tracking status
+            if settings.fa_awards.enabled:
+                fa_awards, fa_status = ps_powercampus.pf_get_awards(
+                    pcid,
+                    v["GovernmentId"],
+                    academic_year,
+                    academic_term,
+                    academic_session,
+                )
+                apps[k].update({"fa_awards": fa_awards, "fa_status": fa_status})
 
     verbose_print("Upload passive fields back to Slate")
     slate_post_fields(apps, CONFIG["slate_upload_passive"])

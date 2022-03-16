@@ -1,12 +1,13 @@
 USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [custom].[PS_selPFAwardsXML]    Script Date: 2022-03-15 14:58:54 ******/
+/****** Object:  StoredProcedure [custom].[PS_selPFAwardsXML]    Script Date: 2022-03-16 15:14:36 ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
+
 
 -- =============================================
 -- Author:		Wyatt Best
@@ -67,37 +68,68 @@ BEGIN
 						,type
 					)
 			FROM (
+				--Gross amounts
 				SELECT *
+					,COALESCE([Summer], 0) + COALESCE([Fall], 0) + COALESCE([Spring], 0) AS Total
 				FROM (
-					SELECT *
-						,[Summer] + [Fall] + [Spring] AS Total
-					FROM (
-						SELECT fund_long_name
-							,scheduled_amount
-							,IIF(attend_desc = 'T-Summer', 'Summer', attend_desc) [attend_desc]
-						--,actual_amt
-						FROM [VMCNYPF01].[PFaids].[dbo].[student] s
-						INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award_year] say
-							ON say.award_year_token = @FinAidYear
-								AND s.student_token = say.student_token
-						INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award] sa
-							ON sa.stu_award_year_token = say.stu_award_year_token
-						INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award_transactions] sat
-							ON sat.stu_award_token = sa.stu_award_token
-						INNER JOIN [VMCNYPF01].[PFaids].[dbo].[funds] f
-							ON f.fund_token = sa.fund_ay_token
-						INNER JOIN [VMCNYPF01].[PFaids].[dbo].[poe]
-							ON poe.poe_token = sat.poe_token
-						WHERE s.alternate_id = @PCID
+					SELECT fund_long_name
+						,scheduled_amount [amount]
+						,IIF(attend_desc = 'T-Summer', 'Summer', attend_desc) [attend_desc]
+					FROM [VMCNYPF01].[PFaids].[dbo].[student] s
+					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award_year] say
+						ON say.award_year_token = @FinAidYear
+							AND s.student_token = say.student_token
+					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award] sa
+						ON sa.stu_award_year_token = say.stu_award_year_token
+					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award_transactions] sat
+						ON sat.stu_award_token = sa.stu_award_token
+					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[funds] f
+						ON f.fund_token = sa.fund_ay_token
+					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[poe]
+						ON poe.poe_token = sat.poe_token
+					WHERE s.alternate_id = @PCID
+						OR s.student_ssn = @GovID
+					) a_raw
+				PIVOT(SUM([amount]) FOR attend_desc IN (
+							[Summer]
+							,[Fall]
+							,[Spring]
+							)) xx
+				
+				UNION ALL
+				
+				--Net amounts
+				SELECT *
+					,COALESCE([Summer], 0) + COALESCE([Fall], 0) + COALESCE([Spring], 0) AS Total
+				FROM (
+					SELECT fund_long_name + ' (Net)' [fund_long_name]
+						,net_disbursement_amount [amount]
+						,IIF(attend_desc = 'T-Summer', 'Summer', attend_desc) [attend_desc]
+					FROM [VMCNYPF01].[PFaids].[dbo].[student] s
+					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award_year] say
+						ON say.award_year_token = @FinAidYear
+							AND s.student_token = say.student_token
+					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award] sa
+						ON sa.stu_award_year_token = say.stu_award_year_token
+					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award_transactions] sat
+						ON sat.stu_award_token = sa.stu_award_token
+					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[funds] f
+						ON f.fund_token = sa.fund_ay_token
+					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[poe]
+						ON poe.poe_token = sat.poe_token
+					WHERE (
+							s.alternate_id = @PCID
 							OR s.student_ssn = @GovID
-						) a_raw
-					PIVOT(SUM(scheduled_amount) FOR attend_desc IN (
-								[Summer]
-								,[Fall]
-								,[Spring]
-								)) xxx
-					) xx
+							)
+						AND net_disbursement_amount > 0
+					) a_raw
+				PIVOT(SUM([amount]) FOR attend_desc IN (
+							[Summer]
+							,[Fall]
+							,[Spring]
+							)) xx
 				) x
+			ORDER BY fund_long_name
 			FOR XML path('row')
 				,type
 			) AS [XML]
@@ -109,3 +141,5 @@ BEGIN
 	WHERE s.alternate_id = @PCID
 		OR s.student_ssn = @GovID
 END
+GO
+
