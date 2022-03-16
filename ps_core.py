@@ -13,11 +13,11 @@ import ps_powercampus
 # The Settings class should replace the CONFIG global in all new code.
 class Settings:
     def __init__(self, config):
-        self.fa_awards = self.FA_Awards(config)
+        self.fa_awards = self.FA_Awards(config["fa_awards"])
 
     class FA_Awards:
         def __init__(self, config):
-            self.enabled = config["fa_awards"]["enabled"]
+            self.enabled = config["enabled"]
 
 
 def init(config_path):
