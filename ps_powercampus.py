@@ -737,3 +737,25 @@ def pf_get_fachecklist(pcid, govid, appid, year, term, session):
         doc["AppID"] = appid
 
     return checklist
+
+
+def pf_get_awards(pcid, govid, year, term, session):
+    """Return the PowerFAIDS awards list as XML and the Tracking Status."""
+    awards = None
+    tracking_status = None
+
+    CURSOR.execute(
+        "exec [custom].[PS_selPFAwardsXML] ?, ?, ?, ?, ?",
+        pcid,
+        govid,
+        year,
+        term,
+        session,
+    )
+    row = CURSOR.fetchone()
+
+    if row is not None:
+        awards = row.XML
+        tracking_status = row.tracking_status
+
+    return awards, tracking_status
