@@ -1,7 +1,7 @@
 USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [custom].[PS_selPFAwardsXML]    Script Date: 2022-03-16 15:14:36 ******/
+/****** Object:  StoredProcedure [custom].[PS_selPFAwardsXML]    Script Date: 2022-03-23 16:59:36 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -122,6 +122,7 @@ BEGIN
 							OR s.student_ssn = @GovID
 							)
 						AND net_disbursement_amount > 0
+						AND net_disbursement_amount <> scheduled_amount
 					) a_raw
 				PIVOT(SUM([amount]) FOR attend_desc IN (
 							[Summer]
