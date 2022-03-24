@@ -1,26 +1,29 @@
 USE [Campus6]
-GRANT EXEC ON [custom].[PS_selISIR] TO PowerSlate
-GRANT EXEC ON [custom].[PS_updDemographics] TO PowerSlate
-GRANT EXEC ON [custom].[PS_updAcademicAppInfo] TO PowerSlate
-GRANT EXEC ON [custom].[PS_updAcademicKey] TO PowerSlate
-GRANT EXEC ON [custom].[PS_updAction] to PowerSlate
-GRANT EXEC ON [custom].[PS_selProfile] to PowerSlate
-GRANT EXEC ON [custom].[PS_selRAStatus] to PowerSlate
-GRANT EXEC ON [custom].[PS_updSMSOptIn] to PowerSlate
-GRANT EXEC ON [custom].[PS_selPFChecklist] to PowerSlate
-GRANT EXEC ON [custom].[PS_insNote] to PowerSlate
-GRANT EXEC ON [custom].[PS_updUserDefined] to PowerSlate
-GRANT EXEC ON [custom].[PS_updEducation] to PowerSlate
-GRANT EXEC ON [custom].[PS_updTestscore] to PowerSlate
-GRANT EXEC ON [custom].[PS_updProgramOfStudy] to PowerSlate
-GRANT EXEC ON [custom].[PS_selActions] to PowerSlate
-GRANT EXEC ON [custom].[PS_delAction] to PowerSlate
-GRANT EXEC ON [custom].[PS_selActionDefinition] to PowerSlate
-GRANT SELECT, UPDATE, VIEW DEFINITION ON [USERDEFINEDIND]  to PowerSlate
-GRANT EXEC ON [custom].[PS_selPersonDuplicate] to PowerSlate
-GRANT EXEC ON [custom].[PS_updApplicationFormSetting] to PowerSlate
-GRANT EXEC ON [custom].[PS_updStop] to PowerSlate
-GRANT EXEC ON [custom].[PS_selPFAwardsXML] to PowerSlate
+
+:setvar service_user "PowerSlate"
+
+GRANT EXEC ON [custom].[PS_selISIR] TO $(service_user)
+GRANT EXEC ON [custom].[PS_updDemographics] TO $(service_user)
+GRANT EXEC ON [custom].[PS_updAcademicAppInfo] TO $(service_user)
+GRANT EXEC ON [custom].[PS_updAcademicKey] TO $(service_user)
+GRANT EXEC ON [custom].[PS_updAction] to $(service_user)
+GRANT EXEC ON [custom].[PS_selProfile] to $(service_user)
+GRANT EXEC ON [custom].[PS_selRAStatus] to $(service_user)
+GRANT EXEC ON [custom].[PS_updSMSOptIn] to $(service_user)
+GRANT EXEC ON [custom].[PS_selPFChecklist] to $(service_user)
+GRANT EXEC ON [custom].[PS_insNote] to $(service_user)
+GRANT EXEC ON [custom].[PS_updUserDefined] to $(service_user)
+GRANT EXEC ON [custom].[PS_updEducation] to $(service_user)
+GRANT EXEC ON [custom].[PS_updTestscore] to $(service_user)
+GRANT EXEC ON [custom].[PS_updProgramOfStudy] to $(service_user)
+GRANT EXEC ON [custom].[PS_selActions] to $(service_user)
+GRANT EXEC ON [custom].[PS_delAction] to $(service_user)
+GRANT EXEC ON [custom].[PS_selActionDefinition] to $(service_user)
+GRANT SELECT, UPDATE, VIEW DEFINITION ON [USERDEFINEDIND]  to $(service_user)
+GRANT EXEC ON [custom].[PS_selPersonDuplicate] to $(service_user)
+GRANT EXEC ON [custom].[PS_updApplicationFormSetting] to $(service_user)
+GRANT EXEC ON [custom].[PS_updStop] to $(service_user)
+GRANT EXEC ON [custom].[PS_selPFAwardsXML] to $(service_user)
 
 USE [PowerCampusMapper]
-GRANT INSERT ON PowerSlate_AppStatus_Log TO PowerSlate
+GRANT INSERT ON PowerSlate_AppStatus_Log TO $(service_user)
