@@ -48,18 +48,29 @@ BEGIN
 		IF @AcademicGuid IS NOT NULL
 		BEGIN
 			-- Potentially update ACADEMIC row PDC
-			UPDATE ACADEMIC
+			UPDATE A
 			SET PROGRAM = @Program
 				,DEGREE = @Degree
 				,CURRICULUM = @Curriculum
-			WHERE PEOPLE_CODE_ID = @PCID
-				AND ACADEMIC_YEAR = @Year
-				AND ACADEMIC_SESSION = @Session
-				AND ACADEMIC_TERM = @Term
+			FROM ACADEMIC A
+			INNER JOIN [custom].academickey AK
+				ON AK.PEOPLE_CODE_ID = A.PEOPLE_CODE_ID
+					AND AK.ACADEMIC_YEAR = A.ACADEMIC_YEAR
+					AND AK.ACADEMIC_SESSION = A.ACADEMIC_SESSION
+					AND AK.ACADEMIC_TERM = A.ACADEMIC_TERM
+					AND AK.PROGRAM = A.PROGRAM
+					AND AK.DEGREE = A.DEGREE
+					AND AK.CURRICULUM = A.CURRICULUM
+			WHERE 1 = 1
+				AND AK.ID = @AcademicGuid
+				AND A.PEOPLE_CODE_ID = @PCID
+				AND A.ACADEMIC_YEAR = @Year
+				AND A.ACADEMIC_SESSION = @Session
+				AND A.ACADEMIC_TERM = @Term
 				AND (
-					PROGRAM <> @Program
-					OR DEGREE <> @Degree
-					OR CURRICULUM <> @Curriculum
+					A.PROGRAM <> @Program
+					OR A.DEGREE <> @Degree
+					OR A.CURRICULUM <> @Curriculum
 					)
 				AND [STATUS] <> 'N'
 				AND APPLICATION_FLAG = 'Y'
@@ -82,7 +93,6 @@ BEGIN
 		--		OR DEGREE <> @Degree
 		--		OR CURRICULUM <> @Curriculum
 		--		)
-
 		-- Update AcademicKey if needed
 		IF NOT EXISTS (
 				SELECT *

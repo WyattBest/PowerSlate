@@ -349,7 +349,7 @@ def main_sync(pid=None):
             pcid = ps_powercampus.post_api(
                 format_app_api(v, CONFIG["defaults"]),
                 MSG_STRINGS,
-                CONFIG["pc_app_form_setting_id"],
+                SETTINGS.powercampus.app_form_setting_id,
             )
             apps[k]["PEOPLE_CODE_ID"] = pcid
 
