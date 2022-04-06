@@ -249,8 +249,8 @@ def format_app_sql(app, mapping, config):
     fields_verbatim = [
         k for (k, v) in ps_models.fields.items() if v["sql_verbatim"] == True
     ]
-    fields_verbatim.extend([n["slate_field"] for n in config["pc_notes"]])
-    fields_verbatim.extend([f["slate_field"] for f in config["pc_user_defined"]])
+    fields_verbatim.extend([n["slate_field"] for n in config.notes])
+    fields_verbatim.extend([f["slate_field"] for f in config.user_defined_fields])
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
     # Gender is hardcoded into the PowerCampus Web API, but [WebServices].[spSetDemographics] has different hardcoded values.
