@@ -114,7 +114,8 @@
 	"msg_strings": {
 		"error_no_apps": "<p><strong>No applications found. Perhaps the application(s) are not submitted or are missing required fields?</strong></p>",
 		"error_no_phones": "Application must have at least one phone number.",
-		"sync_done": "Sync completed with no errors."
+		"sync_done": "Sync completed with no errors.",
+		"sync_done_not_found": "Sync completed, but one or more applications had integration errors."
 	},
 	"http_port": null
 }

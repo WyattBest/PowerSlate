@@ -281,6 +281,7 @@ def main_sync(pid=None):
     """
     global CURRENT_RECORD
     global RM_MAPPING
+    sync_errors = False
 
     verbose_print("Get applicants from Slate...")
     creds = (
@@ -466,7 +467,9 @@ def main_sync(pid=None):
                 custom_3,
                 custom_4,
                 custom_5,
-            ) = ps_powercampus.get_profile(app_pc, SETTINGS.powercampus.campus_emailtype)
+            ) = ps_powercampus.get_profile(
+                app_pc, SETTINGS.powercampus.campus_emailtype
+            )
             apps[k].update(
                 {
                     "found": found,
@@ -484,6 +487,8 @@ def main_sync(pid=None):
                     "custom_5": custom_5,
                 }
             )
+            if found == False:
+                sync_errors == True
 
             # Get PowerFAIDS awards and tracking status
             if SETTINGS.fa_awards.enabled:
@@ -535,4 +540,11 @@ def main_sync(pid=None):
 
         slate_post_fa_checklist(slate_upload_list)
 
-    return MSG_STRINGS["sync_done"]
+    # Warn if any apps returned an error flag from ps_powercampus.get_profile()
+    if sync_errors == True:
+        output_msg = MSG_STRINGS["sync_done_not_found"]
+    else:
+        output_msg = MSG_STRINGS["sync_done"]
+    verbose_print(output_msg)
+
+    return output_msg
