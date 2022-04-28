@@ -1,22 +1,40 @@
 {
-	"pc_api": {
-		"url": "https://webapi.school.edu/",
-		"username": "username",
-		"password": "astrongpassword"
-	},
-	"pc_database_string": "Driver={ODBC Driver 17 for SQL Server};Server=servername;Database=campus6;Trusted_Connection=yes;ServerSPN=MSSQLSvc/servername.local.domain.edu;",
-	"pc_app_form_setting_id": 3,
-	"mapping_file_location": "\\\\servername\\PowerCampus Mapper\\recruiterMapping.xml",
-	"autoconfigure_mappings": {
-		"enabled": false,
-		"validate_degreq": true,
-		"minimum_degreq_year": "2021"
+	"powercampus": {
+		"api": {
+			"url": "https://webapi.school.edu/",
+			"username": "username",
+			"password": "astrongpassword"
+		},
+		"autoconfigure_mappings": {
+			"enabled": false,
+			"validate_degreq": true,
+			"minimum_degreq_year": "2021"
+		},
+		"notes": [
+			{
+				"slate_field": "DevelopmentCourses",
+				"office": "ADMCOMM",
+				"note_type": "GENRL"
+			}
+		],
+		"logging": {
+			"enabled": true,
+			"log_table": "[SomeDatabase].[dbo].[PowerSlate_AppStatus_Log]"
+		},
+		"user_defined_fields": [
+			{
+				"slate_field": "FirstGeneration",
+				"pc_field": "FIRSTGEN"
+			}
+		],
+		"app_form_setting_id": 3,
+		"campus_emailtype": "CAMPUS",
+		"database_string": "Driver={ODBC Driver 17 for SQL Server};Server=servername;Database=campus6;Trusted_Connection=yes;ServerSPN=MSSQLSvc/servername.local.domain.edu;",
+		"mapping_file_location": "\\\\servername\\PowerCampus Mapper\\recruiterMapping.xml",
+		"readmit_code": "READ",
+		"update_academic_key": false
 	},
 	"console_verbose": true,
-	"logging": {
-		"enabled": true,
-		"log_table": "[SomeDatabase].[dbo].[PowerSlate_AppStatus_Log]"
-	},
 	"slate_query_apps": {
 		"url": "https://apply.school.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
 		"username": "username",
@@ -77,20 +95,6 @@
 			"ADESSAY"
 		]
 	},
-	"pc_notes": [
-		{
-			"slate_field": "DevelopmentCourses",
-			"office": "ADMCOMM",
-			"note_type": "GENRL"
-		}
-	],
-	"pc_user_defined": [
-		{
-			"slate_field": "FirstGeneration",
-			"pc_field": "FIRSTGEN"
-		}
-	],
-	"pc_update_custom_academickey": false,
 	"fa_checklist": {
 		"enabled": true,
 		"slate_post": {
@@ -110,9 +114,8 @@
 	"msg_strings": {
 		"error_no_apps": "<p><strong>No applications found. Perhaps the application(s) are not submitted or are missing required fields?</strong></p>",
 		"error_no_phones": "Application must have at least one phone number.",
-		"sync_done": "Sync completed with no errors."
+		"sync_done": "Sync completed with no errors.",
+		"sync_done_not_found": "Sync completed, but one or more applications had integration errors."
 	},
-	"pc_readmit_code": "READ",
-	"pc_campus_emailtype": "CAMPUS",
 	"http_port": null
 }

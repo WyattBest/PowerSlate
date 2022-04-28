@@ -5,25 +5,23 @@ import xml.etree.ElementTree as ET
 import ps_models
 
 
-def init(config):
+def init(config, verbose):
     global PC_API_URL
     global PC_API_CRED
     global CNXN
     global CURSOR
     global CONFIG
+    global VERBOSE
 
     CONFIG = config
+    VERBOSE = verbose
 
     # PowerCampus Web API connection
-    PC_API_URL = config["pc_api"]["url"]
-    PC_API_CRED = (config["pc_api"]["username"], config["pc_api"]["password"])
-
-    # PowerCampus Web API connection
-    PC_API_URL = config["pc_api"]["url"]
-    PC_API_CRED = (config["pc_api"]["username"], config["pc_api"]["password"])
+    PC_API_URL = config.api.url
+    PC_API_CRED = (config.api.username, config.api.password)
 
     # Microsoft SQL Server connection.
-    CNXN = pyodbc.connect(config["pc_database_string"])
+    CNXN = pyodbc.connect(config.database_string)
     CURSOR = CNXN.cursor()
 
     # Print a test of connections
@@ -34,7 +32,7 @@ def init(config):
     verbose_print("Database:" + CNXN.getinfo(pyodbc.SQL_DATABASE_NAME))
 
     # Enable ApplicationFormSetting's ProcessAutomatically in case program exited abnormally last time with setting toggled off.
-    update_app_form_autoprocess(config["pc_app_form_setting_id"], True)
+    update_app_form_autoprocess(config.app_form_setting_id, True)
 
 
 def de_init():
@@ -44,7 +42,7 @@ def de_init():
 
 def verbose_print(x):
     """Attempt to print JSON without altering it, serializable objects as JSON, and anything else as default."""
-    if CONFIG["console_verbose"] and len(x) > 0:
+    if VERBOSE and len(x) > 0:
         if isinstance(x, str):
             print(x)
         else:
@@ -282,11 +280,11 @@ def scan_status(x):
         else:
             computed_status = "Unrecognized Status: " + str(row.ra_status)
 
-        if CONFIG["logging"]["enabled"]:
+        if VERBOSE:
             # Write errors to external database for end-user presentation via SSRS.
             CURSOR.execute(
                 "INSERT INTO"
-                + CONFIG["logging"]["log_table"]
+                + CONFIG.logging.log_table
                 + """
                 ([Ref],[ApplicationNumber],[ProspectId],[FirstName],[LastName],
                 [ComputedStatus],[Notes],[RecruiterApplicationStatus],[ApplicationStatus],[PEOPLE_CODE_ID])
@@ -366,7 +364,7 @@ def get_profile(app, campus_email_type):
         custom_4 = row.custom_4
         custom_5 = row.custom_5
 
-        if row.COLLEGE_ATTEND == CONFIG["pc_readmit_code"]:
+        if row.COLLEGE_ATTEND == CONFIG.readmit_code:
             readmit = True
 
         if row.Withdrawn == "Y":
@@ -448,6 +446,9 @@ def update_academic(app):
 
 
 def update_academic_key(app):
+    """Track unique row GUID in custom.AcademicKey table and update PROGRAM/DEGREE/CURRICULUM columns in ACADEMIC table.
+    P/C/D will only be updated if application is not registered and does not have an academic plan assigned.
+    """
     CURSOR.execute(
         "exec [custom].[PS_updAcademicKey] ?, ?, ?, ?, ?, ?, ?, ?",
         app["PEOPLE_CODE_ID"],
