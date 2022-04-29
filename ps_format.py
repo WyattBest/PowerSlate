@@ -254,6 +254,15 @@ def format_app_sql(app, mapping, config):
     mapped.update({k: v for (k, v) in app.items() if k in fields_verbatim})
 
     # Gender is hardcoded into the PowerCampus Web API, but [WebServices].[spSetDemographics] has different hardcoded values.
+    # API None  =   Error
+    # API ''    =   Not tested
+    # API 0     =   Application 1   =   GUI Male
+    # API 1     =   Application 2   =   GUI Female
+    # API 2     =   Application 3   =   GUI Unknown
+    # API 3     =   Application 3   =   GUI Unknown
+    # spSetDemographics 1 = Male
+    # spSetDemographics 2 = Female
+    # spSetDemographics 3 = Unknown
     gender_map = {None: 3, 0: 1, 1: 2, 2: 3}
     mapped["GENDER"] = gender_map[app["Gender"]]
 
