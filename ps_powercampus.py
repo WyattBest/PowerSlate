@@ -280,7 +280,7 @@ def scan_status(x):
         else:
             computed_status = "Unrecognized Status: " + str(row.ra_status)
 
-        if VERBOSE:
+        if CONFIG.logging.enabled:
             # Write errors to external database for end-user presentation via SSRS.
             CURSOR.execute(
                 "INSERT INTO"
