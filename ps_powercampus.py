@@ -53,11 +53,13 @@ def verbose_print(x):
 
 
 def autoconfigure_mappings(
-    dp_list, validate_degreq, minimum_degreq_year, mapping_file_location
+    dp_list, yt_list, validate_degreq, minimum_degreq_year, mapping_file_location
 ):
     """
     Automatically insert new Program/Degree/Curriculum combinations into ProgramOfStudy and recruiterMapping.xml
-    Assumes Degree values from Slate are concatenated PowerCampus code values like DEGREE/CURRICULUM.
+    Automatically insert new Year/Term/Session combinations into recruiterMapping.xml
+    Assumes Degree values from Slate are concatenated PowerCampus code values like DEGREE/CURRICULUM
+    and that YearTerm values are like YEAR/TERM/SESSION.
 
     Keyword aguments:
     dp_list -- a list of tuples like [('PROGRAM','DEGREE/CURRICULUM'), (...)]
@@ -67,6 +69,7 @@ def autoconfigure_mappings(
     Returns True if XML mapping changed.
     """
     dp_set = set(dp_list)
+    yt_set = set(yt_list)
     if validate_degreq == False:
         minimum_degreq_year = None
 
@@ -78,13 +81,25 @@ def autoconfigure_mappings(
             pdc.append(dc)
         pdc_set.add(tuple(pdc))
 
+    # Create a set like {'PROGRAM', 'PROGRAM'}
+    p_set = set()
+    for pdc in pdc_set:
+        p_set.add(pdc[0])
+
     # Create set of tuples like {('DEGREE', 'CURRICULUM'), (...)}
     dc_set = set()
     for pdc in pdc_set:
         dc = (pdc[1], pdc[2])
         dc_set.add(dc)
 
-    # Update ProgramOfStudy table
+    # Create set of tuples like {('YEAR', 'TERM', 'SESSION'), (...)}
+    yts_set = set()
+    for yt in yt_set:
+        yts_set.add(tuple(yt.split("/")))
+        # for yts in yt.split("/"):
+        #     yts_set.add(tuple(yts))
+
+    # Update ProgramOfStudy table; optionally validate against DEGREQ table
     for pdc in pdc_set:
         CURSOR.execute(
             "execute [custom].[PS_updProgramOfStudy] ?, ?, ?, ?",
@@ -95,21 +110,49 @@ def autoconfigure_mappings(
         )
     CNXN.commit()
 
+    # Validate against ACADEMICCALENDAR table
+    for yts in yts_set:
+        CURSOR.execute(
+            "execute [custom].[PS_selAcademicCalendar] ?, ?, ?", yts[0], yts[1], yts[2]
+        )
+        row = CURSOR.fetchone()
+        if row is None:
+            raise Exception(
+                "Year/Term/Session '"
+                + str(yts)
+                + "' not found in ACADEMICCALENDAR table."
+            )
+
     # Update recruiterMapping.xml
+    def check_for_duplicates(node):
+        """Check for duplicate RCCodeValues and raise error if found."""
+        rc_codes = [row.get("RCCodeValue") for row in node.findall("row")]
+        if len(rc_codes) != len(set(rc_codes)):
+            raise ValueError(
+                f"recruiterMapping.xml contains duplicate RCCodeValue keys in node {node}."
+            )
+
     xml_changed = False
     with open(mapping_file_location, encoding="utf-8-sig") as treeFile:
         tree = ET.parse(treeFile)
         root = tree.getroot()
 
-    aca_prog = root.find("AcademicProgram")
-    root.findall("AcademicProgram/row[@PCDegreeCodeValue='BBA']")
+    aca_level = root.find("AcademicLevel")
+    check_for_duplicates(aca_level)
 
-    # Check for duplicate RCCodeValues
-    rc_codes = [row.get("RCCodeValue") for row in aca_prog.findall("row")]
-    if len(rc_codes) != len(set(rc_codes)):
-        raise ValueError(
-            "recruiterMapping.xml contains duplicate RCCodeValue keys in node AcademicProgram."
-        )
+    for p in p_set:
+        if aca_level.find("./row[@RCCodeValue='" + p + "']") is None:
+            xml_changed = True
+            attrib = {
+                "RCCodeValue": p,
+                "RCDesc": "",
+                "PCCodeValue": p,
+                "PCCodeDesc": "",
+            }
+            ET.SubElement(aca_level, "row", attrib=attrib)
+
+    aca_prog = root.find("AcademicProgram")
+    check_for_duplicates(aca_prog)
 
     for dc in dc_set:
         rc_code = dc[0] + "/" + dc[1]
@@ -124,6 +167,25 @@ def autoconfigure_mappings(
                 "PCCurriculumDesc": "",
             }
             ET.SubElement(aca_prog, "row", attrib=attrib)
+
+    aca_term = root.find("AcademicTerm")
+    check_for_duplicates(aca_term)
+
+    for yts in yts_set:
+        rc_code = yts[0] + "/" + yts[1] + "/" + yts[2]
+        if aca_term.find("./row[@RCCodeValue='" + rc_code + "']") is None:
+            xml_changed = True
+            attrib = {
+                "RCCodeValue": rc_code,
+                "RCDesc": "",
+                "PCYearCodeValue": yts[0],
+                "PCYearDesc": "",
+                "PCTermCodeValue": yts[1],
+                "PCTermDesc": "",
+                "PCSessionCodeValue": yts[2],
+                "PCSessionDesc": "",
+            }
+            ET.SubElement(aca_term, "row", attrib=attrib)
 
     if xml_changed:
         tree.write(mapping_file_location, encoding="utf-8", xml_declaration=True)

@@ -324,8 +324,9 @@ def main_sync(pid=None):
             for app in apps
             if "Degree" in apps[app]
         ]
+        yt_list = [apps[app]["YearTerm"] for app in apps if "YearTerm" in apps[app]]
 
-        if ps_powercampus.autoconfigure_mappings(dp_list, vd, mdy, mfl):
+        if ps_powercampus.autoconfigure_mappings(dp_list, yt_list, vd, mdy, mfl):
             RM_MAPPING = ps_powercampus.get_recruiter_mapping(mfl)
 
     verbose_print("Check each app's status flags/PCID in PowerCampus")
