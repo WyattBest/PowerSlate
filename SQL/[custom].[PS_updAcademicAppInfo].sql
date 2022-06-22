@@ -1,8 +1,10 @@
 USE [Campus6]
 GO
+
 /****** Object:  StoredProcedure [custom].[PS_updAcademicAppInfo]    Script Date: 2022-02-22 8:22:53 AM ******/
 SET ANSI_NULLS ON
 GO
+
 SET QUOTED_IDENTIFIER ON
 GO
 
@@ -330,72 +332,78 @@ BEGIN
 			AND APPLICATION_FLAG = 'Y';
 
 	--Update ACADEMIC_FLAG and ENROLL_SEPARATION if needed
-	--ENROLL_SEPARATION is only updated if the ACADEMIC_FLAG is toggled, otherwise it's left alone.
-	DECLARE @pdc NVARCHAR(25) = (@program + '/' + @degree + '/' + @curriculum)
-		,@pdc1 NVARCHAR(25) = (@program + '/' + @degree + '/')
-		,@pdc2 NVARCHAR(25) = (@program + '//')
-		,@pdc3 NVARCHAR(25) = ('//')
-	DECLARE @EnrolledCode NVARCHAR(4) = (
-			SELECT TOP 1 LEFT(SETTING, 4)
-			FROM ABT_SETTINGS
-			WHERE AREA_NAME = 'ACA_RECORDS'
-				AND SECTION_NAME = 'STUDENT_CODING_ENROLLED'
-				AND LABEL_NAME IN (
-					@pdc
-					,@pdc1
-					,@pdc2
-					,@pdc3
-					)
-			ORDER BY LABEL_NAME DESC
+	IF (
+			@AppStatus IS NOT NULL
+			AND @AppDecision IS NOT NULL
 			)
-		,@NewAcademicFlag NVARCHAR(1) = (
-			SELECT CASE 
-					WHEN EXISTS (
-							SELECT *
-							FROM CODE_APPSTATUS
-							WHERE CODE_VALUE_KEY = @AppStatus
-								AND [STATUS] = 'A'
-								AND CONFIRMED_STATUS = 'Y'
-							)
-						AND EXISTS (
-							SELECT *
-							FROM CODE_APPDECISION
-							WHERE CODE_VALUE_KEY = @AppDecision
-								AND [STATUS] = 'A'
-								AND ACCEPTED_DECISION = 'Y'
-							)
-						THEN 'Y'
-					ELSE 'N'
-					END
-			)
+	BEGIN
+		--ENROLL_SEPARATION is only updated if the ACADEMIC_FLAG is toggled, otherwise it's left alone.
+		DECLARE @pdc NVARCHAR(25) = (@program + '/' + @degree + '/' + @curriculum)
+			,@pdc1 NVARCHAR(25) = (@program + '/' + @degree + '/')
+			,@pdc2 NVARCHAR(25) = (@program + '//')
+			,@pdc3 NVARCHAR(25) = ('//')
+		DECLARE @EnrolledCode NVARCHAR(4) = (
+				SELECT TOP 1 LEFT(SETTING, 4)
+				FROM ABT_SETTINGS
+				WHERE AREA_NAME = 'ACA_RECORDS'
+					AND SECTION_NAME = 'STUDENT_CODING_ENROLLED'
+					AND LABEL_NAME IN (
+						@pdc
+						,@pdc1
+						,@pdc2
+						,@pdc3
+						)
+				ORDER BY LABEL_NAME DESC
+				)
+			,@NewAcademicFlag NVARCHAR(1) = (
+				SELECT CASE 
+						WHEN EXISTS (
+								SELECT *
+								FROM CODE_APPSTATUS
+								WHERE CODE_VALUE_KEY = @AppStatus
+									AND [STATUS] = 'A'
+									AND CONFIRMED_STATUS = 'Y'
+								)
+							AND EXISTS (
+								SELECT *
+								FROM CODE_APPDECISION
+								WHERE CODE_VALUE_KEY = @AppDecision
+									AND [STATUS] = 'A'
+									AND ACCEPTED_DECISION = 'Y'
+								)
+							THEN 'Y'
+						ELSE 'N'
+						END
+				)
 
-	UPDATE dbo.ACADEMIC
-	SET ACADEMIC_FLAG = @NewAcademicFlag
-		,ENROLL_SEPARATION = CASE 
-			WHEN ACADEMIC_FLAG = 'Y'
-				AND @NewAcademicFlag = 'N'
-				THEN ''
-			WHEN ACADEMIC_FLAG = 'N'
-				AND @NewAcademicFlag = 'Y'
-				THEN @EnrolledCode
-			ELSE ENROLL_SEPARATION
-			END
-		,REVISION_DATE = @Today
-		,REVISION_TIME = @Now
-		,REVISION_OPID = 'SLATE'
-		,REVISION_TERMINAL = '0001'
-	WHERE PEOPLE_CODE_ID = @PCID
-		AND ACADEMIC_YEAR = @Year
-		AND ACADEMIC_TERM = @Term
-		AND ACADEMIC_SESSION = @Session
-		AND PROGRAM = @Program
-		AND DEGREE = @Degree
-		AND CURRICULUM = @Curriculum
-		AND APPLICATION_FLAG = 'Y'
-		AND (
-			ACADEMIC_FLAG <> @NewAcademicFlag
-			OR ACADEMIC_FLAG IS NULL
-			)
+		UPDATE dbo.ACADEMIC
+		SET ACADEMIC_FLAG = @NewAcademicFlag
+			,ENROLL_SEPARATION = CASE 
+				WHEN ACADEMIC_FLAG = 'Y'
+					AND @NewAcademicFlag = 'N'
+					THEN ''
+				WHEN ACADEMIC_FLAG = 'N'
+					AND @NewAcademicFlag = 'Y'
+					THEN @EnrolledCode
+				ELSE ENROLL_SEPARATION
+				END
+			,REVISION_DATE = @Today
+			,REVISION_TIME = @Now
+			,REVISION_OPID = 'SLATE'
+			,REVISION_TERMINAL = '0001'
+		WHERE PEOPLE_CODE_ID = @PCID
+			AND ACADEMIC_YEAR = @Year
+			AND ACADEMIC_TERM = @Term
+			AND ACADEMIC_SESSION = @Session
+			AND PROGRAM = @Program
+			AND DEGREE = @Degree
+			AND CURRICULUM = @Curriculum
+			AND APPLICATION_FLAG = 'Y'
+			AND (
+				ACADEMIC_FLAG <> @NewAcademicFlag
+				OR ACADEMIC_FLAG IS NULL
+				)
+	END
 
 	--Update NONTRAD_PROGRAM if needed
 	UPDATE ACADEMIC

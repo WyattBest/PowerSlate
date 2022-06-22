@@ -1,4 +1,4 @@
-USE [Campus6_Test]
+USE [Campus6]
 GO
 
 /****** Object:  StoredProcedure [custom].[PS_selAcademicCalendar]    Script Date: 4/28/2022 11:24:21 PM ******/
