@@ -27,6 +27,10 @@
 				"pc_field": "FIRSTGEN"
 			}
 		],
+		"valid_college_attend": [
+			"NEW",
+			"READ"
+		],
 		"app_form_setting_id": 3,
 		"campus_emailtype": "CAMPUS",
 		"database_string": "Driver={ODBC Driver 17 for SQL Server};Server=servername;Database=campus6;Trusted_Connection=yes;ServerSPN=MSSQLSvc/servername.local.domain.edu;",
@@ -43,10 +47,11 @@
 	"slate_upload_active": {
 		"fields_string": [
 			"reg_date",
-			"credits"
+			"credits",
+			"error_message"
 		],
 		"fields_bool": [
-			"found",
+			"error_flag",
 			"readmit",
 			"registered",
 			"withdrawn"
@@ -114,6 +119,8 @@
 	"msg_strings": {
 		"error_no_apps": "<p><strong>No applications found. Perhaps the application(s) are not submitted or are missing required fields?</strong></p>",
 		"error_no_phones": "Application must have at least one phone number.",
+		"error_academic_row_not_found": "Record not found by Year/Term/Session/Program/Degree/Curriculum.",
+		"error_invalid_college_attend": "College Attend is set to {} in PowerCampus, which is not valid for applicants.",
 		"sync_done": "Sync completed with no errors.",
 		"sync_done_not_found": "Sync completed, but one or more applications had integration errors."
 	},

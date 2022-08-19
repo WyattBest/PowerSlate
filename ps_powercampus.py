@@ -5,16 +5,18 @@ import xml.etree.ElementTree as ET
 import ps_models
 
 
-def init(config, verbose):
+def init(config, verbose, msg_strings):
     global PC_API_URL
     global PC_API_CRED
     global CNXN
     global CURSOR
     global CONFIG
     global VERBOSE
+    global MSG_STRINGS
 
     CONFIG = config
     VERBOSE = verbose
+    MSG_STRINGS = msg_strings
 
     # PowerCampus Web API connection
     PC_API_URL = config.api.url
@@ -383,7 +385,8 @@ def get_profile(app, campus_email_type):
     campus_email -- string (None of not registered)
     """
 
-    found = False
+    error_flag = True
+    error_message = MSG_STRINGS.error_academic_row_not_found
     registered = False
     reg_date = None
     readmit = False
@@ -411,7 +414,7 @@ def get_profile(app, campus_email_type):
     row = CURSOR.fetchone()
 
     if row is not None:
-        found = True
+        error_flag = False
 
         if row.Registered == "Y":
             registered = True
@@ -426,14 +429,29 @@ def get_profile(app, campus_email_type):
         custom_4 = row.custom_4
         custom_5 = row.custom_5
 
-        if row.COLLEGE_ATTEND == CONFIG.readmit_code:
+        # College Attend and Readmits
+        college_attend = row.COLLEGE_ATTEND
+        if college_attend == CONFIG.readmit_code:
             readmit = True
+
+        if (
+            college_attend not in CONFIG.valid_college_attend
+            and college_attend is not None
+        ):
+            error_flag = True
+            error_message = MSG_STRINGS.error_invalid_college_attend.format(
+                college_attend
+            )
 
         if row.Withdrawn == "Y":
             withdrawn = True
 
+    if not error_flag:
+        error_message = None
+
     return (
-        found,
+        error_flag,
+        error_message,
         registered,
         reg_date,
         readmit,

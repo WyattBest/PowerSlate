@@ -16,6 +16,7 @@ class Settings:
         self.fa_awards = self.FlatDict(config["fa_awards"])
         self.powercampus = self.PowerCampus(config["powercampus"])
         self.console_verbose = config["console_verbose"]
+        self.msg_strings = self.FlatDict(config["msg_strings"])
 
     class PowerCampus:
         def __init__(self, config):
@@ -53,7 +54,7 @@ def init(config_path):
     MSG_STRINGS = CONFIG["msg_strings"]
 
     # Init PowerCampus API and SQL connections
-    ps_powercampus.init(SETTINGS.powercampus, SETTINGS.console_verbose)
+    ps_powercampus.init(SETTINGS.powercampus, SETTINGS.console_verbose, SETTINGS.msg_strings)
 
     return CONFIG
 
@@ -455,7 +456,8 @@ def main_sync(pid=None):
 
             # Collect information
             (
-                found,
+                error_flag,
+                error_message,
                 registered,
                 reg_date,
                 readmit,
@@ -473,7 +475,8 @@ def main_sync(pid=None):
             )
             apps[k].update(
                 {
-                    "found": found,
+                    "error_flag": error_flag,
+                    "error_message": error_message,
                     "registered": registered,
                     "reg_date": reg_date,
                     "readmit": readmit,
@@ -488,7 +491,7 @@ def main_sync(pid=None):
                     "custom_5": custom_5,
                 }
             )
-            if found == False:
+            if error_flag == True:
                 sync_errors == True
 
             # Get PowerFAIDS awards and tracking status
