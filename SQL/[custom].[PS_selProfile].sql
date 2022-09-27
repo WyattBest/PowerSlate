@@ -1,7 +1,7 @@
 USE [Campus6]
 GO
 
-/****** Object:  StoredProcedure [custom].[PS_selProfile]    Script Date: 2021-07-15 11:38:29 ******/
+/****** Object:  StoredProcedure [custom].[PS_selProfile]    Script Date: 2022-09-27 14:05:21 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -25,6 +25,7 @@ GO
 -- 2021-07-15	Wyatt Best: Return AdvisorUsername and MoodleOrientationComplete fields to Slate (MCNY-specific).
 -- 2021-12-01	Wyatt Best: Renamed MoodleOrientationComplete to custom_1 and added 4 more custom fields.
 -- 2022-02-16	Wyatt Best:	Added @EmailType parameter.
+-- 2022-09-27	Wyatt Best:	Return AD username (SSO ID) to Slate from PersonUser.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_selProfile] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -77,7 +78,7 @@ BEGIN
 	SELECT CASE 
 			WHEN @Credits > 0
 				THEN 'Y'
-			WHEN PROGRAM='CERT'
+			WHEN PROGRAM = 'CERT'
 				AND EXISTS (
 					SELECT TD.PEOPLE_ID
 					FROM TRANSCRIPTDETAIL TD
@@ -115,6 +116,11 @@ BEGIN
 			FROM PersonUser
 			WHERE PersonId = dbo.fnGetPersonId(A.ADVISOR)
 			) [AdvisorUsername]
+		,(
+			SELECT NonQualifiedUserName
+			FROM PersonUser
+			WHERE PersonId = dbo.fnGetPersonId(A.PEOPLE_CODE_ID)
+			) [Username
 		,CASE 
 			WHEN EXISTS (
 					SELECT *

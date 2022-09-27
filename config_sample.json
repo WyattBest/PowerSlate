@@ -67,7 +67,8 @@
 			"campus_email",
 			"advisor",
 			"fa_awards",
-			"fa_status"
+			"fa_status",
+			"sso_id"
 		],
 		"url": "https://apply.school.edu/manage/service/import?cmd=load&format=xxxx",
 		"username": "service_user",

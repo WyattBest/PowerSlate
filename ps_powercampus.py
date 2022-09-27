@@ -394,6 +394,7 @@ def get_profile(app, campus_email_type):
     credits = "0.00"
     campus_email = None
     advisor = None
+    sso_id = None
     custom_1 = None
     custom_2 = None
     custom_3 = None
@@ -423,6 +424,7 @@ def get_profile(app, campus_email_type):
 
         campus_email = row.CampusEmail
         advisor = row.AdvisorUsername
+        sso_id = row.Username
         custom_1 = row.custom_1
         custom_2 = row.custom_2
         custom_3 = row.custom_3
@@ -459,6 +461,7 @@ def get_profile(app, campus_email_type):
         credits,
         campus_email,
         advisor,
+        sso_id,
         custom_1,
         custom_2,
         custom_3,
