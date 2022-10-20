@@ -2,6 +2,7 @@
 An integration between PowerCampus and Slate (hence the name). Admissions applications are transmitted from PowerCampus to Slate and some data from PowerCampus is transmitted back to Slate.
 
 [Graphical diagram](PowerSlate%20Overview.png)
+
 [Field documentation](PowerSlate%20Integration%20Fields.docx)
 
 ## Requirements
