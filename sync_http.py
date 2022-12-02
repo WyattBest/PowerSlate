@@ -59,8 +59,11 @@ def run_server():
 
     # Server settings
     # Choose port 8080, for port 80, which is normally used for a http server, you need root access
-    # This is not a static IP. TODO
-    local_ip = socket.gethostbyname(socket.gethostname())
+    # Use IP address from config file, if present, otherwise fall back to DNS lookup
+    if "http_ip" in CONFIG and CONFIG["http_ip"] is not None:
+        local_ip = CONFIG["http_ip"]
+    else:
+        local_ip = socket.gethostbyname(socket.gethostname())
     server_address = (local_ip, CONFIG["http_port"])
     httpd = HTTPServer(server_address, testHTTPServer_RequestHandler)
     print("running server...")

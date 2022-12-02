@@ -125,5 +125,6 @@
 		"sync_done": "Sync completed with no errors.",
 		"sync_done_not_found": "Sync completed, but one or more applications had integration errors."
 	},
-	"http_port": null
+	"http_port": null,
+	"http_ip": null
 }
