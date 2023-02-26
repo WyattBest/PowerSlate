@@ -29,7 +29,8 @@
 		],
 		"valid_college_attend": [
 			"NEW",
-			"READ"
+			"READ",
+			"blank"
 		],
 		"app_form_setting_id": 3,
 		"campus_emailtype": "CAMPUS",

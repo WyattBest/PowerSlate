@@ -435,11 +435,10 @@ def get_profile(app, campus_email_type):
         college_attend = row.COLLEGE_ATTEND
         if college_attend == CONFIG.readmit_code:
             readmit = True
+        elif college_attend == "" or college_attend is None:
+            college_attend = "blank"
 
-        if (
-            college_attend not in CONFIG.valid_college_attend
-            and college_attend is not None
-        ):
+        if college_attend not in CONFIG.valid_college_attend:
             error_flag = True
             error_message = MSG_STRINGS.error_invalid_college_attend.format(
                 college_attend
