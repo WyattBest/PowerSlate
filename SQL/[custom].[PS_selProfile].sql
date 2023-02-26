@@ -120,7 +120,7 @@ BEGIN
 			SELECT NonQualifiedUserName
 			FROM PersonUser
 			WHERE PersonId = dbo.fnGetPersonId(A.PEOPLE_CODE_ID)
-			) [Username
+			) [Username]
 		,CASE 
 			WHEN EXISTS (
 					SELECT *
