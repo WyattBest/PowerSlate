@@ -39,6 +39,7 @@ GO
 -- 2021-12-13 Wyatt Best:	Added @OrganizationId (Campus) to work around CR-000182917, where the campus passed to the API isn't written to ACADEMIC.
 --							If ACADEMIC_FLAG isn't yet set to Y, update ACADEMIC.ORG_CODE_ID based on the passed OrganizationId.
 -- 2021-12-13 Wyatt Best:	Ability to set NONTRAD_PROGRAM back to blank (NULL isn't allowed). Formerly, a bad @Nontraditional value later set to NULL in Slate would remain in PowerCampus.
+-- 2023-03-02 Wyatt Best:	Use ADM_APPLICANT_DEFAULT setting instead of STUDENT_CODING_ENROLLED setting for ENROLL_SEPARATION when converting to student.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -338,23 +339,7 @@ BEGIN
 			)
 	BEGIN
 		--ENROLL_SEPARATION is only updated if the ACADEMIC_FLAG is toggled, otherwise it's left alone.
-		DECLARE @pdc NVARCHAR(25) = (@program + '/' + @degree + '/' + @curriculum)
-			,@pdc1 NVARCHAR(25) = (@program + '/' + @degree + '/')
-			,@pdc2 NVARCHAR(25) = (@program + '//')
-			,@pdc3 NVARCHAR(25) = ('//')
-		DECLARE @EnrolledCode NVARCHAR(4) = (
-				SELECT TOP 1 LEFT(SETTING, 4)
-				FROM ABT_SETTINGS
-				WHERE AREA_NAME = 'ACA_RECORDS'
-					AND SECTION_NAME = 'STUDENT_CODING_ENROLLED'
-					AND LABEL_NAME IN (
-						@pdc
-						,@pdc1
-						,@pdc2
-						,@pdc3
-						)
-				ORDER BY LABEL_NAME DESC
-				)
+		DECLARE @ConvertedStudentCode NVARCHAR(8) = dbo.fnGetAbtSetting('ADM_APPLICANT_DEFAULT','APPLICANT_SETUP_DEFAULT','CONVERTED_STUDENT_ENROLLSEP')
 			,@NewAcademicFlag NVARCHAR(1) = (
 				SELECT CASE 
 						WHEN EXISTS (
@@ -384,7 +369,7 @@ BEGIN
 					THEN ''
 				WHEN ACADEMIC_FLAG = 'N'
 					AND @NewAcademicFlag = 'Y'
-					THEN @EnrolledCode
+					THEN @ConvertedStudentCode
 				ELSE ENROLL_SEPARATION
 				END
 			,REVISION_DATE = @Today
