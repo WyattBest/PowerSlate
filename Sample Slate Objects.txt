@@ -1,6 +1,5 @@
 ==Queries==
-Note that these queries leave much to be desired at this time.
-Phone number types are static instead of dynamic and many new fields are not being exported.
+These queries could be improved: Phone number types are static instead of dynamic.
 
 PowerSlate CJ Library: 60f7caf4-ddd9-d3d0-985b-c939bb315141@mcn
 Contains some MCNY-specific translations.
