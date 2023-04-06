@@ -2,11 +2,10 @@ import sys
 import json
 import datetime
 import traceback
-import smtplib
-from email.mime.text import MIMEText
 from urllib.parse import urlparse
 import ps_core
 
+# Additional modules imported below if sending error email becomes necessary
 
 # Attempt a sync; send failure email with traceback if error.
 # Name of configuration is file passed via command-line
@@ -28,7 +27,7 @@ if __name__ == "__main__":
 
         with open(sys.argv[1]) as config_file:
             config = json.load(config_file)
-            smtp_config = config["smtp"]
+            email_config = config["email"]
             if current_record:
                 slate_domain = urlparse(config["slate_query_apps"]["url"]).netloc
                 current_record_link = (
@@ -44,7 +43,7 @@ if __name__ == "__main__":
             + str(datetime.datetime.now())
             + "! Check notification email."
         )
-        msg = MIMEText(
+        body = (
             "Sync failed at "
             + str(datetime.datetime.now())
             + "\n\nError: "
@@ -52,11 +51,37 @@ if __name__ == "__main__":
             + "\nCurrent Record: "
             + current_record_link
         )
-        msg["Subject"] = smtp_config["subject"]
-        msg["From"] = smtp_config["from"]
-        msg["To"] = smtp_config["to"]
 
-        with smtplib.SMTP(smtp_config["server"]) as smtp:
-            smtp.starttls()
-            smtp.login(smtp_config["username"], smtp_config["password"])
-            smtp.send_message(msg)
+        if email_config["method"] == "o365":
+            from O365 import Account
+
+            credentials = (
+                email_config["o365"]["oauth_application"],
+                email_config["o365"]["oauth_secret"],
+            )
+            account = Account(credentials, tenant_id=email_config["o365"]["tenant_id"])
+            if not account.is_authenticated:
+                # Interactive authentication is required during setup
+                account.authenticate(scopes=["basic", "Mail.Send"])
+
+            m = account.new_message()
+            for recipient in email_config["to"].split(","):
+                m.to.add(recipient.strip())
+            m.subject = email_config["subject"]
+            m.body = body.replace("\n", "<br>")
+            m.send()
+        elif email_config["method"] == "smtp":
+            import smtplib
+            from email.mime.text import MIMEText
+
+            msg = MIMEText(body)
+            msg["To"] = email_config["to"]
+            msg["From"] = email_config["from"]
+            msg["Subject"] = email_config["subject"]
+
+            with smtplib.SMTP(email_config["server"]) as smtp:
+                smtp.starttls()
+                smtp.login(
+                    email_config["smtp"]["username"], email_config["smtp"]["password"]
+                )
+                smtp.send_message(msg)

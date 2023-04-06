@@ -80,13 +80,21 @@
 		"username": "service_user",
 		"password": "astrongpassword"
 	},
-	"smtp": {
-		"subject": "PowerSlate Notification",
-		"from": "sender@school.edu",
+	"email": {
 		"to": "recipient@school.edu",
-		"server": "smtp.office365.com",
-		"username": "sender@school.edu",
-		"password": "astrongpassword"
+		"subject": "PowerSlate Notification",
+		"method": "o365",
+		"o365": {
+			"oauth_application": "a guid",
+			"oauth_secret": "a string",
+			"tenant_id": "domain.edu"
+		},
+		"smtp": {
+			"from": "sender@school.edu",
+			"server": "smtp.office365.com",
+			"username": "sender@school.edu",
+			"password": "astrongpassword"
+		}
 	},
 	"scheduled_actions": {
 		"enabled": false,
