@@ -1,3 +1,7 @@
+==Suitcase==
+This Suitcase replaces all the content below and includes fields and prompts.
+0cca1ead-9345-43df-a1df-06a4c78ec8ad:rwf-test
+
 ==Queries==
 These queries could be improved: Phone number types are static instead of dynamic.
 
