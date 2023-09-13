@@ -13,7 +13,7 @@ CREATE TABLE [dbo].[Datatel_locationExtensionBase] (
 	) ON [PRIMARY]
 GO
 
-CREATE TABLE [dbo].[Datatel_prefixExtensionBase] ([Datatel_name] [nchar](10) NULL) ON [PRIMARY]
+CREATE TABLE [dbo].[Datatel_prefixExtensionBase] ([Datatel_name] [nvarchar](10) NULL) ON [PRIMARY]
 GO
 
 CREATE TABLE [dbo].[Datatel_stateExtensionBase] (
@@ -24,7 +24,7 @@ CREATE TABLE [dbo].[Datatel_stateExtensionBase] (
 	) ON [PRIMARY]
 GO
 
-CREATE TABLE [dbo].[Datatel_suffixExtensionBase] ([Datatel_name] [nchar](10) NULL) ON [PRIMARY]
+CREATE TABLE [dbo].[Datatel_suffixExtensionBase] ([Datatel_name] [nvarchar](10) NULL) ON [PRIMARY]
 GO
 
 CREATE TABLE [dbo].[Datatel_visatypeExtensionBase] (

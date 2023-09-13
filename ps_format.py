@@ -72,7 +72,9 @@ def format_phone_number(number):
 
 
 def format_strtobool(s):
-    if s is not None and s.lower() in ["true", "1", "y", "yes"]:
+    if type(s) is bool:
+        return s
+    elif s is not None and s.lower() in ["true", "1", "y", "yes"]:
         return True
     elif s is not None and s.lower() in ["false", "0", "n", "no"]:
         return False

@@ -39,7 +39,8 @@ def init(config, verbose, msg_strings):
 
 def de_init():
     # Clean up connections.
-    CNXN.close()  # SQL
+    if CNXN:
+        CNXN.close()  # SQL
 
 
 def verbose_print(x):
@@ -282,7 +283,13 @@ def post_api(x, cfg_strings, app_form_setting_id):
             "BadRequest Object reference not set to an instance of an object." in rtext
             and "ApplicationsController.cs:line 183" in rtext
         ):
-            raise ValueError(rtext, cfg_strings["error_no_phones"], e)
+            raise ValueError(cfg_strings["error_no_phones"], rtext, e)
+        elif (
+            "BadRequest Activation error occured while trying to get instance of type Database, key"
+            in rtext
+            and "ServiceLocatorImplBase.cs:line 53" in rtext
+        ):
+            raise ValueError(cfg_strings["error_connection_string"], rtext, e)
         elif r.status_code == 202 or r.status_code == 400:
             raise ValueError(rtext)
         else:
