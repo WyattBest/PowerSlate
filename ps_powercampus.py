@@ -92,6 +92,12 @@ def autoconfigure_mappings(
     # Create set of tuples like {('DEGREE', 'CURRICULUM'), (...)}
     dc_set = set()
     for pdc in pdc_set:
+        if len(pdc) < 3:
+            raise ValueError(
+                "Expected a value like ('PROGRAM', 'DEGREE', 'CURRICULM') but got "
+                + str(pdc)
+                + ". Program should be 'PROGRAM' and Degree/Curriculum should be 'DEGREE/CURRICULM'."
+            )
         dc = (pdc[1], pdc[2])
         dc_set.add(dc)
 
@@ -289,7 +295,7 @@ def post_api(x, cfg_strings, app_form_setting_id):
             in rtext
             and "ServiceLocatorImplBase.cs:line 53" in rtext
         ):
-            raise ValueError(cfg_strings["error_connection_string"], rtext, e)
+            raise ValueError(cfg_strings["error_api_missing_database"], rtext, e)
         elif r.status_code == 202 or r.status_code == 400:
             raise ValueError(rtext)
         else:
