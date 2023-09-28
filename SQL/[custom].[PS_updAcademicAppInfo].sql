@@ -200,7 +200,7 @@ BEGIN
 			)
 	BEGIN
 		RAISERROR (
-				'@AppDecision ''%s'' not found in CODE_APPSTATUS.'
+				'@AppDecision ''%s'' not found in CODE_APPDECISION.'
 				,11
 				,1
 				,@AppDecision
