@@ -318,6 +318,11 @@ def format_app_sql(app, mapping, config):
     else:
         mapped["MARITALSTATUS"] = None
 
+    if app["Religion"] is not None:
+        mapped["Religion"] = mapping["Religion"][app["Religion"]]
+    else:
+        mapped["Religion"] = None
+
     if app["PrimaryLanguage"] is not None:
         mapped["PRIMARY_LANGUAGE"] = mapping["Language"][app["PrimaryLanguage"]]
     else:

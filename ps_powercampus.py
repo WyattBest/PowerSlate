@@ -484,13 +484,14 @@ def get_profile(app, campus_email_type):
 
 def update_demographics(app):
     CURSOR.execute(
-        "execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
+        "execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
         app["PEOPLE_CODE_ID"],
         "SLATE",
         app["GENDER"],
         app["Ethnicity"],
         app["DemographicsEthnicity"],
         app["MARITALSTATUS"],
+        app["Religion"],
         app["VETERAN"],
         app["PRIMARYCITIZENSHIP"],
         app["SECONDARYCITIZENSHIP"],

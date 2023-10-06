@@ -21,6 +21,7 @@ GO
 -- 2021-03-16 Wyatt Best:	Added @GovernmentId. For safety, existing GOVERNMENT_ID will not be overwritten with Slate-supplied value.
 -- 2021-04-27 Wyatt Best:	Added TOP 1 to existing people search by GOVERNMENT_ID to avoid subquery error.
 -- 2021-09-01 Wyatt Best:	Named transaction.
+-- 2023-10-05 Rafael Gomez:	Added @Religion.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updDemographics] @PCID NVARCHAR(10)
 	,@Opid NVARCHAR(8)
@@ -28,6 +29,7 @@ CREATE PROCEDURE [custom].[PS_updDemographics] @PCID NVARCHAR(10)
 	,@Ethnicity TINYINT --0 = None, 1 = Hispanic, 2 = NonHispanic. Ellucian's API was supposed to record nothing for ethnicity for 0. I don't think it supports multi-value, but this sproc does.
 	,@DemographicsEthnicity NVARCHAR(6)
 	,@MaritalStatus NVARCHAR(4) NULL
+	,@Religion NVARCHAR(4) NULL
 	,@Veteran NVARCHAR(4) NULL
 	,@PrimaryCitizenship NVARCHAR(6) NULL
 	,@SecondaryCitizenship NVARCHAR(6) NULL
@@ -40,6 +42,7 @@ CREATE PROCEDURE [custom].[PS_updDemographics] @PCID NVARCHAR(10)
 	,@PrimaryLanguage NVARCHAR(12) NULL
 	,@HomeLanguage NVARCHAR(12) NULL
 	,@GovernmentId nvarchar(40) NULL
+	
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -145,7 +148,24 @@ BEGIN
 				,@PCID
 				)
 	END
+	IF (
+			@Religion IS NOT NULL
+			AND NOT EXISTS (
+				SELECT *
+				FROM CODE_RELIGION
+				WHERE CODE_VALUE_KEY = @Religion
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@Religion ''%s'' not found in CODE_RELIGION.'
+				,11
+				,1
+				,@Religion
+				)
 
+		RETURN
+	END
 	
 	--IPEDS Ethnicity
 	IF (@Ethnicity = 1 --Hispanic
@@ -189,6 +209,7 @@ BEGIN
 				AND DUAL_CITIZENSHIP = @SecondaryCitizenship
 				AND PRIMARY_LANGUAGE = @PrimaryLanguage
 				and HOME_LANGUAGE = @HomeLanguage
+				AND RELIGION = @Religion
 			)
 		EXECUTE [WebServices].[spSetDemographics] @PersonId
 			,@Opid
@@ -196,7 +217,7 @@ BEGIN
 			,@Gender
 			,@DemographicsEthnicity
 			,@MaritalStatus
-			,NULL
+			,@Religion
 			,@Veteran
 			,NULL
 			,@PrimaryCitizenship
