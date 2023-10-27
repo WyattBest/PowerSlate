@@ -96,6 +96,11 @@
 			"password": "astrongpassword"
 		}
 	},
+	"teams": {
+		"enabled": false,
+		"webHookURL" : "[YOUR TEAMS WEBHOOK GOES HERE]",
+		"title" : "PowerSlate [Production] Alert"
+	},
 	"scheduled_actions": {
 		"enabled": false,
 		"slate_get": {

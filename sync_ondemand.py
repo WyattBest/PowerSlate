@@ -28,6 +28,7 @@ if __name__ == "__main__":
         with open(sys.argv[1]) as config_file:
             config = json.load(config_file)
             email_config = config["email"]
+            teams_config = config["teams"]
             if current_record:
                 slate_domain = urlparse(config["slate_query_apps"]["url"]).netloc
                 current_record_link = (
@@ -51,6 +52,14 @@ if __name__ == "__main__":
             + "\nCurrent Record: "
             + current_record_link
         )
+
+        if teams_config["enabled"] == True:
+            import pymsteams
+            teamsMsg = pymsteams.connectorcard(teams_config["webHookURL"])
+            teamsMsg.text(body)
+            teamsMsg.title(teams_config["title"])
+            teamsMsg.addLinkButton("Open Slate Record",current_record_link)
+            teamsMsg.send()
 
         if email_config["method"] == "o365":
             from O365 import Account
