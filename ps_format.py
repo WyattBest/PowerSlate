@@ -22,18 +22,41 @@ class Edu_sync_result:
 
 
 class Stop_from_Slate:
-    def __init__(self, stop):
-        self.stop_code = stop["StopCode"]
-        self.stop_date = stop["StopDate"]
-        self.cleared = format_strtobool(stop["Cleared"])
-        if "ClearedDate" in stop:
-            self.cleared_date = stop["ClearedDate"]
+    def __init__(self, row):
+        self.stop_code = row["StopCode"]
+        self.stop_date = row["StopDate"]
+        self.cleared = format_strtobool(row["Cleared"])
+        if "ClearedDate" in row:
+            self.cleared_date = row["ClearedDate"]
         else:
             self.cleared_date = None
-        if "comments" in stop:
-            self.comments = stop["comments"]
+        if "comments" in row:
+            self.comments = format_blank_to_null(row["comments"])
         else:
             self.comments = None
+
+
+class Scholarship_from_Slate:
+    def __init__(self, row):
+        self.year = row["Year"]
+        self.term = row["Term"]
+        self.scholarship = row["Scholarship"]
+        self.department = row["Department"]
+        self.level = row["Level"]
+        self.status = row["Status"]
+        if "StatusDate" in row:
+            self.status_date = row["StatusDate"]
+        else:
+            self.status_date = None
+        if "AppliedAmount" in row:
+            self.applied_amount = row["AppliedAmount"]
+        else:
+            self.applied_amount = None
+        self.awarded_amount = row["AwardedAmount"]
+        if "Notes" in row:
+            self.notes = format_blank_to_null(row["Notes"])
+        else:
+            self.notes = None
 
 
 # Should I perhaps have a class like ApplicationRecord that handles datatype transformations, supplying nulls, etc?
@@ -338,7 +361,7 @@ def format_app_sql(app, mapping, config):
     else:
         mapped["OrganizationId"] = None
 
-    # Format arrays if present. This should probably be moved into a class in ps_models.
+    # Format Education and TestScoresNumeric if present. Newer arrays are implemented as classes.
     # Currently only supplies nulls; no datatype manipulations performed.
     array_models = ps_models.get_arrays()
     array_names = [k for (k, v) in array_models.items() if k in app]
@@ -354,7 +377,11 @@ def format_app_sql(app, mapping, config):
             item.update({k: v for (k, v) in item.items() if k in fields_null})
             item.update({k: None for k in fields_null if k not in item})
 
+    # Pass through arrays implemented as classes
     if "Stops" in app:
         mapped["Stops"] = app["Stops"]
+
+    if "Scholarships" in app:
+        mapped["Scholarships"] = app["Scholarships"]
 
     return mapped
