@@ -7,7 +7,9 @@ An integration between PowerCampus and Slate (hence the name). Admissions applic
 
 ## Requirements
 Python 3.9+ is required, along with a few packages available via pip. There are no known issues between different package versions. 
-(Pymsteams-0.2.2) For Teams Alerts
+### Optional Packages
+ - O365 for error emails sent via Exchange Online.
+ - Pymsteams-0.2.2 for error alerts via Teams
 
 ## Usage
 ### Configuration
