@@ -6,7 +6,10 @@ An integration between PowerCampus and Slate (hence the name). Admissions applic
 [Field documentation](PowerSlate%20Integration%20Fields.docx)
 
 ## Requirements
-Python 3.9+ is required, along with a few packages available via pip. There are no known issues between different package versions.
+Python 3.9+ is required, along with a few packages available via pip. There are no known issues between different package versions. 
+### Optional Packages
+ - O365 for error emails sent via Exchange Online.
+ - Pymsteams-0.2.2 for error alerts via Teams
 
 ## Usage
 ### Configuration
