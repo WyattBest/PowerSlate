@@ -48,9 +48,10 @@ BEGIN
 			)
 	BEGIN
 		RAISERROR (
-				'@PCID not found in PEOPLE.'
+				'@PCID ''%s'' not found in PEOPLE.'
 				,11
 				,1
+				,@PCID
 				)
 
 		RETURN
@@ -65,16 +66,18 @@ BEGIN
 			)
 	BEGIN
 		RAISERROR (
-				'@Scholarship not found in SCHOLARSHIP.'
+				'@Scholarship ''%s'' not found in SCHOLARSHIP.'
 				,11
 				,1
+				,@Scholarship
 				)
 
 		RETURN
 	END
 
 	IF (
-			NOT EXISTS (
+			@Department IS NOT NULL
+			AND NOT EXISTS (
 				SELECT *
 				FROM CODE_DEPARTMENT
 				WHERE CODE_VALUE_KEY = @Department
@@ -82,9 +85,10 @@ BEGIN
 			)
 	BEGIN
 		RAISERROR (
-				'@Department not found in CODE_DEPARTMENT.'
+				'@Department ''%'' not found in CODE_DEPARTMENT.'
 				,11
 				,1
+				,@Department
 				)
 
 		RETURN
@@ -99,9 +103,10 @@ BEGIN
 			)
 	BEGIN
 		RAISERROR (
-				'@Level not found in CODE_SCHOLARSHIPLEVEL.'
+				'@Level ''%'' not found in CODE_SCHOLARSHIPLEVEL.'
 				,11
 				,1
+				,@Level
 				)
 
 		RETURN
@@ -119,9 +124,11 @@ BEGIN
 			)
 	BEGIN
 		RAISERROR (
-				'@Scholarship / @Level combination and not found in SCHOLARSHIPLEVELS.'
+				'@Scholarship / @Level combination ''%s/%s'' and not found in SCHOLARSHIPLEVELS.'
 				,11
 				,1
+				,@Scholarship
+				,@Level
 				)
 
 		RETURN
@@ -139,9 +146,13 @@ BEGIN
 			) > 1
 	BEGIN
 		RAISERROR (
-				'More than one PEOPLESCHOLARSHIP row already exists for this PEOPLE_CODE_ID, ACADEMIC_YEAR, ACADEMIC_TERM, and SCHOLARSHIP_ID.'
+				'More than one PEOPLESCHOLARSHIP row already exists for this PEOPLE_CODE_ID, ACADEMIC_YEAR, ACADEMIC_TERM, and SCHOLARSHIP_ID: %s/%s/%s/%s.'
 				,11
 				,1
+				,@PCID
+				,@Year
+				,@Term
+				,@Scholarship
 				)
 
 		RETURN

@@ -18,9 +18,6 @@ class Settings:
         self.powercampus = self.PowerCampus(config["powercampus"])
         self.console_verbose = config["console_verbose"]
         self.msg_strings = self.FlatDict(config["msg_strings"])
-        self.validate_scholarship_levels = bool(
-            self.PowerCampus(config["validate_scholarship_levels"])
-        )
 
     class PowerCampus:
         def __init__(self, config):
@@ -467,7 +464,7 @@ def main_sync(pid=None):
                     ps_powercampus.update_scholarship(
                         pcid,
                         scholarship,
-                        SETTINGS.validate_scholarship_levels,
+                        SETTINGS.powercampus.validate_scholarship_levels,
                     )
 
             # Collect information

@@ -808,19 +808,19 @@ def update_app_form_autoprocess(app_form_setting_id, autoprocess):
     CURSOR.execute(
         "EXEC [custom].[PS_updApplicationFormSetting] ?,?",
         app_form_setting_id,
-        bool(autoprocess),
+        autoprocess,
     )
     CNXN.commit()
 
 
-def update_scholarship(pcid, scholarship, valid_scholarship_level):
+def update_scholarship(pcid, scholarship, validate_scholarship_level):
     """Insert or update a row in PEOPLESCHOLARSHIP and PEOPLESCHOLARSHIPNOTES.
     Existing rows are matched on PCID, Year, Term, and Scholarship.
     Status and Status Date are inserted initially and only updated later if Department, Level, Applied Amount, or Awarded Amount change.
     """
 
     CURSOR.execute(
-        "exec [custom].[PS_[PS_updScholarships] ?,?,?,?,?,?,?,?,?,?,?,?,?",
+        "exec [custom].[PS_updScholarships] ?,?,?,?,?,?,?,?,?,?,?,?,?",
         pcid,
         scholarship.year,
         scholarship.term,
@@ -832,7 +832,8 @@ def update_scholarship(pcid, scholarship, valid_scholarship_level):
         scholarship.applied_amount,
         scholarship.awarded_amount,
         scholarship.notes,
-        valid_scholarship_level,
+        "SLATE",
+        validate_scholarship_level,
     )
     CNXN.commit()
 
