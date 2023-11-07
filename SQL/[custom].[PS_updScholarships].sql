@@ -11,8 +11,6 @@ GO
 -- Create date: 2023-10-27
 -- Description:	Inserts or updates Scholarships data. Existing rows are matched on PCID, Year, Term, and Scholarship.
 --				Status and Status Date are inserted initially and only updated later if Department, Level, Applied Amount, or Awarded Amount change.
---				@ValidateScholarshipLevel optionally checks to see if the Scholarship + Level combo exists in SCHOLARSHIPLEVELS.
---				TODO: Check that @ValidateScholarshipLevel is truly optional. Check that automatic requirement inserting works if a non-configured level is used.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updScholarships] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
