@@ -22,6 +22,7 @@ GO
 -- 2021-04-27 Wyatt Best:	Added TOP 1 to existing people search by GOVERNMENT_ID to avoid subquery error.
 -- 2021-09-01 Wyatt Best:	Named transaction.
 -- 2023-10-05 Rafael Gomez:	Added @Religion.
+-- 2023-11-09 Wyatt Best:	Updated error message when GOVERNMENT_ID already assigned to other record.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updDemographics] @PCID NVARCHAR(10)
 	,@Opid NVARCHAR(8)
@@ -131,7 +132,7 @@ BEGIN
 	IF @DupPCID IS NOT NULL
 	BEGIN
 		RAISERROR (
-				'@GovernmentId already assigned to %s. Cannot assign to %s.'
+				'Cannot assign @GovernmentId to %s because it is already assigned to %s.'
 				,11
 				,1
 				,@DupPCID
