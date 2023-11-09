@@ -7,6 +7,7 @@ from ps_format import (
     format_app_sql,
     Edu_sync_result,
     Stop_from_Slate,
+    Scholarship_from_Slate,
 )
 import ps_powercampus
 
@@ -54,7 +55,9 @@ def init(config_path):
     MSG_STRINGS = CONFIG["msg_strings"]
 
     # Init PowerCampus API and SQL connections
-    ps_powercampus.init(SETTINGS.powercampus, SETTINGS.console_verbose, SETTINGS.msg_strings)
+    ps_powercampus.init(
+        SETTINGS.powercampus, SETTINGS.console_verbose, SETTINGS.msg_strings
+    )
 
     return CONFIG
 
@@ -453,6 +456,16 @@ def main_sync(pid=None):
                 for stop in app_pc["Stops"]:
                     stop = Stop_from_Slate(stop)
                     ps_powercampus.update_stop(pcid, stop)
+
+            # Update PowerCampus Scholarships
+            if "Scholarships" in app_pc:
+                for scholarship in app_pc["Scholarships"]:
+                    scholarship = Scholarship_from_Slate(scholarship)
+                    ps_powercampus.update_scholarship(
+                        pcid,
+                        scholarship,
+                        SETTINGS.powercampus.validate_scholarship_levels,
+                    )
 
             # Collect information
             (

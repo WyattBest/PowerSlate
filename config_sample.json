@@ -37,7 +37,8 @@
 		"database_string": "Driver={ODBC Driver 17 for SQL Server};Server=servername;Database=campus6;Trusted_Connection=yes;ServerSPN=MSSQLSvc/servername.local.domain.edu;",
 		"mapping_file_location": "\\\\servername\\PowerCampus Mapper\\recruiterMapping.xml",
 		"readmit_code": "READ",
-		"update_academic_key": false
+		"update_academic_key": false,
+		"validate_scholarship_levels": true
 	},
 	"console_verbose": true,
 	"slate_query_apps": {
