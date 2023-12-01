@@ -8,8 +8,10 @@ from ps_format import (
     Edu_sync_result,
     Stop_from_Slate,
     Scholarship_from_Slate,
+    Association_from_Slate,
 )
 import ps_powercampus
+
 
 # The Settings class should replace the CONFIG global in all new code.
 class Settings:
@@ -466,6 +468,12 @@ def main_sync(pid=None):
                         scholarship,
                         SETTINGS.powercampus.validate_scholarship_levels,
                     )
+
+            # Update PowerCampus Associations
+            if "Associations" in app_pc:
+                for association in app_pc["Associations"]:
+                    association = Association_from_Slate(association)
+                    ps_powercampus.update_association(pcid, association)
 
             # Collect information
             (

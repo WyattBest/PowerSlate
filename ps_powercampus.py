@@ -838,6 +838,24 @@ def update_scholarship(pcid, scholarship, validate_scholarship_level):
     CNXN.commit()
 
 
+def update_association(pcid, association):
+    """Insert a rows in ASSOCIATION if not already present.
+    Existing rows are matched on PCID, Year, Term, Session, Association, and Office Held.
+    """
+
+    CURSOR.execute(
+        "exec [custom].[PS_updAssociation] ?,?,?,?,?,?,?",
+        pcid,
+        association.year,
+        association.term,
+        association.session,
+        association.association,
+        association.office_held,
+        "SLATE",
+    )
+    CNXN.commit()
+
+
 def pf_get_fachecklist(pcid, govid, appid, year, term, session):
     """Return the PowerFAIDS missing docs list for uploading to Financial Aid Checklist."""
     checklist = []
