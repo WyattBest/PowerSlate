@@ -46,7 +46,7 @@ class Scholarship_from_Slate:
             self.year, self.term, s = yts.split("/")
         else:
             raise ValueError(
-                "Scholarship YearTerm is not in a valid format. Example 2024/SPRING or 2024/SPRING/01."
+                "Scholarships.YearTerm is not in a valid format. Example 2024/SPRING or 2024/SPRING/01."
             )
 
         self.scholarship = row["Scholarship"]
@@ -73,9 +73,15 @@ class Scholarship_from_Slate:
 
 class Association_from_Slate:
     def __init__(self, row):
-        self.year = row["Year"]
-        self.term = row["Term"]
-        self.session = row["Session"]
+        yts = row["YearTerm"]
+        if yts.count("/") == 1:
+            self.year, self.term = yts.split("/")
+        elif yts.count("/") == 2:
+            self.year, self.term, s = yts.split("/")
+        else:
+            raise ValueError(
+                "Associations.YearTerm is not in a valid format. Example 2024/SPRING or 2024/SPRING/01."
+            )
         self.association = row["Association"]
         self.office_held = row["OfficeHeld"]
 
