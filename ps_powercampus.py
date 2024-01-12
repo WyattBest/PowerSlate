@@ -844,7 +844,7 @@ def update_association(pcid, association):
     """
 
     CURSOR.execute(
-        "exec [custom].[PS_updAssociation] ?,?,?,?,?,?,?",
+        "exec [custom].[PS_insAssociation] ?,?,?,?,?,?,?",
         pcid,
         association.year,
         association.term,

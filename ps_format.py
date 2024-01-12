@@ -76,11 +76,16 @@ class Association_from_Slate:
         yts = row["YearTerm"]
         if yts.count("/") == 1:
             self.year, self.term = yts.split("/")
+            self.session = ""
         elif yts.count("/") == 2:
-            self.year, self.term, s = yts.split("/")
+            self.year, self.term, self.session = yts.split("/")
+        elif yts.isdigit() == True and int(yts) > 1000:
+            self.year = yts
+            self.term = ""
+            self.session = ""
         else:
             raise ValueError(
-                "Associations.YearTerm is not in a valid format. Example 2024/SPRING or 2024/SPRING/01."
+                "Associations.YearTerm is not in a valid format. Example 2024 or 2024/SPRING or 2024/SPRING/01."
             )
         self.association = row["Association"]
         self.office_held = row["OfficeHeld"]
@@ -410,5 +415,8 @@ def format_app_sql(app, mapping, config):
 
     if "Scholarships" in app:
         mapped["Scholarships"] = app["Scholarships"]
+
+    if "Associations" in app:
+        mapped["Associations"] = app["Associations"]
 
     return mapped
