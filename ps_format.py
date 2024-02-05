@@ -2,6 +2,7 @@ from copy import deepcopy
 from string import ascii_letters, punctuation, whitespace
 import ps_models
 
+
 # Newer data points are implemented as classes. Older ones are implemented in ps_models.py
 class Edu_sync_result:
     def __init__(self, sync_result):
@@ -45,7 +46,7 @@ class Scholarship_from_Slate:
             self.year, self.term, s = yts.split("/")
         else:
             raise ValueError(
-                "Scholarship YearTerm is not in a valid format. Example 2024/SPRING or 2024/SPRING/01."
+                "Scholarships.YearTerm is not in a valid format. Example 2024/SPRING or 2024/SPRING/01."
             )
 
         self.scholarship = row["Scholarship"]
@@ -68,6 +69,26 @@ class Scholarship_from_Slate:
             self.notes = format_blank_to_null(row["Notes"])
         else:
             self.notes = None
+
+
+class Association_from_Slate:
+    def __init__(self, row):
+        yts = row["YearTerm"]
+        if yts.count("/") == 1:
+            self.year, self.term = yts.split("/")
+            self.session = ""
+        elif yts.count("/") == 2:
+            self.year, self.term, self.session = yts.split("/")
+        elif yts.isdigit() == True and int(yts) > 1000:
+            self.year = yts
+            self.term = ""
+            self.session = ""
+        else:
+            raise ValueError(
+                "Associations.YearTerm is not in a valid format. Example 2024 or 2024/SPRING or 2024/SPRING/01."
+            )
+        self.association = row["Association"]
+        self.office_held = row["OfficeHeld"]
 
 
 # Should I perhaps have a class like ApplicationRecord that handles datatype transformations, supplying nulls, etc?
@@ -394,5 +415,8 @@ def format_app_sql(app, mapping, config):
 
     if "Scholarships" in app:
         mapped["Scholarships"] = app["Scholarships"]
+
+    if "Associations" in app:
+        mapped["Associations"] = app["Associations"]
 
     return mapped
