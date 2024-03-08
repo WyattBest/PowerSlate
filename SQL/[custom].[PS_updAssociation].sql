@@ -11,8 +11,12 @@ GO
 -- Create date: 2023-12-01
 -- Description:	Inserts Associations data if it does not already exists. Does not updating existing.
 --				Existing rows are matched on PCID, Year, Term, Session, Association, and Office Held (same as the clustered primary key).
+--
+-- 2024-03-08 Wyatt Best:	Renamed from PS_insAssociation. Instead of matching on PCID, Year, Term, Session, Association, and Office Held
+--							(same as the clustered primary key), match only on PCID, Year, Term, Session, and Association.
+--							Update Office Held if match exists.
 -- =============================================
-CREATE PROCEDURE [custom].[PS_insAssociation] @PCID NVARCHAR(10)
+CREATE PROCEDURE [custom].[PS_updAssociation] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
 	,@Term NVARCHAR(10)
 	,@Session NVARCHAR(10)
@@ -86,17 +90,16 @@ BEGIN
 	--Check whether row already exists
 	IF NOT EXISTS (
 			SELECT *
-			FROM ASSOCIATION
-			WHERE PEOPLE_ORG_CODE_ID = @PCID
-				AND ASSOCIATION = @Association
-				AND ACADEMIC_YEAR = @Year
-				AND ACADEMIC_TERM = @Term
-				AND ACADEMIC_SESSION = @Session
-				AND OFFICE_HELD = @OfficeHeld
+			FROM [ASSOCIATION]
+			WHERE [PEOPLE_ORG_CODE_ID] = @PCID
+				AND [ASSOCIATION] = @Association
+				AND [ACADEMIC_YEAR] = @Year
+				AND [ACADEMIC_TERM] = @Term
+				AND [ACADEMIC_SESSION] = @Session
 			)
 	BEGIN
 		--Insert new Association row if not exists
-		INSERT INTO [dbo].[ASSOCIATION] (
+		INSERT INTO [ASSOCIATION] (
 			[PEOPLE_ORG_CODE]
 			,[PEOPLE_ORG_ID]
 			,[PEOPLE_ORG_CODE_ID]
@@ -134,6 +137,28 @@ BEGIN
 			,'0001'
 			,'*'
 			)
+	END
+	ELSE
+	BEGIN
+		--Update existing Association row
+		UPDATE [ASSOCIATION]
+		SET [OFFICE_HELD] = @OfficeHeld
+			,[REVISION_DATE] = @Today
+			,[REVISION_TIME] = @Now
+			,[REVISION_OPID] = @Opid
+		WHERE [PEOPLE_ORG_CODE_ID] = @PCID
+			AND [ASSOCIATION] = @Association
+			AND [ACADEMIC_YEAR] = @Year
+			AND [ACADEMIC_TERM] = @Term
+			AND [ACADEMIC_SESSION] = @Session
+			--Only update if Office Held needs to change
+			AND EXISTS (
+				SELECT [OFFICE_HELD]
+				
+				EXCEPT
+				
+				SELECT @OfficeHeld
+				)
 	END
 END
 GO

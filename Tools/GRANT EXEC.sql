@@ -26,7 +26,7 @@ GRANT EXEC ON [custom].[PS_updStop] to [$(service_user)]
 GRANT EXEC ON [custom].[PS_selPFAwardsXML] to [$(service_user)]
 GRANT EXEC ON [custom].[PS_selAcademicCalendar] to [$(service_user)]
 GRANT EXEC ON [custom].[PS_updScholarships] to [$(service_user)]
-GRANT EXEC ON [custom].[PS_insAssociation] to [$(service_user)]
+GRANT EXEC ON [custom].[PS_updAssociation] to [$(service_user)]
 
 USE [PowerCampusMapper]
 GRANT INSERT ON PowerSlate_AppStatus_Log TO [$(service_user)]
