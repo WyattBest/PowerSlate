@@ -149,6 +149,8 @@ def format_app_generic(app, cfg_fields):
     """Supply missing fields and correct datatypes. Returns a flat dict."""
 
     mapped = format_blank_to_null(app)
+    mapped["error_flag"] = False
+    mapped["error_message"] = None
 
     fields_null = [k for (k, v) in ps_models.fields.items() if v["supply_null"] == True]
     fields_bool = [k for (k, v) in ps_models.fields.items() if v["type"] == bool]

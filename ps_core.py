@@ -319,6 +319,25 @@ def main_sync(pid=None):
         CURRENT_RECORD = k
         apps[k] = format_app_generic(v, CONFIG["slate_upload_active"])
 
+    # Set error flag if one pid has multiple applications with the same YTS + PCD
+    duplicates = []
+    for k, v in apps.items():
+        duplicates.extend(
+            [
+                kk
+                for kk, vv in apps.items()
+                if vv["pid"] == v["pid"]
+                and vv["Program"] == v["Program"]
+                and vv["Degree"] == v["Degree"]
+                and vv["YearTerm"] == v["YearTerm"]
+                and k != kk
+            ]
+        )
+
+    for k in duplicates:
+        apps[k]["error_flag"] = True
+        apps[k]["error_message"] = MSG_STRINGS["error_duplicate_apps"]
+
     if SETTINGS.powercampus.autoconfigure_mappings.enabled:
         verbose_print("Auto-configure ProgramOfStudy and recruiterMapping.xml")
         CURRENT_RECORD = None
@@ -337,6 +356,8 @@ def main_sync(pid=None):
 
     verbose_print("Check each app's status flags/PCID in PowerCampus")
     for k, v in apps.items():
+        if v["error_flag"] == True:
+            continue
         CURRENT_RECORD = k
         status_ra, status_app, status_calc, pcid = ps_powercampus.scan_status(v)
         apps[k].update(
@@ -350,6 +371,8 @@ def main_sync(pid=None):
 
     verbose_print("Post new or repost unprocessed applications to PowerCampus API")
     for k, v in apps.items():
+        if v["error_flag"] == True:
+            continue
         CURRENT_RECORD = k
         if (v["status_ra"] == None) or (
             v["status_ra"] in (1, 2) and v["status_app"] is None
@@ -377,7 +400,11 @@ def main_sync(pid=None):
         CURRENT_RECORD = None
         # Send list of app GUID's to Slate; get back checklist items
         actions_list = slate_get_actions(
-            [k for (k, v) in apps.items() if v["status_calc"] == "Active"]
+            [
+                k
+                for (k, v) in apps.items()
+                if v["status_calc"] == "Active" and v["error_flag"] == False
+            ]
         )
 
         if CONFIG["scheduled_actions"]["autolearn_action_codes"] == True:
@@ -386,6 +413,8 @@ def main_sync(pid=None):
     verbose_print("Update existing applications in PowerCampus and extract information")
     edu_sync_results = []
     for k, v in apps.items():
+        if v["error_flag"] == False:
+            continue
         CURRENT_RECORD = k
         if v["status_calc"] == "Active":
             # Transform to PowerCampus format
