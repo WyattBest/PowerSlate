@@ -145,7 +145,7 @@ def format_str_digits(s):
     return s.translate(non_digits)
 
 
-def format_app_generic(app, cfg_fields):
+def format_app_generic(app, cfg_fields, Messages):
     """Supply missing fields and correct datatypes. Returns a flat dict."""
 
     mapped = format_blank_to_null(app)
@@ -183,7 +183,7 @@ def format_app_generic(app, cfg_fields):
     return mapped
 
 
-def format_app_api(app, cfg_defaults):
+def format_app_api(app, cfg_defaults, Messages):
     """Remap application to Recruiter/Web API format.
 
     Keyword arguments:
@@ -191,6 +191,11 @@ def format_app_api(app, cfg_defaults):
     """
 
     mapped = {}
+
+    # Error checks
+    if "YearTerm" not in app:
+        error_message = Messages.error.missing_yt
+        error_flag = True
 
     # Pass through fields
     fields_verbatim = [
@@ -284,12 +289,12 @@ def format_app_api(app, cfg_defaults):
 
     # Academic program
     # API 9.2.3 seems to accept either three or two fields
-    if "curriculum" in app:
+    if "Curriculum" in app:
         mapped["Programs"] = [
             {
-                "program": app["program"],
-                "degree": app["degree"],
-                "curriculum": app["curriculum"],
+                "Program": app["Program"],
+                "Degree": app["Degree"],
+                "Curriculum": app["Curriculum"],
             }
         ]
     else:
@@ -301,7 +306,7 @@ def format_app_api(app, cfg_defaults):
     mapped["ApplicationNumber"] = app["aid"]
     mapped["ProspectId"] = app["pid"]
 
-    return mapped
+    return mapped, error_flag, error_message
 
 
 def format_app_sql(app, mapping, config):

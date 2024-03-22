@@ -134,16 +134,6 @@
 		"phone_country": "US",
 		"phone_type": 1
 	},
-	"msg_strings": {
-		"error_no_apps": "<p><strong>No applications found. Perhaps the application(s) are not submitted or are missing required fields?</strong></p>",
-		"error_no_phones": "Application must have at least one phone number.",
-		"error_academic_row_not_found": "Record not found by Year/Term/Session/Program/Degree/Curriculum.",
-		"error_invalid_college_attend": "College Attend is set to {} in PowerCampus, which is not valid for applicants.",
-		"error_api_missing_database": "The PowerCampus Web API is not functioning properly. You may need to remove and reinstall the application.",
-		"error_duplicate_apps": "Person has multiple applications with the same YTS + PCD.",
-		"sync_done": "Sync completed with no errors.",
-		"sync_done_not_found": "Sync completed, but one or more applications had integration errors."
-	},
 	"http_port": null,
 	"http_ip": null
 }

@@ -5,16 +5,14 @@ import xml.etree.ElementTree as ET
 import ps_models
 
 
-def init(config, verbose, msg_strings):
+def init(config, verbose):
     global CNXN
     global CURSOR
     global CONFIG
     global VERBOSE
-    global MSG_STRINGS
 
     CONFIG = config
     VERBOSE = verbose
-    MSG_STRINGS = msg_strings
 
     # Microsoft SQL Server connection.
     CNXN = pyodbc.connect(config.database_string)
@@ -50,7 +48,12 @@ def verbose_print(x):
 
 
 def autoconfigure_mappings(
-    program_list, yt_list, validate_degreq, minimum_degreq_year, mapping_file_location
+    program_list,
+    yt_list,
+    validate_degreq,
+    minimum_degreq_year,
+    mapping_file_location,
+    app_form_setting_id,
 ):
     """
     Automatically insert new Program/Degree/Curriculum combinations into ProgramOfStudy and recruiterMapping.xml
@@ -110,11 +113,12 @@ def autoconfigure_mappings(
     # Update ProgramOfStudy table; optionally validate against DEGREQ table
     for pdc in pdc_set:
         CURSOR.execute(
-            "execute [custom].[PS_updProgramOfStudy] ?, ?, ?, ?",
+            "execute [custom].[PS_updProgramOfStudy] ?, ?, ?, ?, ?",
             pdc[0],
             pdc[1],
             pdc[2],
             minimum_degreq_year,
+            app_form_setting_id,
         )
     CNXN.commit()
 
@@ -254,7 +258,7 @@ def get_recruiter_mapping(mapping_file_location):
     return rm_mapping
 
 
-def post_api(app, config, msg_strings):
+def post_api(app, config, Messages):
     """Post an application to PowerCampus.
     Return  PEOPLE_CODE_ID if application was automatically accepted or None for all other conditions.
 
@@ -297,13 +301,13 @@ def post_api(app, config, msg_strings):
             "BadRequest Object reference not set to an instance of an object." in rtext
             and "ApplicationsController.cs:line 183" in rtext
         ):
-            raise ValueError(msg_strings["error_no_phones"], rtext, e)
+            raise ValueError(Messages.error.no_phones, rtext, e)
         elif (
             "BadRequest Activation error occured while trying to get instance of type Database, key"
             in rtext
             and "ServiceLocatorImplBase.cs:line 53" in rtext
         ):
-            raise ValueError(msg_strings["error_api_missing_database"], rtext, e)
+            raise ValueError(Messages.error.api_missing_database, rtext, e)
         elif (
             r.status_code == 202
             and "was created successfully in PowerCampus" not in r.text
@@ -396,7 +400,7 @@ def scan_status(x):
     return ra_status, apl_status, computed_status, pcid
 
 
-def get_profile(app, campus_email_type):
+def get_profile(app, campus_email_type, Messages):
     """Fetch ACADEMIC row data and email address from PowerCampus.
 
     Returns:
@@ -410,7 +414,7 @@ def get_profile(app, campus_email_type):
     """
 
     error_flag = True
-    error_message = MSG_STRINGS.error_academic_row_not_found
+    error_message = Messages.error.academic_row_not_found
     registered = False
     reg_date = None
     readmit = False
@@ -464,7 +468,7 @@ def get_profile(app, campus_email_type):
 
         if college_attend not in CONFIG.valid_college_attend:
             error_flag = True
-            error_message = MSG_STRINGS.error_invalid_college_attend.format(
+            error_message = Settings.Messages.error.invalid_college_attend.format(
                 college_attend
             )
 
