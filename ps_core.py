@@ -50,7 +50,6 @@ def init(config_path):
     global CONFIG
     global CONFIG_PATH
     global RM_MAPPING
-    global MSG_STRINGS
     global Settings  # New global for Settings class
 
     CONFIG_PATH = config_path
@@ -61,7 +60,6 @@ def init(config_path):
     RM_MAPPING = ps_powercampus.get_recruiter_mapping(
         Settings.PowerCampus.mapping_file_location
     )
-    MSG_STRINGS = CONFIG["msg_strings"]
 
     # Init PowerCampus API and SQL connections
     ps_powercampus.init(Settings.PowerCampus, Settings.console_verbose)
@@ -629,10 +627,10 @@ def main_sync(pid=None):
         slate_post_fa_checklist(slate_upload_list)
 
     # Warn if any apps returned an error flag from ps_powercampus.get_profile()
-    if sync_errors == True:
-        output_msg = MSG_STRINGS["sync_done_not_found"]
+    if sync_errors == True or [k for k in apps if apps[k]["error_flag"] == True]:
+        output_msg = Settings.Messages.success.done_with_errors
     else:
-        output_msg = MSG_STRINGS["sync_done"]
+        output_msg = Settings.Messages.success.done
     verbose_print(output_msg)
 
     return output_msg
