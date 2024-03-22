@@ -235,7 +235,7 @@ def format_app_api(app, cfg_defaults):
         if "PostalCode" not in k:
             k["PostalCode"] = None
         if "County" not in k:
-            k["County"] = cfg_defaults["address_country"]
+            k["County"] = cfg_defaults.address_country
 
     if len([k for k in app if k[:5] == "Phone"]) > 0:
         has_phones = True
@@ -263,30 +263,39 @@ def format_app_api(app, cfg_defaults):
             item["Number"] = format_phone_number(item["Number"])
 
             if "Type" not in item:
-                item["Type"] = cfg_defaults["phone_type"]
+                item["Type"] = cfg_defaults.phone_type
             else:
                 item["Type"] = int(item["Type"])
 
             if "Country" not in item:
-                item["Country"] = cfg_defaults["phone_country"]
+                item["Country"] = cfg_defaults.phone_country
 
     else:
         # PowerCampus WebAPI requires Type -1 instead of a blank or null when not submitting any phones.
         mapped["PhoneNumbers"] = [{"Type": -1, "Country": None, "Number": None}]
 
-    # Veteran has funny logic, and  API 8.8.3 is broken (passing in 1 will write 2 into [Application].[VeteranStatus]).
-    # Impact is low because custom SQL routines will fix Veteran field once person has passed Handle Applications.
+    # Veteran logic was updated in API 9.2.x
     if app["Veteran"] is None:
-        mapped["Veteran"] = 0
+        mapped["Veteran"] = None
         mapped["VeteranStatus"] = False
     else:
-        mapped["Veteran"] = int(app["Veteran"])
+        mapped["Veteran"] = app["Veteran"]
         mapped["VeteranStatus"] = True
 
     # Academic program
-    mapped["Programs"] = [
-        {"Program": app["Program"], "Degree": app["Degree"], "Curriculum": None}
-    ]
+    # API 9.2.3 seems to accept either three or two fields
+    if "curriculum" in app:
+        mapped["Programs"] = [
+            {
+                "program": app["program"],
+                "degree": app["degree"],
+                "curriculum": app["curriculum"],
+            }
+        ]
+    else:
+        mapped["Programs"] = [
+            {"Program": app["Program"], "Degree": app["Degree"], "Curriculum": None}
+        ]
 
     # GUID's
     mapped["ApplicationNumber"] = app["aid"]
@@ -357,11 +366,6 @@ def format_app_sql(app, mapping, config):
         mapped["VISA"] = mapping["Visa"][app["Visa"]]
     else:
         mapped["VISA"] = None
-
-    if app["Veteran"] is not None:
-        mapped["VETERAN"] = mapping["Veteran"][str(app["Veteran"])]
-    else:
-        mapped["VETERAN"] = None
 
     if app["SecondaryCitizenship"] is not None:
         mapped["SECONDARYCITIZENSHIP"] = mapping["CitizenshipStatus"][

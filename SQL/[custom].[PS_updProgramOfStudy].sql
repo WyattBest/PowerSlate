@@ -11,13 +11,16 @@ GO
 -- =============================================
 -- Author:		Wyatt Best
 -- Create date: 2021-05-17
--- Description:	Inserts a PDC combination into ProgramOfStudy if it doesn't already exist.
+-- Description:	Inserts a PDC combination into ProgramOfStudy and ApplicationProgramSetting if it doesn't already exist.
 --				If @DegReqMinYear is not null, PDC combination will be valided against DEGREQ.
+--
+-- 2024-03-21 Wyatt Best:	Also insert into ApplicationProgramSetting.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updProgramOfStudy] @Program NVARCHAR(6)
 	,@Degree NVARCHAR(6)
 	,@Curriculum NVARCHAR(6)
 	,@DegReqMinYear NVARCHAR(4) = NULL
+	,@AppFormSettingId INT
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -36,7 +39,7 @@ BEGIN
 			SELECT CurriculumId
 			FROM CODE_CURRICULUM
 			WHERE CODE_VALUE_KEY = @Curriculum
-			)
+			);
 
 	--Error checks
 	IF @ProgramId IS NULL
@@ -92,14 +95,17 @@ BEGIN
 		RETURN
 	END
 
-	--Check for existing ProgramOfStudy row
-	IF NOT EXISTS (
-			SELECT *
+	--Get existing ProgramOfStudyId
+	DECLARE @ProgramOfStudyId INT = (
+			SELECT ProgramOfStudyId
 			FROM ProgramOfStudy
 			WHERE Program = @ProgramId
 				AND Degree = @DegreeId
 				AND Curriculum = @CurriculumId
-			)
+			);
+
+	--If ProgramOfStudyId is null, insert it
+	IF @ProgramOfStudyId IS NULL
 	BEGIN
 		--Optionally check against DEGREQ
 		IF @DegReqMinYear IS NOT NULL
@@ -135,6 +141,28 @@ BEGIN
 			@ProgramId
 			,@DegreeId
 			,@CurriculumId
+			);
+
+		--Get the newly-inserted ProgramOfStudyId
+		SET @ProgramOfStudyId = SCOPE_IDENTITY();
+	END
+
+	--Check for existing ApplicationProgramSetting row
+	IF NOT EXISTS (
+			SELECT *
+			FROM ApplicationProgramSetting
+			WHERE ApplicationFormSettingId = @AppFormSettingId
+				AND ProgramOfStudyId = @ProgramOfStudyId
 			)
+	BEGIN
+		--Insert new ProgramOfStudyId
+		INSERT INTO ApplicationProgramSetting (
+			ApplicationFormSettingId
+			,ProgramOfStudyId
+			)
+		VALUES (
+			@AppFormSettingId
+			,@ProgramOfStudyId
+			);
 	END
 END

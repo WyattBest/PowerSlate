@@ -6,8 +6,6 @@ import ps_models
 
 
 def init(config, verbose, msg_strings):
-    global PC_API_URL
-    global PC_API_CRED
     global CNXN
     global CURSOR
     global CONFIG
@@ -18,23 +16,19 @@ def init(config, verbose, msg_strings):
     VERBOSE = verbose
     MSG_STRINGS = msg_strings
 
-    # PowerCampus Web API connection
-    PC_API_URL = config.api.url
-    PC_API_CRED = (config.api.username, config.api.password)
-
     # Microsoft SQL Server connection.
     CNXN = pyodbc.connect(config.database_string)
     CURSOR = CNXN.cursor()
 
     # Print a test of connections
-    r = requests.get(PC_API_URL + "api/version", auth=PC_API_CRED)
+    r = requests.get(config.api.url + "api/version")
     verbose_print("PowerCampus API Status: " + str(r.status_code))
     verbose_print(r.text)
     r.raise_for_status()
     verbose_print("Database:" + CNXN.getinfo(pyodbc.SQL_DATABASE_NAME))
 
     # Enable ApplicationFormSetting's ProcessAutomatically in case program exited abnormally last time with setting toggled off.
-    update_app_form_autoprocess(config.app_form_setting_id, True)
+    update_app_form_autoprocess(config.api.app_form_setting_id, True)
 
 
 def de_init():
@@ -56,7 +50,7 @@ def verbose_print(x):
 
 
 def autoconfigure_mappings(
-    dp_list, yt_list, validate_degreq, minimum_degreq_year, mapping_file_location
+    program_list, yt_list, validate_degreq, minimum_degreq_year, mapping_file_location
 ):
     """
     Automatically insert new Program/Degree/Curriculum combinations into ProgramOfStudy and recruiterMapping.xml
@@ -65,24 +59,29 @@ def autoconfigure_mappings(
     and that YearTerm values are like YEAR/TERM/SESSION.
 
     Keyword aguments:
-    dp_list -- a list of tuples like [('PROGRAM','DEGREE/CURRICULUM'), (...)]
+    program_list -- list of tuples like [('PROGRAM','DEGREE/CURRICULUM'), (...)] or [('PROGRAM','DEGREE','CURRICULUM'), (...)]
+    yt_list -- list of strings like ['YEAR/TERM/SESSION', ...]
     validate_degreq -- bool. If True, check against DEGREQ for sanity using minimum_degreq_year.
     minimum_degreq_year -- str
+    mapping_file_location -- str. Path to recruiterMapping.xml
 
     Returns True if XML mapping changed.
     """
-    dp_set = set(dp_list)
+    program_set = set(program_list)
     yt_set = set(yt_list)
     if validate_degreq == False:
         minimum_degreq_year = None
 
     # Create set of tuples like {('PROGRAM','DEGREE', 'CURRICULUM'), (...)}
     pdc_set = set()
-    for dp in dp_set:
-        pdc = [dp[0]]
-        for dc in dp[1].split("/"):
-            pdc.append(dc)
-        pdc_set.add(tuple(pdc))
+    if len(program_list[0]) == 2:
+        for dp in program_set:
+            pdc = [dp[0]]
+            for dc in dp[1].split("/"):
+                pdc.append(dc)
+            pdc_set.add(tuple(pdc))
+    elif len(program_list[0]) == 3:
+        pdc_set = program_set
 
     # Create a set like {'PROGRAM', 'PROGRAM'}
     p_set = set()
@@ -255,7 +254,7 @@ def get_recruiter_mapping(mapping_file_location):
     return rm_mapping
 
 
-def post_api(x, cfg_strings, app_form_setting_id):
+def post_api(app, config, msg_strings):
     """Post an application to PowerCampus.
     Return  PEOPLE_CODE_ID if application was automatically accepted or None for all other conditions.
 
@@ -263,17 +262,26 @@ def post_api(x, cfg_strings, app_form_setting_id):
     x -- an application dict
     """
 
+    creds = None
+    headers = None
+    if config.auth_method == "basic":
+        creds = (config.username, config.password)
+    elif config.auth_method == "token":
+        headers = {"Authorization": config.token}
+
     # Check for duplicate person. If found, temporarily toggle auto-process off.
     dup_found = False
-    CURSOR.execute("EXEC [custom].[PS_selPersonDuplicate] ?", x["GovernmentId"])
+    CURSOR.execute("EXEC [custom].[PS_selPersonDuplicate] ?", app["GovernmentId"])
     row = CURSOR.fetchone()
     dup_found = row.DuplicateFound
     if dup_found:
-        update_app_form_autoprocess(app_form_setting_id, False)
+        update_app_form_autoprocess(config.app_form_setting_id, False)
 
     # Expose error text response from API, replace useless error message(s).
     try:
-        r = requests.post(PC_API_URL + "api/applications", json=x, auth=PC_API_CRED)
+        r = requests.post(
+            config.url + "api/applications", json=app, auth=creds, headers=headers
+        )
         r.raise_for_status()
         # The API returns 202 for mapping errors. Technically 202 is appropriate, but it should bubble up to the user.
         if r.status_code == 202:
@@ -283,26 +291,29 @@ def post_api(x, cfg_strings, app_form_setting_id):
         rtext = r.text.replace("\r\n", "\n")
 
         if dup_found:
-            update_app_form_autoprocess(app_form_setting_id, True)
+            update_app_form_autoprocess(config.app_form_setting_id, True)
 
         if (
             "BadRequest Object reference not set to an instance of an object." in rtext
             and "ApplicationsController.cs:line 183" in rtext
         ):
-            raise ValueError(cfg_strings["error_no_phones"], rtext, e)
+            raise ValueError(msg_strings["error_no_phones"], rtext, e)
         elif (
             "BadRequest Activation error occured while trying to get instance of type Database, key"
             in rtext
             and "ServiceLocatorImplBase.cs:line 53" in rtext
         ):
-            raise ValueError(cfg_strings["error_api_missing_database"], rtext, e)
-        elif r.status_code == 202 or r.status_code == 400:
+            raise ValueError(msg_strings["error_api_missing_database"], rtext, e)
+        elif (
+            r.status_code == 202
+            and "was created successfully in PowerCampus" not in r.text
+        ) or r.status_code == 400:
             raise ValueError(rtext)
-        else:
+        elif "was created successfully in PowerCampus" not in r.text:
             raise requests.HTTPError(rtext)
 
     if dup_found:
-        update_app_form_autoprocess(app_form_setting_id, True)
+        update_app_form_autoprocess(config.app_form_setting_id, True)
 
     if r.text[-25:-12] == "New People Id":
         try:

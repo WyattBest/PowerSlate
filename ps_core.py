@@ -20,6 +20,7 @@ class Settings:
         self.powercampus = self.PowerCampus(config["powercampus"])
         self.console_verbose = config["console_verbose"]
         self.msg_strings = self.FlatDict(config["msg_strings"])
+        self.defaults = self.FlatDict(config["defaults"])
 
     class PowerCampus:
         def __init__(self, config):
@@ -327,10 +328,12 @@ def main_sync(pid=None):
                 kk
                 for kk, vv in apps.items()
                 if vv["pid"] == v["pid"]
-                and vv["Program"] == v["Program"]
-                and vv["Degree"] == v["Degree"]
+                and k != kk  # Not self
+                and vv["program"] == v["program"]
+                and vv["degree"] == v["degree"]
+                # Needed if and when switching from two to three fields for 9.2.3
+                and vv["curriculum"] == v["curriculum"]
                 and vv["YearTerm"] == v["YearTerm"]
-                and k != kk
             ]
         )
 
@@ -344,14 +347,22 @@ def main_sync(pid=None):
         mfl = SETTINGS.powercampus.mapping_file_location
         vd = SETTINGS.powercampus.autoconfigure_mappings.validate_degreq
         mdy = SETTINGS.powercampus.autoconfigure_mappings.minimum_degreq_year
-        dp_list = [
-            (apps[app]["Program"], apps[app]["Degree"])
-            for app in apps
-            if "Degree" in apps[app]
-        ]
+        # Accept either two or three fields for 9.2.3
+        if ({k for k in apps if 'degree' in apps[k]}):
+            program_list = [
+                (apps[app]["program"], apps[app]["degree"], apps[app]["curriculum"])
+                for app in apps
+                if "curriculum" in apps[app]
+            ]
+        else:
+            program_list = [
+                (apps[app]["Program"], apps[app]["Degree"])
+                for app in apps
+                if "Degree" in apps[app]
+            ]
         yt_list = [apps[app]["YearTerm"] for app in apps if "YearTerm" in apps[app]]
 
-        if ps_powercampus.autoconfigure_mappings(dp_list, yt_list, vd, mdy, mfl):
+        if ps_powercampus.autoconfigure_mappings(program_list, yt_list, vd, mdy, mfl):
             RM_MAPPING = ps_powercampus.get_recruiter_mapping(mfl)
 
     verbose_print("Check each app's status flags/PCID in PowerCampus")
@@ -374,14 +385,13 @@ def main_sync(pid=None):
         if v["error_flag"] == True:
             continue
         CURRENT_RECORD = k
-        if (v["status_ra"] == None) or (
-            v["status_ra"] in (1, 2) and v["status_app"] is None
+        if (
+            (v["status_ra"] == None)
+            or (v["status_ra"] in (1, 2) and v["status_app"] is None)
+            or (v["status_ra"] == 0 and v["status_app"] == None)  # 9.2.3 new bad status
         ):
-            pcid = ps_powercampus.post_api(
-                format_app_api(v, CONFIG["defaults"]),
-                MSG_STRINGS,
-                SETTINGS.powercampus.app_form_setting_id,
-            )
+            app = format_app_api(v, SETTINGS.defaults)
+            pcid = ps_powercampus.post_api(app, SETTINGS.powercampus.api, MSG_STRINGS)
             apps[k]["PEOPLE_CODE_ID"] = pcid
 
             # Rescan status

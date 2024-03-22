@@ -301,7 +301,7 @@ fields = {
     },
     "Veteran": {
         "api_verbatim": False,
-        "sql_verbatim": False,
+        "sql_verbatim": True,
         "supply_null": True,
         "type": str,
     },
