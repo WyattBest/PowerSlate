@@ -20,10 +20,6 @@
 				"note_type": "GENRL"
 			}
 		],
-		"logging": {
-			"enabled": true,
-			"log_table": "[SomeDatabase].[dbo].[PowerSlate_AppStatus_Log]"
-		},
 		"user_defined_fields": [
 			{
 				"slate_field": "FirstGeneration",

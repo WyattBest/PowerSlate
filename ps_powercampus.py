@@ -372,31 +372,6 @@ def scan_status(x):
         else:
             computed_status = "Unrecognized Status: " + str(row.ra_status)
 
-        if CONFIG.logging.enabled:
-            # Write errors to external database for end-user presentation via SSRS.
-            CURSOR.execute(
-                "INSERT INTO"
-                + CONFIG.logging.log_table
-                + """
-                ([Ref],[ApplicationNumber],[ProspectId],[FirstName],[LastName],
-                [ComputedStatus],[Notes],[RecruiterApplicationStatus],[ApplicationStatus],[PEOPLE_CODE_ID])
-            VALUES
-                (?,?,?,?,?,?,?,?,?,?)""",
-                [
-                    x["Ref"],
-                    x["aid"],
-                    x["pid"],
-                    x["FirstName"],
-                    x["LastName"],
-                    computed_status,
-                    row.ra_errormessage,
-                    row.ra_status,
-                    row.apl_status,
-                    pcid,
-                ],
-            )
-            CNXN.commit()
-
     return ra_status, apl_status, computed_status, pcid
 
 
