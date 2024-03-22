@@ -310,10 +310,10 @@ def post_api(app, config, Messages):
             raise ValueError(Messages.error.api_missing_database, rtext, e)
         elif (
             r.status_code == 202
-            and "was created successfully in PowerCampus" not in r.text
+            and "was created successfully in PowerCampus" in r.text == False
         ) or r.status_code == 400:
             raise ValueError(rtext)
-        elif "was created successfully in PowerCampus" not in r.text:
+        elif "was created successfully in PowerCampus" not in r.text == False:
             raise requests.HTTPError(rtext)
 
     if dup_found:
@@ -468,9 +468,7 @@ def get_profile(app, campus_email_type, Messages):
 
         if college_attend not in CONFIG.valid_college_attend:
             error_flag = True
-            error_message = Settings.Messages.error.invalid_college_attend.format(
-                college_attend
-            )
+            error_message = Messages.error.invalid_college_attend.format(college_attend)
 
         if row.Withdrawn == "Y":
             withdrawn = True

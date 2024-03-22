@@ -191,6 +191,8 @@ def format_app_api(app, cfg_defaults, Messages):
     """
 
     mapped = {}
+    error_flag = False
+    error_message = None
 
     # Error checks
     if "YearTerm" not in app:
@@ -288,13 +290,13 @@ def format_app_api(app, cfg_defaults, Messages):
         mapped["VeteranStatus"] = True
 
     # Academic program
-    # API 9.2.3 seems to accept either three or two fields
+    # API 9.2.3 still requires two fields for Program and Degree, even though the Swagger schema contains three fields.
     if "Curriculum" in app:
         mapped["Programs"] = [
             {
                 "Program": app["Program"],
-                "Degree": app["Degree"],
-                "Curriculum": app["Curriculum"],
+                "Degree": app["Degree"] + "/" + app["Curriculum"],
+                "Curriculum": None,
             }
         ]
     else:
