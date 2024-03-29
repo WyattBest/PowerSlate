@@ -455,7 +455,10 @@ def main_sync(pid=None):
             academic_session = app_pc["ACADEMIC_SESSION"]
 
             # Single-row updates
-            if Settings.PowerCampus.update_academic_key:
+            if (
+                Settings.PowerCampus.update_academic_key
+                and app_pc["AcademicGUID"] is not None
+            ):
                 ps_powercampus.update_academic_key(app_pc)
             ps_powercampus.update_demographics(app_pc)
             ps_powercampus.update_academic(app_pc)
@@ -546,6 +549,7 @@ def main_sync(pid=None):
                 campus_email,
                 advisor,
                 sso_id,
+                academic_guid,
                 custom_1,
                 custom_2,
                 custom_3,
@@ -566,6 +570,7 @@ def main_sync(pid=None):
                     "campus_email": campus_email,
                     "advisor": advisor,
                     "sso_id": sso_id,
+                    "academic_guid": academic_guid,
                     "custom_1": custom_1,
                     "custom_2": custom_2,
                     "custom_3": custom_3,

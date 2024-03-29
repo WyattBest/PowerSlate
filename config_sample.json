@@ -68,7 +68,8 @@
 			"advisor",
 			"fa_awards",
 			"fa_status",
-			"sso_id"
+			"sso_id",
+			"academic_guid"
 		],
 		"url": "https://apply.school.edu/manage/service/import?cmd=load&format=xxxx",
 		"username": "service_user",

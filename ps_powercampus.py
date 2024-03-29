@@ -389,7 +389,7 @@ def get_profile(app, campus_email_type, Messages):
     """
 
     error_flag = True
-    error_message = Messages.error.academic_row_not_found
+    error_message = None
     registered = False
     reg_date = None
     readmit = False
@@ -398,6 +398,7 @@ def get_profile(app, campus_email_type, Messages):
     campus_email = None
     advisor = None
     sso_id = None
+    academic_guid = None
     custom_1 = None
     custom_2 = None
     custom_3 = None
@@ -405,7 +406,7 @@ def get_profile(app, campus_email_type, Messages):
     custom_5 = None
 
     CURSOR.execute(
-        "EXEC [custom].[PS_selProfile] ?,?,?,?,?,?,?,?",
+        "EXEC [custom].[PS_selProfile] ?, ?, ?, ?, ?, ?, ?, ?, ?",
         app["PEOPLE_CODE_ID"],
         app["ACADEMIC_YEAR"],
         app["ACADEMIC_TERM"],
@@ -414,42 +415,49 @@ def get_profile(app, campus_email_type, Messages):
         app["DEGREE"],
         app["CURRICULUM"],
         campus_email_type,
+        app["AcademicGUID"],
     )
     row = CURSOR.fetchone()
 
-    if row is not None:
-        error_flag = False
+    if row is None:
+        # ACADEMIC row not found by YTSPDC or GUID.
+        error_message = Messages.error.academic_row_not_found
+    else:
+        if row.ErrorFlag == 1:
+            # ACADEMIC row found by GUID but YTSPDC does not match.
+            error_message = row.ErrorMessage
+        else:
+            error_flag = False
+            if row.Registered == "Y":
+                registered = True
+                reg_date = str(row.REG_VAL_DATE)
+                credits = str(row.CREDITS)
 
-        if row.Registered == "Y":
-            registered = True
-            reg_date = str(row.REG_VAL_DATE)
-            credits = str(row.CREDITS)
+            campus_email = row.CampusEmail
+            advisor = row.AdvisorUsername
+            sso_id = row.Username
+            academic_guid = row.Guid
+            custom_1 = row.custom_1
+            custom_2 = row.custom_2
+            custom_3 = row.custom_3
+            custom_4 = row.custom_4
+            custom_5 = row.custom_5
 
-        campus_email = row.CampusEmail
-        advisor = row.AdvisorUsername
-        sso_id = row.Username
-        custom_1 = row.custom_1
-        custom_2 = row.custom_2
-        custom_3 = row.custom_3
-        custom_4 = row.custom_4
-        custom_5 = row.custom_5
+            # College Attend and Readmits
+            college_attend = row.COLLEGE_ATTEND
+            if college_attend == CONFIG.readmit_code:
+                readmit = True
+            elif college_attend == "" or college_attend is None:
+                college_attend = "blank"
 
-        # College Attend and Readmits
-        college_attend = row.COLLEGE_ATTEND
-        if college_attend == CONFIG.readmit_code:
-            readmit = True
-        elif college_attend == "" or college_attend is None:
-            college_attend = "blank"
+            if college_attend not in CONFIG.valid_college_attend:
+                error_flag = True
+                error_message = Messages.error.invalid_college_attend.format(
+                    college_attend
+                )
 
-        if college_attend not in CONFIG.valid_college_attend:
-            error_flag = True
-            error_message = Messages.error.invalid_college_attend.format(college_attend)
-
-        if row.Withdrawn == "Y":
-            withdrawn = True
-
-    if not error_flag:
-        error_message = None
+            if row.Withdrawn == "Y":
+                withdrawn = True
 
     return (
         error_flag,
@@ -462,6 +470,7 @@ def get_profile(app, campus_email_type, Messages):
         campus_email,
         advisor,
         sso_id,
+        academic_guid,
         custom_1,
         custom_2,
         custom_3,
@@ -534,7 +543,7 @@ def update_academic_key(app):
     P/C/D will only be updated if application is not registered and does not have an academic plan assigned.
     """
     CURSOR.execute(
-        "exec [custom].[PS_updAcademicKey] ?, ?, ?, ?, ?, ?, ?, ?",
+        "exec [custom].[PS_updAcademicKey] ?, ?, ?, ?, ?, ?, ?, ?, ?",
         app["PEOPLE_CODE_ID"],
         app["ACADEMIC_YEAR"],
         app["ACADEMIC_TERM"],
@@ -543,6 +552,7 @@ def update_academic_key(app):
         app["DEGREE"],
         app["CURRICULUM"],
         app["aid"],
+        app["AcademicGUID"],
     )
     CNXN.commit()
 
