@@ -162,7 +162,9 @@ def format_app_generic(app, cfg_fields, Messages):
     fields_int.extend(["compare_" + field for field in cfg_fields["fields_int"]])
 
     # Copy nullable strings from input to output, then fill in nulls
-    mapped.update({k: v for (k, v) in app.items() if k in fields_null})
+    mapped.update(
+        {k: v for (k, v) in app.items() if k in fields_null and k not in mapped}
+    )
     mapped.update({k: None for k in fields_null if k not in app})
 
     # Convert integers and booleans
@@ -176,6 +178,18 @@ def format_app_generic(app, cfg_fields, Messages):
         mapped["GovernmentDateOfEntry"] = "0001-01-01T00:00:00"
     else:
         mapped["GovernmentDateOfEntry"] = app["GovernmentDateOfEntry"]
+
+    # Academic program
+    # API 9.2.3 still requires two fields for Program and Degree, even though the Swagger schema contains three fields.
+    # Done here instead of in format_app_api() because format_app_sql() also needs these fields standardized.
+    if "Curriculum" in app:
+        mapped["Program"] = app["Program"]
+        mapped["Degree"] = app["Degree"] + "/" + app["Curriculum"]
+        mapped["Curriculum"] = None
+    else:
+        mapped["Program"] = app["Program"]
+        mapped["Degree"] = app["Degree"]
+        mapped["Curriculum"] = None
 
     # Pass through all other fields
     mapped.update({k: v for (k, v) in app.items() if k not in mapped})
@@ -289,20 +303,13 @@ def format_app_api(app, cfg_defaults, Messages):
         mapped["Veteran"] = app["Veteran"]
         mapped["VeteranStatus"] = True
 
-    # Academic program
-    # API 9.2.3 still requires two fields for Program and Degree, even though the Swagger schema contains three fields.
-    if "Curriculum" in app:
-        mapped["Programs"] = [
-            {
-                "Program": app["Program"],
-                "Degree": app["Degree"] + "/" + app["Curriculum"],
-                "Curriculum": None,
-            }
-        ]
-    else:
-        mapped["Programs"] = [
-            {"Program": app["Program"], "Degree": app["Degree"], "Curriculum": None}
-        ]
+    mapped["Programs"] = [
+        {
+            "Program": app["Program"],
+            "Degree": app["Degree"],
+            "Curriculum": None,
+        }
+    ]
 
     # GUID's
     mapped["ApplicationNumber"] = app["aid"]
@@ -350,7 +357,7 @@ def format_app_sql(app, mapping, config):
     mapped["ACADEMIC_SESSION"] = mapping["AcademicTerm"]["PCSessionCodeValue"][
         app["YearTerm"]
     ]
-    # Todo: Fix inconsistency of 1-field vs 2-field mappings
+
     mapped["PROGRAM"] = mapping["AcademicLevel"][app["Program"]]
     mapped["DEGREE"] = mapping["AcademicProgram"]["PCDegreeCodeValue"][app["Degree"]]
     mapped["CURRICULUM"] = mapping["AcademicProgram"]["PCCurriculumCodeValue"][
@@ -405,6 +412,11 @@ def format_app_sql(app, mapping, config):
         mapped["OrganizationId"] = mapping["Campus"][app["Campus"]]
     else:
         mapped["OrganizationId"] = None
+
+    if app["Veteran"] is not None:
+        mapped["VETERAN"] = mapping["Veteran"][app["Veteran"]]
+    else:
+        mapped["VETERAN"] = None
 
     # Format Education and TestScoresNumeric if present. Newer arrays are implemented as classes.
     # Currently only supplies nulls; no datatype manipulations performed.

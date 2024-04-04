@@ -62,7 +62,7 @@ def autoconfigure_mappings(
     and that YearTerm values are like YEAR/TERM/SESSION.
 
     Keyword aguments:
-    program_list -- list of tuples like [('PROGRAM','DEGREE/CURRICULUM'), (...)] or [('PROGRAM','DEGREE','CURRICULUM'), (...)]
+    program_list -- list of tuples like [('PROGRAM','DEGREE/CURRICULUM'), (...)]
     yt_list -- list of strings like ['YEAR/TERM/SESSION', ...]
     validate_degreq -- bool. If True, check against DEGREQ for sanity using minimum_degreq_year.
     minimum_degreq_year -- str
@@ -77,14 +77,11 @@ def autoconfigure_mappings(
 
     # Create set of tuples like {('PROGRAM','DEGREE', 'CURRICULUM'), (...)}
     pdc_set = set()
-    if len(program_list[0]) == 2:
-        for dp in program_set:
-            pdc = [dp[0]]
-            for dc in dp[1].split("/"):
-                pdc.append(dc)
-            pdc_set.add(tuple(pdc))
-    elif len(program_list[0]) == 3:
-        pdc_set = program_set
+    for dp in program_set:
+        pdc = [dp[0]]
+        for dc in dp[1].split("/"):
+            pdc.append(dc)
+        pdc_set.add(tuple(pdc))
 
     # Create a set like {'PROGRAM', 'PROGRAM'}
     p_set = set()

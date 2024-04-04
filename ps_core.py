@@ -352,19 +352,11 @@ def main_sync(pid=None):
         vd = Settings.PowerCampus.autoconfigure_mappings.validate_degreq
         mdy = Settings.PowerCampus.autoconfigure_mappings.minimum_degreq_year
         afsi = Settings.PowerCampus.api.app_form_setting_id
-        # Accept either two or three fields for 9.2.3
-        if {k for k in apps if "Degree" in apps[k]}:
-            program_list = [
-                (apps[app]["Program"], apps[app]["Degree"], apps[app]["Curriculum"])
-                for app in apps
-                if "Curriculum" in apps[app]
-            ]
-        else:
-            program_list = [
-                (apps[app]["Program"], apps[app]["Degree"])
-                for app in apps
-                if "Degree" in apps[app]
-            ]
+        program_list = [
+            (apps[app]["Program"], apps[app]["Degree"])
+            for app in apps
+            if "Degree" in apps[app]
+        ]
         yt_list = [apps[app]["YearTerm"] for app in apps if "YearTerm" in apps[app]]
 
         if ps_powercampus.autoconfigure_mappings(
@@ -425,8 +417,8 @@ def main_sync(pid=None):
                 )
                 apps[k]["PEOPLE_CODE_ID"] = pcid
 
-    verbose_print("Get scheduled actions from Slate")
     if CONFIG["scheduled_actions"]["enabled"] == True:
+        verbose_print("Get scheduled actions from Slate")
         CURRENT_RECORD = None
         # Send list of app GUID's to Slate; get back checklist items
         actions_list = slate_get_actions(
@@ -443,7 +435,7 @@ def main_sync(pid=None):
     verbose_print("Update existing applications in PowerCampus and extract information")
     edu_sync_results = []
     for k, v in apps.items():
-        if v["error_flag"] == False:
+        if v["error_flag"] == True:
             continue
         CURRENT_RECORD = k
         if v["status_calc"] == "Active":
