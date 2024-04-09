@@ -31,7 +31,9 @@ class Stop_from_Slate:
             self.cleared_date = row["ClearedDate"]
         else:
             self.cleared_date = None
-        if "comments" in row:
+        if "Comments" in row:
+            self.comments = format_blank_to_null(row["Comments"])
+        elif "comments" in row:
             self.comments = format_blank_to_null(row["comments"])
         else:
             self.comments = None
@@ -255,8 +257,8 @@ def format_app_api(app, cfg_defaults, Messages):
             k["StateProvince"] = None
         if "PostalCode" not in k:
             k["PostalCode"] = None
-        if "County" not in k:
-            k["County"] = cfg_defaults.address_country
+        if "Country" not in k:
+            k["Country"] = cfg_defaults.address_country
 
     if len([k for k in app if k[:5] == "Phone"]) > 0:
         has_phones = True
