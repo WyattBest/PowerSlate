@@ -24,6 +24,7 @@ GO
 -- 2023-10-05 Rafael Gomez:	Added @Religion.
 -- 2023-11-09 Wyatt Best:	Updated error message when GOVERNMENT_ID already assigned to other record.
 -- 2024-04-10 Wyatt Best:	Updated for 9.2.3 changes to [WebServices].[spSetDemographics]'s @Gender parameter.
+--							Default Legal Name if blank.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updDemographics] @PCID NVARCHAR(10)
 	,@Opid NVARCHAR(8)
@@ -286,6 +287,15 @@ BEGIN
 		UPDATE PEOPLE
 		SET GOVERNMENT_ID = @GovernmentId
 		WHERE PEOPLE_CODE_ID = @PCID
+
+	--Update Legal Name if blank
+	UPDATE PEOPLE
+	SET LegalName = dbo.fnPeopleOrgName(@PCID, 'LN, |FN |MN, |SX')
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND (
+			LegalName = ''
+			OR LegalName IS NULL
+			)
 
 	COMMIT TRANSACTION PS_updDemographics
 END
