@@ -297,7 +297,8 @@ def format_app_api(app, cfg_defaults, Messages):
         # PowerCampus WebAPI requires Type -1 instead of a blank or null when not submitting any phones.
         mapped["PhoneNumbers"] = [{"Type": -1, "Country": None, "Number": None}]
 
-    # Veteran logic was updated in API 9.2.x
+    # Suspect Veteran logic was updated in API 9.2.x
+    # Changed how this is handled to be less confusing.
     if app["Veteran"] is None:
         mapped["Veteran"] = None
         mapped["VeteranStatus"] = False
@@ -325,6 +326,8 @@ def format_app_sql(app, mapping, config):
 
     Keyword arguments:
     app -- an application dict
+    mapping -- a mapping dict derived from recruiterMapping.xml
+    config -- Settings class object
     """
 
     mapped = {}
@@ -414,11 +417,6 @@ def format_app_sql(app, mapping, config):
         mapped["OrganizationId"] = mapping["Campus"][app["Campus"]]
     else:
         mapped["OrganizationId"] = None
-
-    if app["Veteran"] is not None:
-        mapped["VETERAN"] = mapping["Veteran"][app["Veteran"]]
-    else:
-        mapped["VETERAN"] = None
 
     # Format Education and TestScoresNumeric if present. Newer arrays are implemented as classes.
     # Currently only supplies nulls; no datatype manipulations performed.

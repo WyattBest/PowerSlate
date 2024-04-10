@@ -486,7 +486,7 @@ def update_demographics(app):
         app["DemographicsEthnicity"],
         app["MARITALSTATUS"],
         app["Religion"],
-        app["VETERAN"],
+        app["Veteran"],
         app["PRIMARYCITIZENSHIP"],
         app["SECONDARYCITIZENSHIP"],
         app["VISA"],
