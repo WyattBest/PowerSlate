@@ -50,19 +50,19 @@ def init(config_path):
     global CONFIG
     global CONFIG_PATH
     global RM_MAPPING
-    global Settings  # New global for Settings class
+    global SETTINGS  # New global for Settings class
 
     CONFIG_PATH = config_path
     with open(CONFIG_PATH) as file:
         CONFIG = json.loads(file.read())
-    Settings = Settings(CONFIG)
+    SETTINGS = Settings(CONFIG)
 
     RM_MAPPING = ps_powercampus.get_recruiter_mapping(
-        Settings.PowerCampus.mapping_file_location
+        SETTINGS.PowerCampus.mapping_file_location
     )
 
     # Init PowerCampus API and SQL connections
-    ps_powercampus.init(Settings.PowerCampus, Settings.console_verbose)
+    ps_powercampus.init(SETTINGS.PowerCampus, SETTINGS.console_verbose)
 
     return CONFIG
 
@@ -312,7 +312,7 @@ def main_sync(pid=None):
     apps = {k["aid"]: k for k in apps}
     if len(apps) == 0 and pid is not None:
         # Assuming we're running in interactive (HTTP) mode if pid param exists
-        raise EOFError(Settings.Messages.error.no_apps)
+        raise EOFError(SETTINGS.Messages.error.no_apps)
     elif len(apps) == 0:
         # Don't raise an error for scheduled mode
         return None
@@ -321,7 +321,7 @@ def main_sync(pid=None):
     for k, v in apps.items():
         CURRENT_RECORD = k
         apps[k] = format_app_generic(
-            v, CONFIG["slate_upload_active"], Settings.Messages
+            v, CONFIG["slate_upload_active"], SETTINGS.Messages
         )
 
     # Set error flag if one pid has multiple applications with the same YTS + PCD
@@ -343,15 +343,15 @@ def main_sync(pid=None):
 
     for k in duplicates:
         apps[k]["error_flag"] = True
-        apps[k]["error_message"] = Settings.Messages.error.duplicate_apps
+        apps[k]["error_message"] = SETTINGS.Messages.error.duplicate_apps
 
-    if Settings.PowerCampus.autoconfigure_mappings.enabled:
+    if SETTINGS.PowerCampus.autoconfigure_mappings.enabled:
         verbose_print("Auto-configure ProgramOfStudy and recruiterMapping.xml")
         CURRENT_RECORD = None
-        mfl = Settings.PowerCampus.mapping_file_location
-        vd = Settings.PowerCampus.autoconfigure_mappings.validate_degreq
-        mdy = Settings.PowerCampus.autoconfigure_mappings.minimum_degreq_year
-        afsi = Settings.PowerCampus.api.app_form_setting_id
+        mfl = SETTINGS.PowerCampus.mapping_file_location
+        vd = SETTINGS.PowerCampus.autoconfigure_mappings.validate_degreq
+        mdy = SETTINGS.PowerCampus.autoconfigure_mappings.minimum_degreq_year
+        afsi = SETTINGS.PowerCampus.api.app_form_setting_id
         program_list = [
             (apps[app]["Program"], apps[app]["Degree"])
             for app in apps
@@ -395,14 +395,14 @@ def main_sync(pid=None):
             or (v["status_ra"] == 0 and v["status_app"] == None)  # 9.2.3 new bad status
         ):
             app, error_flag, error_message = format_app_api(
-                v, Settings.defaults, Settings.Messages
+                v, SETTINGS.defaults, SETTINGS.Messages
             )
             if error_flag:
                 apps[k]["error_flag"] = error_flag
                 apps[k]["error_message"] = error_message
             else:
                 pcid = ps_powercampus.post_api(
-                    app, Settings.PowerCampus.api, Settings.Messages
+                    app, SETTINGS.PowerCampus.api, SETTINGS.Messages
                 )
                 apps[k]["PEOPLE_CODE_ID"] = pcid
 
@@ -440,7 +440,7 @@ def main_sync(pid=None):
         CURRENT_RECORD = k
         if v["status_calc"] == "Active":
             # Transform to PowerCampus format
-            app_pc = format_app_sql(v, RM_MAPPING, Settings.PowerCampus)
+            app_pc = format_app_sql(v, RM_MAPPING, SETTINGS.PowerCampus)
             pcid = app_pc["PEOPLE_CODE_ID"]
             academic_year = app_pc["ACADEMIC_YEAR"]
             academic_term = app_pc["ACADEMIC_TERM"]
@@ -448,7 +448,7 @@ def main_sync(pid=None):
 
             # Single-row updates
             if (
-                Settings.PowerCampus.update_academic_key
+                SETTINGS.PowerCampus.update_academic_key
                 and app_pc["AcademicGUID"] is not None
             ):
                 ps_powercampus.update_academic_key(app_pc)
@@ -491,7 +491,7 @@ def main_sync(pid=None):
                     ps_powercampus.update_test_scores(pcid, test)
 
             # Update any PowerCampus Notes defined in config
-            for note in Settings.PowerCampus.notes:
+            for note in SETTINGS.PowerCampus.notes:
                 if (
                     note["slate_field"] in app_pc
                     and len(app_pc[note["slate_field"]]) > 0
@@ -501,7 +501,7 @@ def main_sync(pid=None):
                     )
 
             # Update any PowerCampus User Defined fields defined in config
-            for udf in Settings.PowerCampus.user_defined_fields:
+            for udf in SETTINGS.PowerCampus.user_defined_fields:
                 if udf["slate_field"] in app_pc and len(app_pc[udf["slate_field"]]) > 0:
                     ps_powercampus.update_udf(
                         app_pc, udf["slate_field"], udf["pc_field"]
@@ -520,7 +520,7 @@ def main_sync(pid=None):
                     ps_powercampus.update_scholarship(
                         pcid,
                         scholarship,
-                        Settings.PowerCampus.validate_scholarship_levels,
+                        SETTINGS.PowerCampus.validate_scholarship_levels,
                     )
 
             # Update PowerCampus Associations
@@ -548,7 +548,7 @@ def main_sync(pid=None):
                 custom_4,
                 custom_5,
             ) = ps_powercampus.get_profile(
-                app_pc, Settings.PowerCampus.campus_emailtype, Settings.Messages
+                app_pc, SETTINGS.PowerCampus.campus_emailtype, SETTINGS.Messages
             )
             apps[k].update(
                 {
@@ -574,7 +574,7 @@ def main_sync(pid=None):
                 sync_errors == True
 
             # Get PowerFAIDS awards and tracking status
-            if Settings.fa_awards.enabled:
+            if SETTINGS.fa_awards.enabled:
                 fa_awards, fa_status = ps_powercampus.pf_get_awards(
                     pcid,
                     v["GovernmentId"],
@@ -608,7 +608,7 @@ def main_sync(pid=None):
             CURRENT_RECORD = k
             if v["status_calc"] == "Active":
                 # Transform to PowerCampus format
-                app_pc = format_app_sql(v, RM_MAPPING, Settings.PowerCampus)
+                app_pc = format_app_sql(v, RM_MAPPING, SETTINGS.PowerCampus)
 
                 fa_checklists = ps_powercampus.pf_get_fachecklist(
                     app_pc["PEOPLE_CODE_ID"],
@@ -625,9 +625,9 @@ def main_sync(pid=None):
 
     # Warn if any apps returned an error flag from ps_powercampus.get_profile()
     if sync_errors == True or [k for k in apps if apps[k]["error_flag"] == True]:
-        output_msg = Settings.Messages.success.done_with_errors
+        output_msg = SETTINGS.Messages.success.done_with_errors
     else:
-        output_msg = Settings.Messages.success.done
+        output_msg = SETTINGS.Messages.success.done
     verbose_print(output_msg)
 
     return output_msg
