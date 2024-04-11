@@ -6,7 +6,8 @@
         "invalid_college_attend": "College Attend is set to {} in PowerCampus, which is not valid for applicants.",
         "api_missing_database": "The PowerCampus Web API is not functioning properly. You may need to remove and reinstall the application.",
         "duplicate_apps": "Person has multiple applications with the same YTS + PCD.",
-        "missing_yt": "Year/Term/Session is missing from the application."
+        "missing_yt": "Year/Term/Session is missing from the application.",
+        "pdc_mapping": "Check Application Form Data Filters, Program of Study, and recruiterMapping.xml if auto-mapping is not enabled. Code values are case-sensitive."
     },
     "success": {
         "done": "Sync completed with no errors.",

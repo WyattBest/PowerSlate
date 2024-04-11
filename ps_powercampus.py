@@ -305,12 +305,14 @@ def post_api(app, config, Messages):
             and "ServiceLocatorImplBase.cs:line 53" in rtext
         ):
             raise ValueError(Messages.error.api_missing_database, rtext, e)
+        elif "/ was not found in Mapping file." in rtext:
+            raise ValueError(rtext, Messages.error.pdc_mapping)
         elif (
             r.status_code == 202
-            and "was created successfully in PowerCampus" in r.text == False
+            and "was created successfully in PowerCampus" in rtext == False
         ) or r.status_code == 400:
             raise ValueError(rtext)
-        elif "was created successfully in PowerCampus" not in r.text == False:
+        elif "was created successfully in PowerCampus" not in rtext == False:
             raise requests.HTTPError(rtext)
 
     if dup_found:
