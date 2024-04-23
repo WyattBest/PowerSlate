@@ -231,7 +231,7 @@ def format_app_api(app, cfg_defaults, Messages):
         {
             k[8:]: v
             for (k, v) in app.items()
-            if k[0:7] == "Address" and int(k[7:8]) - 1 == i
+            if k[0:7] == "Address" and int(k[7:8]) - 1 == i and v is not None
         }
         for i in range(10)
     ]

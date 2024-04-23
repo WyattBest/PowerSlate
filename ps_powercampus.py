@@ -309,10 +309,10 @@ def post_api(app, config, Messages):
             raise ValueError(rtext, Messages.error.pdc_mapping)
         elif (
             r.status_code == 202
-            and "was created successfully in PowerCampus" in rtext == False
-        ) or r.status_code == 400:
+            and "was created successfully in PowerCampus" not in rtext
+        ):
             raise ValueError(rtext)
-        elif "was created successfully in PowerCampus" not in rtext == False:
+        elif "was created successfully in PowerCampus" not in rtext:
             raise requests.HTTPError(rtext)
 
     if dup_found:
