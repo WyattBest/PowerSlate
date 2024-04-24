@@ -26,6 +26,7 @@ class Settings:
         self.defaults = self.FlatDict(config["defaults"])
         self.PowerCampus = self.PowerCampus(config["powercampus"])
         self.Messages = self.Messages()
+        self.check_api_token()
 
     class PowerCampus:
         def __init__(self, config):
@@ -43,6 +44,13 @@ class Settings:
                 messages = json.loads(file.read())
                 self.error = Settings.FlatDict(messages["error"])
                 self.success = Settings.FlatDict(messages["success"])
+
+    def check_api_token(self):
+        if (
+            self.PowerCampus.api.auth_method == "token"
+            and self.PowerCampus.api.token[:7] != "Bearer "
+        ):
+            raise ValueError(self.Messages.error.api_token_format)
 
 
 def init(config_path):
