@@ -308,25 +308,26 @@ def post_api(app, config, Messages):
         elif "/ was not found in Mapping file." in rtext:
             raise ValueError(rtext, Messages.error.pdc_mapping)
         elif (
-            r.status_code == 202
+            "was created succesfully in PowerCampus" not in rtext
             and "was created successfully in PowerCampus" not in rtext
         ):
-            raise ValueError(rtext)
-        elif "was created successfully in PowerCampus" not in rtext:
             raise requests.HTTPError(rtext)
 
     if dup_found:
         update_app_form_autoprocess(config.app_form_setting_id, True)
 
-    if r.text[-25:-12] == "New People Id":
+    if "New People Id" in r.text:
+        # Example 9.2.3 response: "The application 13 was created successfully in PowerCampus. New People Id 000123456."
         try:
-            people_code = r.text[-11:-2]
-            # Error check. After slice because leading zeros need preserved.
+            people_code = r.text.split("New People Id ")[1].split(".")[0]
             int(people_code)
             PEOPLE_CODE_ID = "P" + people_code
             return PEOPLE_CODE_ID
         except:
-            return None
+            raise ValueError(
+                "Unable to parse PEOPLE_ID from API response.",
+                r.text,
+            )
     else:
         return None
 
