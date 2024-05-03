@@ -41,12 +41,6 @@ fields = {
         "supply_null": False,
         "type": str,
     },
-    "CitizenshipStatus": {
-        "api_verbatim": True,
-        "sql_verbatim": False,
-        "supply_null": True,
-        "type": str,
-    },
     "CollegeAttendStatus": {
         "api_verbatim": True,
         "sql_verbatim": False,
@@ -227,6 +221,12 @@ fields = {
         "supply_null": True,
         "type": str,
     },
+    "SecondaryCitizenship": {
+        "api_verbatim": True,
+        "sql_verbatim": False,
+        "supply_null": True,
+        "type": str,
+    },
     "PrimaryLanguage": {
         "api_verbatim": True,
         "sql_verbatim": False,
@@ -280,12 +280,6 @@ fields = {
         "sql_verbatim": True,
         "supply_null": False,
         "type": int,
-    },
-    "SecondaryCitizenship": {
-        "api_verbatim": True,
-        "sql_verbatim": False,
-        "supply_null": True,
-        "type": str,
     },
     "Status": {
         "api_verbatim": True,

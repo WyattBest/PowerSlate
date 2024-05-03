@@ -369,12 +369,19 @@ def format_app_sql(app, mapping, config):
         app["Degree"]
     ]
 
-    if app["CitizenshipStatus"] is not None:
+    if app["PrimaryCitizenship"] is not None:
         mapped["PRIMARYCITIZENSHIP"] = mapping["CitizenshipStatus"][
-            app["CitizenshipStatus"]
+            app["PrimaryCitizenship"]
         ]
     else:
         mapped["PRIMARYCITIZENSHIP"] = None
+
+    if app["SecondaryCitizenship"] is not None:
+        mapped["SECONDARYCITIZENSHIP"] = mapping["CitizenshipStatus"][
+            app["SecondaryCitizenship"]
+        ]
+    else:
+        mapped["SECONDARYCITIZENSHIP"] = None
 
     if app["CollegeAttendStatus"] is not None:
         mapped["COLLEGE_ATTEND"] = mapping["CollegeAttend"][app["CollegeAttendStatus"]]
@@ -385,13 +392,6 @@ def format_app_sql(app, mapping, config):
         mapped["VISA"] = mapping["Visa"][app["Visa"]]
     else:
         mapped["VISA"] = None
-
-    if app["SecondaryCitizenship"] is not None:
-        mapped["SECONDARYCITIZENSHIP"] = mapping["CitizenshipStatus"][
-            app["SecondaryCitizenship"]
-        ]
-    else:
-        mapped["SECONDARYCITIZENSHIP"] = None
 
     if app["MaritalStatus"] is not None:
         mapped["MARITALSTATUS"] = mapping["MaritalStatus"][app["MaritalStatus"]]
