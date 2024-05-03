@@ -77,6 +77,12 @@ fields = {
         "supply_null": True,
         "type": str,
     },
+    "College": {
+        "api_verbatim": False,
+        "sql_verbatim": True,
+        "supply_null": True,
+        "type": str,
+    },
     "Department": {
         "api_verbatim": False,
         "sql_verbatim": True,
