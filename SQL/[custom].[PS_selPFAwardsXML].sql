@@ -14,13 +14,15 @@ GO
 -- Description:	Return XML of award data from PowerFAIDS for the award year associated with a YTS and the tracking status.
 --				Award data is aggregated and intended for display on Slate dashboards.
 --				The XML structure mimics Slate's own Dictionary subquery export types for compatibility with Liquid looping.
+--				PowerFAIDS server/db names may need edited during deployment. @UseFINAIDMAPPING may need toggled.
 --
--- 2022-04-19	Wyatt Best:		Removed gross amounts and added total line.
+-- 2022-04-19 Wyatt Best:		Removed gross amounts and added total line.
+-- 2024-05-07 Wyatt Best:		Option to use FINAIDMAPPING instead of ACADEMICCALENDAR for POE mappings.
+--								Fixed @GovID datatype.
+--								Restructured for efficiency.
 -- =============================================
-CREATE PROCEDURE [custom].[PS_selPFAwardsXML]
-	-- Add the parameters for the stored procedure here
-	@PCID NVARCHAR(10)
-	,@GovID INT
+CREATE PROCEDURE [custom].[PS_selPFAwardsXML] @PCID NVARCHAR(10)
+	,@GovID VARCHAR(9)
 	,@AcademicYear NVARCHAR(4)
 	,@AcademicTerm NVARCHAR(10)
 	,@AcademicSession NVARCHAR(10)
@@ -28,14 +30,170 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
-	DECLARE @FinAidYear NVARCHAR(4) = (
-			SELECT FIN_AID_YEAR
-			FROM ACADEMICCALENDAR
-			WHERE ACADEMIC_YEAR = @AcademicYear
-				AND ACADEMIC_TERM = @AcademicTerm
-				AND ACADEMIC_SESSION = @AcademicSession
-			)
+	--Switch for whether to use ACADEMICCALENDAR (default) or FINAIDMAPPING as the POE source
+	DECLARE @UseFINAIDMAPPING BIT = 1
+		,@student_token INT
+		,@FinAidYear INT
+		,@TrackStat VARCHAR(2)
+	DECLARE @POEs TABLE (
+		POE INT
+		,ACADEMIC_SESSION NVARCHAR(10)
+		,award_year INT
+		)
+	DECLARE @AwardsRaw TABLE (
+		[fund_long_name] VARCHAR(40)
+		,[amount] NUMERIC(8, 2)
+		,[attend_desc] VARCHAR(30)
+		)
 
+	--Find student
+	SELECT @student_token = student_token
+	FROM [POWERFAIDS].[PFaids].[dbo].[student] s
+	WHERE s.alternate_id = @PCID
+		OR s.student_ssn = @GovID
+
+	--Using OR in join criteria for [stu_award_year] caused inefficiency, so queries are repeated
+	IF @UseFINAIDMAPPING = 1
+	BEGIN
+		--Get POEs from FINAIDMAPPING
+		INSERT INTO @POEs
+		SELECT POE
+			,ACADEMIC_SESSION
+			,NULL
+		FROM FINAIDMAPPING
+		WHERE 1 = 1
+			AND ACADEMIC_YEAR = @AcademicYear
+			AND ACADEMIC_TERM = @AcademicTerm
+			AND (
+				ACADEMIC_SESSION = @AcademicSession
+				OR ACADEMIC_SESSION = ''
+				)
+			AND [STATUS] = 'A'
+
+		--If POE's are mapped by Session, delete POE's with blank session
+		DELETE
+		FROM @POEs
+		WHERE ACADEMIC_SESSION = ''
+			AND EXISTS (
+				SELECT *
+				FROM @POEs
+				WHERE ACADEMIC_SESSION > ''
+				)
+
+		--Get Aid Year by POE from PowerFAIDS
+		UPDATE p_local
+		SET award_year = p_remote.award_year_token
+		FROM @POEs p_local
+		INNER JOIN [POWERFAIDS].[PFaids].[dbo].[poe] p_remote
+			ON p_local.POE = p_remote.poe_token
+
+		--Get tracking status
+		SELECT @TrackStat = tracking_status
+		FROM [POWERFAIDS].[PFaids].[dbo].[student] s
+		INNER JOIN [POWERFAIDS].[PFaids].[dbo].[stu_award_year] say
+			ON say.award_year_token IN (
+					SELECT award_year
+					FROM @POEs
+					)
+				AND s.student_token = say.student_token
+		WHERE s.student_token = @student_token
+
+		--Get raw award data (multiple POE's method)
+		INSERT INTO @AwardsRaw
+		SELECT CASE 
+				WHEN net_disbursement_amount > 0
+					AND net_disbursement_amount <> scheduled_amount
+					THEN fund_long_name + ' (Net)'
+				ELSE fund_long_name
+				END [fund_long_name]
+			,CASE 
+				WHEN net_disbursement_amount > 0
+					AND net_disbursement_amount <> scheduled_amount
+					THEN net_disbursement_amount
+				ELSE scheduled_amount
+				END [amount]
+			,CASE 
+				WHEN attend_desc LIKE '%sp%'
+					THEN 'Spring'
+				WHEN attend_desc LIKE '%fa%'
+					THEN 'Fall'
+				WHEN attend_desc LIKE '%su%'
+					THEN 'Summer'
+				END AS [attend_desc]
+		FROM [POWERFAIDS].[PFaids].[dbo].[student] s
+		INNER JOIN [POWERFAIDS].[PFaids].[dbo].[stu_award_year] say
+			ON say.award_year_token IN (
+					SELECT award_year
+					FROM @POEs
+					)
+				AND s.student_token = say.student_token
+		INNER JOIN [POWERFAIDS].[PFaids].[dbo].[stu_award] sa
+			ON sa.stu_award_year_token = say.stu_award_year_token
+		INNER JOIN [POWERFAIDS].[PFaids].[dbo].[stu_award_transactions] sat
+			ON sat.stu_award_token = sa.stu_award_token
+		INNER JOIN [POWERFAIDS].[PFaids].[dbo].[funds] f
+			ON f.fund_token = sa.fund_ay_token
+		INNER JOIN [POWERFAIDS].[PFaids].[dbo].[poe]
+			ON poe.poe_token = sat.poe_token
+		WHERE s.student_token = @student_token
+	END
+	ELSE
+	BEGIN
+		--Get single POE from ACADEMICCALENDAR
+		SET @FinAidYear = (
+				SELECT FIN_AID_YEAR
+				FROM ACADEMICCALENDAR
+				WHERE ACADEMIC_YEAR = @AcademicYear
+					AND ACADEMIC_TERM = @AcademicTerm
+					AND ACADEMIC_SESSION = @AcademicSession
+				)
+
+		--Get tracking status
+		SELECT @TrackStat = tracking_status
+		FROM [POWERFAIDS].[PFaids].[dbo].[student] s
+		INNER JOIN [POWERFAIDS].[PFaids].[dbo].[stu_award_year] say
+			ON say.award_year_token = @FinAidYear
+				AND s.student_token = say.student_token
+		WHERE s.student_token = @student_token
+
+		--Get raw award data (single POE method)
+		INSERT INTO @AwardsRaw
+		SELECT CASE 
+				WHEN net_disbursement_amount > 0
+					AND net_disbursement_amount <> scheduled_amount
+					THEN fund_long_name + ' (Net)'
+				ELSE fund_long_name
+				END [fund_long_name]
+			,CASE 
+				WHEN net_disbursement_amount > 0
+					AND net_disbursement_amount <> scheduled_amount
+					THEN net_disbursement_amount
+				ELSE scheduled_amount
+				END [amount]
+			,CASE 
+				WHEN attend_desc LIKE '%sp%'
+					THEN 'Spring'
+				WHEN attend_desc LIKE '%fa%'
+					THEN 'Fall'
+				WHEN attend_desc LIKE '%su%'
+					THEN 'Summer'
+				END AS [attend_desc]
+		FROM [POWERFAIDS].[PFaids].[dbo].[student] s
+		INNER JOIN [POWERFAIDS].[PFaids].[dbo].[stu_award_year] say
+			ON say.award_year_token = @FinAidYear
+				AND s.student_token = say.student_token
+		INNER JOIN [POWERFAIDS].[PFaids].[dbo].[stu_award] sa
+			ON sa.stu_award_year_token = say.stu_award_year_token
+		INNER JOIN [POWERFAIDS].[PFaids].[dbo].[stu_award_transactions] sat
+			ON sat.stu_award_token = sa.stu_award_token
+		INNER JOIN [POWERFAIDS].[PFaids].[dbo].[funds] f
+			ON f.fund_token = sa.fund_ay_token
+		INNER JOIN [POWERFAIDS].[PFaids].[dbo].[poe]
+			ON poe.poe_token = sat.poe_token
+		WHERE s.student_token = @student_token
+	END
+
+	--Format awards as XML
 	SELECT (
 			SELECT (
 					SELECT 'fund_long_name' AS [k]
@@ -71,35 +229,7 @@ BEGIN
 				--Individual awards
 				SELECT *
 					,COALESCE([Summer], 0) + COALESCE([Fall], 0) + COALESCE([Spring], 0) AS Total
-				FROM (
-					SELECT CASE 
-							WHEN net_disbursement_amount > 0
-								AND net_disbursement_amount <> scheduled_amount
-								THEN fund_long_name + ' (Net)'
-							ELSE fund_long_name
-							END [fund_long_name]
-						,CASE 
-							WHEN net_disbursement_amount > 0
-								AND net_disbursement_amount <> scheduled_amount
-								THEN net_disbursement_amount
-							ELSE scheduled_amount
-							END [amount]
-						,IIF(attend_desc = 'T-Summer', 'Summer', attend_desc) [attend_desc]
-					FROM [VMCNYPF01].[PFaids].[dbo].[student] s
-					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award_year] say
-						ON say.award_year_token = @FinAidYear
-							AND s.student_token = say.student_token
-					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award] sa
-						ON sa.stu_award_year_token = say.stu_award_year_token
-					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award_transactions] sat
-						ON sat.stu_award_token = sa.stu_award_token
-					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[funds] f
-						ON f.fund_token = sa.fund_ay_token
-					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[poe]
-						ON poe.poe_token = sat.poe_token
-					WHERE s.alternate_id = @PCID
-						OR s.student_ssn = @GovID
-					) a_raw
+				FROM @AwardsRaw
 				PIVOT(SUM([amount]) FOR attend_desc IN (
 							[Summer]
 							,[Fall]
@@ -111,34 +241,7 @@ BEGIN
 				--Grand total
 				SELECT *
 					,COALESCE([Summer], 0) + COALESCE([Fall], 0) + COALESCE([Spring], 0) AS Total
-				FROM (
-					SELECT 'Totals' [fund_long_name]
-						,CASE 
-							WHEN net_disbursement_amount > 0
-								AND net_disbursement_amount <> scheduled_amount
-								THEN net_disbursement_amount
-							ELSE scheduled_amount
-							END [amount]
-						,IIF(attend_desc = 'T-Summer', 'Summer', attend_desc) [attend_desc]
-					FROM [VMCNYPF01].[PFaids].[dbo].[student] s
-					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award_year] say
-						ON say.award_year_token = @FinAidYear
-							AND s.student_token = say.student_token
-					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award] sa
-						ON sa.stu_award_year_token = say.stu_award_year_token
-					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award_transactions] sat
-						ON sat.stu_award_token = sa.stu_award_token
-					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[funds] f
-						ON f.fund_token = sa.fund_ay_token
-					INNER JOIN [VMCNYPF01].[PFaids].[dbo].[poe]
-						ON poe.poe_token = sat.poe_token
-					WHERE (
-							s.alternate_id = @PCID
-							OR s.student_ssn = @GovID
-							)
-						--AND net_disbursement_amount > 0
-						--AND net_disbursement_amount <> scheduled_amount
-					) a_raw
+				FROM @AwardsRaw
 				PIVOT(SUM([amount]) FOR attend_desc IN (
 							[Summer]
 							,[Fall]
@@ -155,11 +258,5 @@ BEGIN
 			FOR XML path('row')
 				,type
 			) AS [XML]
-		,tracking_status
-	FROM [VMCNYPF01].[PFaids].[dbo].[student] s
-	INNER JOIN [VMCNYPF01].[PFaids].[dbo].[stu_award_year] say
-		ON say.award_year_token = @FinAidYear
-			AND s.student_token = say.student_token
-	WHERE s.alternate_id = @PCID
-		OR s.student_ssn = @GovID
+		,@TrackStat AS [tracking_status]
 END
