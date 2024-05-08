@@ -227,7 +227,10 @@ BEGIN
 					)
 			FROM (
 				--Individual awards
-				SELECT *
+				SELECT [fund_long_name]
+					,[Summer]
+					,[Fall]
+					,[Spring]
 					,COALESCE([Summer], 0) + COALESCE([Fall], 0) + COALESCE([Spring], 0) AS Total
 				FROM @AwardsRaw
 				PIVOT(SUM([amount]) FOR attend_desc IN (
@@ -239,7 +242,10 @@ BEGIN
 				UNION ALL
 				
 				--Grand total
-				SELECT *
+				SELECT 'Totals' AS [fund_long_name]
+					,[Summer]
+					,[Fall]
+					,[Spring]
 					,COALESCE([Summer], 0) + COALESCE([Fall], 0) + COALESCE([Spring], 0) AS Total
 				FROM @AwardsRaw
 				PIVOT(SUM([amount]) FOR attend_desc IN (
