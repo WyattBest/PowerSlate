@@ -11,7 +11,8 @@ GO
 -- Author:		Wyatt Best
 -- Create date: 2020-09-30
 -- Description:	Selects a list of missing documents from PowerFAIDS.
---				PowerFAIDS server/db names may need edited during deployment. @UseFINAIDMAPPING may need toggled.
+--				@UseFINAIDMAPPING toggles between selecting a single POE from ACADEMICCALENDAR or selecting multiple POE's from FINAIDMAPPING.
+--				PowerFAIDS server/db names may need edited during deployment.
 --
 -- 2020-11-12 Wyatt Best:	Added search by TIN/SSN (@GovID) instead of just PEOPLE_CODE_ID (@PCID).
 -- 2021-04-02 Wyatt Best:	Changed @GovID datatype from INT to match PFaids column.
@@ -23,13 +24,13 @@ CREATE PROCEDURE [custom].[PS_selPFChecklist]
 	,@AcademicYear NVARCHAR(4)
 	,@AcademicTerm NVARCHAR(10)
 	,@AcademicSession NVARCHAR(10)
+	,@UseFINAIDMAPPING BIT = 0
 AS
 BEGIN
 	SET NOCOUNT ON;
 
 	--Switch for whether to use ACADEMICCALENDAR (default) or FINAIDMAPPING as the POE source
-	DECLARE @UseFINAIDMAPPING BIT = 0
-		,@FinAidYear INT
+	DECLARE @FinAidYear INT
 	DECLARE @POEs TABLE (
 		POE INT
 		,ACADEMIC_SESSION NVARCHAR(10)

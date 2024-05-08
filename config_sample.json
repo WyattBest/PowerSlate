@@ -116,7 +116,8 @@
 		]
 	},
 	"fa_checklist": {
-		"enabled": true,
+		"enabled": false,
+		"use_finaidmapping": false,
 		"slate_post": {
 			"url": "https://apply.school.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
 			"username": "username",
@@ -124,7 +125,8 @@
 		}
 	},
 	"fa_awards": {
-		"enabled": true
+		"enabled": false,
+		"use_finaidmapping": false
 	},
 	"defaults": {
 		"address_country": null,

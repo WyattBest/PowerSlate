@@ -854,16 +854,17 @@ def update_association(pcid, association):
     CNXN.commit()
 
 
-def pf_get_fachecklist(pcid, govid, appid, year, term, session):
+def pf_get_fachecklist(pcid, govid, appid, year, term, session, use_finaidmapping):
     """Return the PowerFAIDS missing docs list for uploading to Financial Aid Checklist."""
     checklist = []
     CURSOR.execute(
-        "exec [custom].[PS_selPFChecklist] ?, ?, ?, ?, ?",
+        "exec [custom].[PS_selPFChecklist] ?, ?, ?, ?, ?, ?",
         pcid,
         govid,
         year,
         term,
         session,
+        use_finaidmapping,
     )
 
     columns = [column[0] for column in CURSOR.description]
@@ -877,18 +878,19 @@ def pf_get_fachecklist(pcid, govid, appid, year, term, session):
     return checklist
 
 
-def pf_get_awards(pcid, govid, year, term, session):
+def pf_get_awards(pcid, govid, year, term, session, use_finaidmapping):
     """Return the PowerFAIDS awards list as XML and the Tracking Status."""
     awards = None
     tracking_status = None
 
     CURSOR.execute(
-        "exec [custom].[PS_selPFAwardsXML] ?, ?, ?, ?, ?",
+        "exec [custom].[PS_selPFAwardsXML] ?, ?, ?, ?, ?, ?",
         pcid,
         govid,
         year,
         term,
         session,
+        use_finaidmapping,
     )
     row = CURSOR.fetchone()
 

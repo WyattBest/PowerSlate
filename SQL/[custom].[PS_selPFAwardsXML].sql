@@ -14,7 +14,8 @@ GO
 -- Description:	Return XML of award data from PowerFAIDS for the award year associated with a YTS and the tracking status.
 --				Award data is aggregated and intended for display on Slate dashboards.
 --				The XML structure mimics Slate's own Dictionary subquery export types for compatibility with Liquid looping.
---				PowerFAIDS server/db names may need edited during deployment. @UseFINAIDMAPPING may need toggled.
+--				@UseFINAIDMAPPING toggles between selecting a single POE from ACADEMICCALENDAR or selecting multiple POE's from FINAIDMAPPING.
+--				PowerFAIDS server/db names may need edited during deployment.
 --
 -- 2022-04-19 Wyatt Best:		Removed gross amounts and added total line.
 -- 2024-05-07 Wyatt Best:		Option to use FINAIDMAPPING instead of ACADEMICCALENDAR for POE mappings.
@@ -26,13 +27,12 @@ CREATE PROCEDURE [custom].[PS_selPFAwardsXML] @PCID NVARCHAR(10)
 	,@AcademicYear NVARCHAR(4)
 	,@AcademicTerm NVARCHAR(10)
 	,@AcademicSession NVARCHAR(10)
+	,@UseFINAIDMAPPING BIT = 0
 AS
 BEGIN
 	SET NOCOUNT ON;
 
-	--Switch for whether to use ACADEMICCALENDAR (default) or FINAIDMAPPING as the POE source
-	DECLARE @UseFINAIDMAPPING BIT = 1
-		,@student_token INT
+	DECLARE @student_token INT
 		,@FinAidYear INT
 		,@TrackStat VARCHAR(2)
 	DECLARE @POEs TABLE (
