@@ -22,6 +22,7 @@ class Settings:
 
     def __init__(self, config):
         self.fa_awards = self.FlatDict(config["fa_awards"])
+        self.fa_checklist = self.FlatDict(config["fa_checklist"])
         self.console_verbose = config["console_verbose"]
         self.defaults = self.FlatDict(config["defaults"])
         self.PowerCampus = self.PowerCampus(config["powercampus"])
@@ -589,6 +590,7 @@ def main_sync(pid=None):
                     academic_year,
                     academic_term,
                     academic_session,
+                    SETTINGS.fa_awards.use_finaidmapping,
                 )
                 apps[k].update({"fa_awards": fa_awards, "fa_status": fa_status})
 
@@ -607,7 +609,7 @@ def main_sync(pid=None):
         )
 
     # Collect Financial Aid checklist and upload to Slate
-    if CONFIG["fa_checklist"]["enabled"] == True:
+    if SETTINGS.fa_checklist.enabled == True:
         verbose_print("Collect Financial Aid checklist and upload to Slate")
         slate_upload_list = []
         # slate_upload_fields = {'AppID', 'Code', 'Status', 'Date'}
@@ -625,6 +627,7 @@ def main_sync(pid=None):
                     app_pc["ACADEMIC_YEAR"],
                     app_pc["ACADEMIC_TERM"],
                     app_pc["ACADEMIC_SESSION"],
+                    SETTINGS.fa_checklist.use_finaidmapping,
                 )
 
                 slate_upload_list = slate_upload_list + fa_checklists
