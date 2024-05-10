@@ -512,7 +512,7 @@ def update_academic(app):
         If ACADEMIC_FLAG isn't yet set to Y, update ACADEMIC.ORG_CODE_ID based on the passed OrganizationId.
     """
     CURSOR.execute(
-        "exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
+        "exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
         app["PEOPLE_CODE_ID"],
         app["ACADEMIC_YEAR"],
         app["ACADEMIC_TERM"],
@@ -535,6 +535,7 @@ def update_academic(app):
         app["COLLEGE_ATTEND"],
         app["Extracurricular"],
         app["CreateDateTime"],
+        app["SetProgramStartDate"],
     )
     CNXN.commit()
 

@@ -13,7 +13,7 @@ GO
 -- Create date: 2016-11-17
 -- Description:	Updates Status and Decision code for application from Slate.
 --				Sets ACADEMIC_FLAG, PRIMARY_FLAG, ENROLL_SEPARATION, COLLEGE, DEPARTMENT, POPULATION, COUNSELOR, EXTRA_CURRICULAR, COLLEGE_ATTEND, APPLICATION_DATE.
---				Sets ADMIT and MATRIC field groups.
+--				Sets ADMIT and MATRIC field groups. Sets PROGRAM_START_DATE.
 --
 -- 2016-12-15 Wyatt Best:	Added 'Defer' ProposedDecision type.
 -- 2016-12-28 Wyatt Best:	Changed translation CODE_APPDECISION for Waiver from 'ACCP' to 'WAIV'
@@ -41,6 +41,7 @@ GO
 -- 2021-12-13 Wyatt Best:	Ability to set NONTRAD_PROGRAM back to blank (NULL isn't allowed). Formerly, a bad @Nontraditional value later set to NULL in Slate would remain in PowerCampus.
 -- 2023-03-02 Wyatt Best:	Use ADM_APPLICANT_DEFAULT setting instead of STUDENT_CODING_ENROLLED setting for ENROLL_SEPARATION when converting to student.
 -- 2024-05-03 Wyatt Best:	Added @College.
+-- 2024-05-10 Wyatt Best:	Added flag @SetProgramStartDate to default program start date from academic calendar.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -64,6 +65,7 @@ CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@CollegeAttend NVARCHAR(4) NULL
 	,@Extracurricular BIT NULL
 	,@CreateDateTime DATETIME --Application creation date
+	,@SetProgramStartDate BIT NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -653,6 +655,20 @@ BEGIN
 		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
 		AND COALESCE(APPLICATION_DATE, '') <> dbo.fnMakeDate(@CreateDateTime);
+
+	--Update PROGRAM_START_DATE if needed
+	UPDATE ACADEMIC
+	SET PROGRAM_START_DATE = @MatricDate
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
+		AND APPLICATION_FLAG = 'Y'
+		AND PROGRAM_START_DATE IS NULL
+		AND @SetProgramStartDate = 1
 
 	COMMIT
 END

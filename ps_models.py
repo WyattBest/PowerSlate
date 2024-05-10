@@ -227,6 +227,12 @@ fields = {
         "supply_null": True,
         "type": str,
     },
+    "SetProgramStartDate": {
+        "api_verbatim": False,
+        "sql_verbatim": True,
+        "supply_null": True,
+        "type": bool,
+    },
     "SecondaryCitizenship": {
         "api_verbatim": True,
         "sql_verbatim": False,
