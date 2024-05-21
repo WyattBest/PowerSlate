@@ -869,12 +869,13 @@ def pf_get_fachecklist(pcid, govid, appid, year, term, session, use_finaidmappin
     )
 
     columns = [column[0] for column in CURSOR.description]
-    for row in CURSOR.fetchall():
-        checklist.append(dict(zip(columns, row)))
+    if 'Code' in columns:
+        for row in CURSOR.fetchall():
+            checklist.append(dict(zip(columns, row)))
 
-    # Pass through the Slate Application ID
-    for doc in checklist:
-        doc["AppID"] = appid
+        # Pass through the Slate Application ID
+        for doc in checklist:
+            doc["AppID"] = appid
 
     return checklist
 
@@ -895,7 +896,7 @@ def pf_get_awards(pcid, govid, year, term, session, use_finaidmapping):
     )
     row = CURSOR.fetchone()
 
-    if row is not None:
+    if row[0] is not None:
         awards = row.XML
         tracking_status = row.tracking_status
 

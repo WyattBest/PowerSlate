@@ -52,6 +52,14 @@ BEGIN
 	WHERE s.alternate_id = @PCID
 		OR s.student_ssn = @GovID
 
+	--If student not found, quit immediately
+	IF @student_token IS NULL
+	BEGIN
+		SELECT NULL
+
+		RETURN
+	END
+
 	--Using OR in join criteria for [stu_award_year] caused inefficiency, so queries are repeated
 	IF @UseFINAIDMAPPING = 1
 	BEGIN

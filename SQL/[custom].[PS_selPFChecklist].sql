@@ -11,7 +11,7 @@ GO
 -- Author:		Wyatt Best
 -- Create date: 2020-09-30
 -- Description:	Selects a list of missing documents from PowerFAIDS.
---				@UseFINAIDMAPPING toggles between selecting a single POE from ACADEMICCALENDAR or selecting multiple POE's from FINAIDMAPPING.
+--				@UseFINAIDMAPPING toggles between selecting a single POE from ACADEMICCALENDAR (0) or selecting multiple POE's (1) from FINAIDMAPPING.
 --				PowerFAIDS server/db names may need edited during deployment.
 --
 -- 2020-11-12 Wyatt Best:	Added search by TIN/SSN (@GovID) instead of just PEOPLE_CODE_ID (@PCID).
@@ -29,13 +29,27 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
-	--Switch for whether to use ACADEMICCALENDAR (default) or FINAIDMAPPING as the POE source
-	DECLARE @FinAidYear INT
+	DECLARE @student_token INT
+		,@FinAidYear INT
 	DECLARE @POEs TABLE (
 		POE INT
 		,ACADEMIC_SESSION NVARCHAR(10)
 		,award_year INT
 		)
+
+	--Find student
+	SELECT @student_token = student_token
+	FROM [POWERFAIDS].[PFaids].[dbo].[student] s
+	WHERE s.alternate_id = @PCID
+		OR s.student_ssn = @GovID
+
+	--If student not found, quit immediately
+	IF @student_token IS NULL
+	BEGIN
+		SELECT NULL
+
+		RETURN
+	END
 
 	IF @UseFINAIDMAPPING = 1
 	BEGIN
@@ -107,6 +121,5 @@ BEGIN
 		ON d.doc_token = srd.doc_token
 	INNER JOIN [POWERFAIDS].[PFaids].[dbo].[doc_status_code] dsc
 		ON dsc.doc_required_status_code = srd.doc_status
-	WHERE s.alternate_id = @PCID
-		OR s.student_ssn = @GovID
+	WHERE s.student_token = @student_token
 END
