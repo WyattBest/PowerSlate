@@ -545,7 +545,7 @@ def update_academic_key(app):
     P/C/D will only be updated if application is not registered and does not have an academic plan assigned.
     """
     CURSOR.execute(
-        "exec [custom].[PS_updAcademicKey] ?, ?, ?, ?, ?, ?, ?, ?, ?",
+        "exec [custom].[PS_updAcademicKey] ?, ?, ?, ?, ?, ?, ?, ?",
         app["PEOPLE_CODE_ID"],
         app["ACADEMIC_YEAR"],
         app["ACADEMIC_TERM"],
@@ -553,7 +553,6 @@ def update_academic_key(app):
         app["PROGRAM"],
         app["DEGREE"],
         app["CURRICULUM"],
-        app["aid"],
         app["AcademicGUID"],
     )
     CNXN.commit()

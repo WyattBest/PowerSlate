@@ -616,6 +616,8 @@ def main_sync(pid=None):
 
         for k, v in apps.items():
             CURRENT_RECORD = k
+            if v["error_flag"] == True:
+                continue
             if v["status_calc"] == "Active":
                 # Transform to PowerCampus format
                 app_pc = format_app_sql(v, RM_MAPPING, SETTINGS.PowerCampus)
