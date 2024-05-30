@@ -17,7 +17,7 @@ def emit_traceback():
     return message
 
 
-class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
+class HTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         # Send response status code
         self.send_response(200)
@@ -48,7 +48,8 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
                 ps_core.de_init()
                 CONFIG = ps_core.init(sys.argv[1])
 
-        # Write content as utf-8 data
+        # Sent message back to client after replacing newlines with HTML line breaks
+        message = message.replace("\n", "<br />")
         self.wfile.write(message.encode("utf8"))
         return
 
@@ -65,7 +66,7 @@ def run_server():
     else:
         local_ip = socket.gethostbyname(socket.gethostname())
     server_address = (local_ip, CONFIG["http_port"])
-    httpd = HTTPServer(server_address, testHTTPServer_RequestHandler)
+    httpd = HTTPServer(server_address, HTTPRequestHandler)
     print("running server...")
     httpd.serve_forever()
 

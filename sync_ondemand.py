@@ -85,10 +85,10 @@ if __name__ == "__main__":
 
             msg = MIMEText(body)
             msg["To"] = email_config["to"]
-            msg["From"] = email_config["from"]
+            msg["From"] = email_config["smtp"]["from"]
             msg["Subject"] = email_config["subject"]
 
-            with smtplib.SMTP(email_config["server"]) as smtp:
+            with smtplib.SMTP(email_config["smtp"]["server"]) as smtp:
                 smtp.starttls()
                 smtp.login(
                     email_config["smtp"]["username"], email_config["smtp"]["password"]

@@ -5,36 +5,28 @@ import xml.etree.ElementTree as ET
 import ps_models
 
 
-def init(config, verbose, msg_strings):
-    global PC_API_URL
-    global PC_API_CRED
+def init(config, verbose):
     global CNXN
     global CURSOR
     global CONFIG
     global VERBOSE
-    global MSG_STRINGS
 
     CONFIG = config
     VERBOSE = verbose
-    MSG_STRINGS = msg_strings
-
-    # PowerCampus Web API connection
-    PC_API_URL = config.api.url
-    PC_API_CRED = (config.api.username, config.api.password)
 
     # Microsoft SQL Server connection.
     CNXN = pyodbc.connect(config.database_string)
     CURSOR = CNXN.cursor()
 
     # Print a test of connections
-    r = requests.get(PC_API_URL + "api/version", auth=PC_API_CRED)
+    r = requests.get(config.api.url + "api/version")
     verbose_print("PowerCampus API Status: " + str(r.status_code))
     verbose_print(r.text)
     r.raise_for_status()
     verbose_print("Database:" + CNXN.getinfo(pyodbc.SQL_DATABASE_NAME))
 
     # Enable ApplicationFormSetting's ProcessAutomatically in case program exited abnormally last time with setting toggled off.
-    update_app_form_autoprocess(config.app_form_setting_id, True)
+    update_app_form_autoprocess(config.api.app_form_setting_id, True)
 
 
 def de_init():
@@ -56,7 +48,12 @@ def verbose_print(x):
 
 
 def autoconfigure_mappings(
-    dp_list, yt_list, validate_degreq, minimum_degreq_year, mapping_file_location
+    program_list,
+    yt_list,
+    validate_degreq,
+    minimum_degreq_year,
+    mapping_file_location,
+    app_form_setting_id,
 ):
     """
     Automatically insert new Program/Degree/Curriculum combinations into ProgramOfStudy and recruiterMapping.xml
@@ -65,20 +62,22 @@ def autoconfigure_mappings(
     and that YearTerm values are like YEAR/TERM/SESSION.
 
     Keyword aguments:
-    dp_list -- a list of tuples like [('PROGRAM','DEGREE/CURRICULUM'), (...)]
+    program_list -- list of tuples like [('PROGRAM','DEGREE/CURRICULUM'), (...)]
+    yt_list -- list of strings like ['YEAR/TERM/SESSION', ...]
     validate_degreq -- bool. If True, check against DEGREQ for sanity using minimum_degreq_year.
     minimum_degreq_year -- str
+    mapping_file_location -- str. Path to recruiterMapping.xml
 
     Returns True if XML mapping changed.
     """
-    dp_set = set(dp_list)
+    program_set = set(program_list)
     yt_set = set(yt_list)
     if validate_degreq == False:
         minimum_degreq_year = None
 
     # Create set of tuples like {('PROGRAM','DEGREE', 'CURRICULUM'), (...)}
     pdc_set = set()
-    for dp in dp_set:
+    for dp in program_set:
         pdc = [dp[0]]
         for dc in dp[1].split("/"):
             pdc.append(dc)
@@ -111,11 +110,12 @@ def autoconfigure_mappings(
     # Update ProgramOfStudy table; optionally validate against DEGREQ table
     for pdc in pdc_set:
         CURSOR.execute(
-            "execute [custom].[PS_updProgramOfStudy] ?, ?, ?, ?",
+            "execute [custom].[PS_updProgramOfStudy] ?, ?, ?, ?, ?",
             pdc[0],
             pdc[1],
             pdc[2],
             minimum_degreq_year,
+            app_form_setting_id,
         )
     CNXN.commit()
 
@@ -255,7 +255,7 @@ def get_recruiter_mapping(mapping_file_location):
     return rm_mapping
 
 
-def post_api(x, cfg_strings, app_form_setting_id):
+def post_api(app, config, Messages):
     """Post an application to PowerCampus.
     Return  PEOPLE_CODE_ID if application was automatically accepted or None for all other conditions.
 
@@ -263,17 +263,26 @@ def post_api(x, cfg_strings, app_form_setting_id):
     x -- an application dict
     """
 
+    creds = None
+    headers = None
+    if config.auth_method == "basic":
+        creds = (config.username, config.password)
+    elif config.auth_method == "token":
+        headers = {"Authorization": config.token}
+
     # Check for duplicate person. If found, temporarily toggle auto-process off.
     dup_found = False
-    CURSOR.execute("EXEC [custom].[PS_selPersonDuplicate] ?", x["GovernmentId"])
+    CURSOR.execute("EXEC [custom].[PS_selPersonDuplicate] ?", app["GovernmentId"])
     row = CURSOR.fetchone()
     dup_found = row.DuplicateFound
     if dup_found:
-        update_app_form_autoprocess(app_form_setting_id, False)
+        update_app_form_autoprocess(config.app_form_setting_id, False)
 
     # Expose error text response from API, replace useless error message(s).
     try:
-        r = requests.post(PC_API_URL + "api/applications", json=x, auth=PC_API_CRED)
+        r = requests.post(
+            config.url + "api/applications", json=app, auth=creds, headers=headers
+        )
         r.raise_for_status()
         # The API returns 202 for mapping errors. Technically 202 is appropriate, but it should bubble up to the user.
         if r.status_code == 202:
@@ -283,36 +292,42 @@ def post_api(x, cfg_strings, app_form_setting_id):
         rtext = r.text.replace("\r\n", "\n")
 
         if dup_found:
-            update_app_form_autoprocess(app_form_setting_id, True)
+            update_app_form_autoprocess(config.app_form_setting_id, True)
 
         if (
             "BadRequest Object reference not set to an instance of an object." in rtext
             and "ApplicationsController.cs:line 183" in rtext
         ):
-            raise ValueError(cfg_strings["error_no_phones"], rtext, e)
+            raise ValueError(Messages.error.no_phones, rtext, e)
         elif (
             "BadRequest Activation error occured while trying to get instance of type Database, key"
             in rtext
             and "ServiceLocatorImplBase.cs:line 53" in rtext
         ):
-            raise ValueError(cfg_strings["error_api_missing_database"], rtext, e)
-        elif r.status_code == 202 or r.status_code == 400:
-            raise ValueError(rtext)
-        else:
+            raise ValueError(Messages.error.api_missing_database, rtext, e)
+        elif "/ was not found in Mapping file." in rtext:
+            raise ValueError(rtext, Messages.error.pdc_mapping)
+        elif (
+            "was created succesfully in PowerCampus" not in rtext
+            and "was created successfully in PowerCampus" not in rtext
+        ):
             raise requests.HTTPError(rtext)
 
     if dup_found:
-        update_app_form_autoprocess(app_form_setting_id, True)
+        update_app_form_autoprocess(config.app_form_setting_id, True)
 
-    if r.text[-25:-12] == "New People Id":
+    if "New People Id" in r.text:
+        # Example 9.2.3 response: "The application 13 was created successfully in PowerCampus. New People Id 000123456."
         try:
-            people_code = r.text[-11:-2]
-            # Error check. After slice because leading zeros need preserved.
+            people_code = r.text.split("New People Id ")[1].split(".")[0]
             int(people_code)
             PEOPLE_CODE_ID = "P" + people_code
             return PEOPLE_CODE_ID
         except:
-            return None
+            raise ValueError(
+                "Unable to parse PEOPLE_ID from API response.",
+                r.text,
+            )
     else:
         return None
 
@@ -357,35 +372,10 @@ def scan_status(x):
         else:
             computed_status = "Unrecognized Status: " + str(row.ra_status)
 
-        if CONFIG.logging.enabled:
-            # Write errors to external database for end-user presentation via SSRS.
-            CURSOR.execute(
-                "INSERT INTO"
-                + CONFIG.logging.log_table
-                + """
-                ([Ref],[ApplicationNumber],[ProspectId],[FirstName],[LastName],
-                [ComputedStatus],[Notes],[RecruiterApplicationStatus],[ApplicationStatus],[PEOPLE_CODE_ID])
-            VALUES
-                (?,?,?,?,?,?,?,?,?,?)""",
-                [
-                    x["Ref"],
-                    x["aid"],
-                    x["pid"],
-                    x["FirstName"],
-                    x["LastName"],
-                    computed_status,
-                    row.ra_errormessage,
-                    row.ra_status,
-                    row.apl_status,
-                    pcid,
-                ],
-            )
-            CNXN.commit()
-
     return ra_status, apl_status, computed_status, pcid
 
 
-def get_profile(app, campus_email_type):
+def get_profile(app, campus_email_type, Messages):
     """Fetch ACADEMIC row data and email address from PowerCampus.
 
     Returns:
@@ -399,7 +389,7 @@ def get_profile(app, campus_email_type):
     """
 
     error_flag = True
-    error_message = MSG_STRINGS.error_academic_row_not_found
+    error_message = None
     registered = False
     reg_date = None
     readmit = False
@@ -408,6 +398,7 @@ def get_profile(app, campus_email_type):
     campus_email = None
     advisor = None
     sso_id = None
+    academic_guid = None
     custom_1 = None
     custom_2 = None
     custom_3 = None
@@ -415,7 +406,7 @@ def get_profile(app, campus_email_type):
     custom_5 = None
 
     CURSOR.execute(
-        "EXEC [custom].[PS_selProfile] ?,?,?,?,?,?,?,?",
+        "EXEC [custom].[PS_selProfile] ?, ?, ?, ?, ?, ?, ?, ?, ?",
         app["PEOPLE_CODE_ID"],
         app["ACADEMIC_YEAR"],
         app["ACADEMIC_TERM"],
@@ -424,44 +415,49 @@ def get_profile(app, campus_email_type):
         app["DEGREE"],
         app["CURRICULUM"],
         campus_email_type,
+        app["AcademicGUID"],
     )
     row = CURSOR.fetchone()
 
-    if row is not None:
-        error_flag = False
+    if row is None:
+        # ACADEMIC row not found by YTSPDC or GUID.
+        error_message = Messages.error.academic_row_not_found
+    else:
+        if row.ErrorFlag == 1:
+            # ACADEMIC row found by GUID but YTSPDC does not match.
+            error_message = row.ErrorMessage
+        else:
+            error_flag = False
+            if row.Registered == "Y":
+                registered = True
+                reg_date = str(row.REG_VAL_DATE)
+                credits = str(row.CREDITS)
 
-        if row.Registered == "Y":
-            registered = True
-            reg_date = str(row.REG_VAL_DATE)
-            credits = str(row.CREDITS)
+            campus_email = row.CampusEmail
+            advisor = row.AdvisorUsername
+            sso_id = row.Username
+            academic_guid = row.Guid
+            custom_1 = row.custom_1
+            custom_2 = row.custom_2
+            custom_3 = row.custom_3
+            custom_4 = row.custom_4
+            custom_5 = row.custom_5
 
-        campus_email = row.CampusEmail
-        advisor = row.AdvisorUsername
-        sso_id = row.Username
-        custom_1 = row.custom_1
-        custom_2 = row.custom_2
-        custom_3 = row.custom_3
-        custom_4 = row.custom_4
-        custom_5 = row.custom_5
+            # College Attend and Readmits
+            college_attend = row.COLLEGE_ATTEND
+            if college_attend == CONFIG.readmit_code:
+                readmit = True
+            elif college_attend == "" or college_attend is None:
+                college_attend = "blank"
 
-        # College Attend and Readmits
-        college_attend = row.COLLEGE_ATTEND
-        if college_attend == CONFIG.readmit_code:
-            readmit = True
-        elif college_attend == "" or college_attend is None:
-            college_attend = "blank"
+            if college_attend not in CONFIG.valid_college_attend:
+                error_flag = True
+                error_message = Messages.error.invalid_college_attend.format(
+                    college_attend
+                )
 
-        if college_attend not in CONFIG.valid_college_attend:
-            error_flag = True
-            error_message = MSG_STRINGS.error_invalid_college_attend.format(
-                college_attend
-            )
-
-        if row.Withdrawn == "Y":
-            withdrawn = True
-
-    if not error_flag:
-        error_message = None
+            if row.Withdrawn == "Y":
+                withdrawn = True
 
     return (
         error_flag,
@@ -474,6 +470,7 @@ def get_profile(app, campus_email_type):
         campus_email,
         advisor,
         sso_id,
+        academic_guid,
         custom_1,
         custom_2,
         custom_3,
@@ -492,7 +489,7 @@ def update_demographics(app):
         app["DemographicsEthnicity"],
         app["MARITALSTATUS"],
         app["Religion"],
-        app["VETERAN"],
+        app["Veteran"],
         app["PRIMARYCITIZENSHIP"],
         app["SECONDARYCITIZENSHIP"],
         app["VISA"],
@@ -515,7 +512,7 @@ def update_academic(app):
         If ACADEMIC_FLAG isn't yet set to Y, update ACADEMIC.ORG_CODE_ID based on the passed OrganizationId.
     """
     CURSOR.execute(
-        "exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
+        "exec [custom].[PS_updAcademicAppInfo] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
         app["PEOPLE_CODE_ID"],
         app["ACADEMIC_YEAR"],
         app["ACADEMIC_TERM"],
@@ -523,6 +520,7 @@ def update_academic(app):
         app["PROGRAM"],
         app["DEGREE"],
         app["CURRICULUM"],
+        app["College"],
         app["Department"],
         app["Nontraditional"],
         app["Population"],
@@ -537,6 +535,7 @@ def update_academic(app):
         app["COLLEGE_ATTEND"],
         app["Extracurricular"],
         app["CreateDateTime"],
+        app["SetProgramStartDate"],
     )
     CNXN.commit()
 
@@ -554,7 +553,7 @@ def update_academic_key(app):
         app["PROGRAM"],
         app["DEGREE"],
         app["CURRICULUM"],
-        app["aid"],
+        app["AcademicGUID"],
     )
     CNXN.commit()
 
@@ -856,45 +855,48 @@ def update_association(pcid, association):
     CNXN.commit()
 
 
-def pf_get_fachecklist(pcid, govid, appid, year, term, session):
+def pf_get_fachecklist(pcid, govid, appid, year, term, session, use_finaidmapping):
     """Return the PowerFAIDS missing docs list for uploading to Financial Aid Checklist."""
     checklist = []
     CURSOR.execute(
-        "exec [custom].[PS_selPFChecklist] ?, ?, ?, ?, ?",
+        "exec [custom].[PS_selPFChecklist] ?, ?, ?, ?, ?, ?",
         pcid,
         govid,
         year,
         term,
         session,
+        use_finaidmapping,
     )
 
     columns = [column[0] for column in CURSOR.description]
-    for row in CURSOR.fetchall():
-        checklist.append(dict(zip(columns, row)))
+    if 'Code' in columns:
+        for row in CURSOR.fetchall():
+            checklist.append(dict(zip(columns, row)))
 
-    # Pass through the Slate Application ID
-    for doc in checklist:
-        doc["AppID"] = appid
+        # Pass through the Slate Application ID
+        for doc in checklist:
+            doc["AppID"] = appid
 
     return checklist
 
 
-def pf_get_awards(pcid, govid, year, term, session):
+def pf_get_awards(pcid, govid, year, term, session, use_finaidmapping):
     """Return the PowerFAIDS awards list as XML and the Tracking Status."""
     awards = None
     tracking_status = None
 
     CURSOR.execute(
-        "exec [custom].[PS_selPFAwardsXML] ?, ?, ?, ?, ?",
+        "exec [custom].[PS_selPFAwardsXML] ?, ?, ?, ?, ?, ?",
         pcid,
         govid,
         year,
         term,
         session,
+        use_finaidmapping,
     )
     row = CURSOR.fetchone()
 
-    if row is not None:
+    if row[0] is not None:
         awards = row.XML
         tracking_status = row.tracking_status
 

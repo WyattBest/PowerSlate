@@ -41,12 +41,6 @@ fields = {
         "supply_null": False,
         "type": str,
     },
-    "CitizenshipStatus": {
-        "api_verbatim": True,
-        "sql_verbatim": False,
-        "supply_null": True,
-        "type": str,
-    },
     "CollegeAttendStatus": {
         "api_verbatim": True,
         "sql_verbatim": False,
@@ -78,6 +72,12 @@ fields = {
         "type": str,
     },
     "DemographicsEthnicity": {
+        "api_verbatim": False,
+        "sql_verbatim": True,
+        "supply_null": True,
+        "type": str,
+    },
+    "College": {
         "api_verbatim": False,
         "sql_verbatim": True,
         "supply_null": True,
@@ -227,6 +227,18 @@ fields = {
         "supply_null": True,
         "type": str,
     },
+    "SetProgramStartDate": {
+        "api_verbatim": False,
+        "sql_verbatim": True,
+        "supply_null": True,
+        "type": bool,
+    },
+    "SecondaryCitizenship": {
+        "api_verbatim": True,
+        "sql_verbatim": False,
+        "supply_null": True,
+        "type": str,
+    },
     "PrimaryLanguage": {
         "api_verbatim": True,
         "sql_verbatim": False,
@@ -281,12 +293,6 @@ fields = {
         "supply_null": False,
         "type": int,
     },
-    "SecondaryCitizenship": {
-        "api_verbatim": True,
-        "sql_verbatim": False,
-        "supply_null": True,
-        "type": str,
-    },
     "Status": {
         "api_verbatim": True,
         "sql_verbatim": False,
@@ -301,7 +307,7 @@ fields = {
     },
     "Veteran": {
         "api_verbatim": False,
-        "sql_verbatim": False,
+        "sql_verbatim": True,
         "supply_null": True,
         "type": str,
     },
@@ -327,6 +333,12 @@ fields = {
         "api_verbatim": False,
         "sql_verbatim": True,
         "supply_null": False,
+        "type": str,
+    },
+    "AcademicGUID": {
+        "api_verbatim": False,
+        "sql_verbatim": True,
+        "supply_null": True,
         "type": str,
     },
 }

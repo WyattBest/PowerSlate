@@ -23,10 +23,12 @@ GO
 -- 2021-09-01 Wyatt Best:	Named transaction.
 -- 2023-10-05 Rafael Gomez:	Added @Religion.
 -- 2023-11-09 Wyatt Best:	Updated error message when GOVERNMENT_ID already assigned to other record.
+-- 2024-04-10 Wyatt Best:	Updated for 9.2.3 changes to [WebServices].[spSetDemographics]'s @Gender parameter.
+--							Default Legal Name if blank.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updDemographics] @PCID NVARCHAR(10)
 	,@Opid NVARCHAR(8)
-	,@Gender TINYINT
+	,@GenderId TINYINT
 	,@Ethnicity TINYINT --0 = None, 1 = Hispanic, 2 = NonHispanic. Ellucian's API was supposed to record nothing for ethnicity for 0. I don't think it supports multi-value, but this sproc does.
 	,@DemographicsEthnicity NVARCHAR(6)
 	,@MaritalStatus NVARCHAR(4) NULL
@@ -56,6 +58,25 @@ BEGIN
 		,@Now DATETIME = dbo.fnMakeTime(@getdate)
 
 	--Error check
+	IF (
+			@GenderId IS NOT NULL
+			AND NOT EXISTS (
+				SELECT *
+				FROM CODE_GENDER
+				WHERE GenderId = @GenderId
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@GenderId %d not found in CODE_ETHNICITY.'
+				,11
+				,1
+				,@GenderId
+				)
+
+		RETURN
+	END
+
 	IF (
 			@DemographicsEthnicity IS NOT NULL
 			AND NOT EXISTS (
@@ -112,7 +133,7 @@ BEGIN
 
 		RETURN
 	END
-
+	
 	DECLARE @DupPCID NVARCHAR(10) = (
 			SELECT TOP 1 PEOPLE_CODE_ID
 			FROM PEOPLE
@@ -124,6 +145,14 @@ BEGIN
 			FROM PEOPLE
 			WHERE PEOPLE_CODE_ID = @PCID
 			)
+	DECLARE @GenderCode NVARCHAR(1)
+		,@GenderMed NVARCHAR(20)
+
+	SELECT @GenderCode = CODE_VALUE_KEY
+		,@GenderMed = MEDIUM_DESC
+	FROM CODE_GENDER
+	WHERE GenderId = @GenderId
+
 
 	--Treat blanks as NULL
 	SET @ExistingGovId = NULLIF(@ExistingGovId, '')
@@ -193,7 +222,7 @@ BEGIN
 		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
 			FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 6))
 		EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 6;
-
+		
 	--Update DEMOGRAPHICS rollup if needed
 	IF NOT EXISTS (
 			SELECT *
@@ -202,20 +231,23 @@ BEGIN
 				AND ACADEMIC_YEAR = ''
 				AND ACADEMIC_TERM = ''
 				AND ACADEMIC_SESSION = ''
-				AND GENDER = @Gender
+				AND GENDER = @GenderCode
 				AND ETHNICITY = @DemographicsEthnicity
 				AND MARITAL_STATUS = @MaritalStatus
 				AND VETERAN = @Veteran
 				AND CITIZENSHIP = @PrimaryCitizenship
 				AND DUAL_CITIZENSHIP = @SecondaryCitizenship
 				AND PRIMARY_LANGUAGE = @PrimaryLanguage
-				and HOME_LANGUAGE = @HomeLanguage
+				AND HOME_LANGUAGE = @HomeLanguage
 				AND RELIGION = @Religion
 			)
-		EXECUTE [WebServices].[spSetDemographics] @PersonId
+	BEGIN
+		DECLARE @return_value INT
+
+		EXECUTE @return_value = [WebServices].[spSetDemographics] @PersonId
 			,@Opid
 			,'001'
-			,@Gender
+			,@GenderMed
 			,@DemographicsEthnicity
 			,@MaritalStatus
 			,@Religion
@@ -229,6 +261,20 @@ BEGIN
 			,@HomeLanguage
 			,NULL
 
+		--Ellucian stopped raising errors in spSetDemographics and just returns an int??
+		--Probably some modern trend to make it harder for end users to see meaningful error messages.
+		IF @return_value <> 0
+		BEGIN
+			RAISERROR (
+					'WebServices.spSetDemographics returned error code %d.'
+					,11
+					,1
+					,@return_value
+					)
+
+			RETURN
+		END
+	END
 
 	--Update GOVERNMENT_ID if needed.
 	IF @GovernmentId IS NOT NULL
@@ -241,6 +287,15 @@ BEGIN
 		UPDATE PEOPLE
 		SET GOVERNMENT_ID = @GovernmentId
 		WHERE PEOPLE_CODE_ID = @PCID
+
+	--Update Legal Name if blank
+	UPDATE PEOPLE
+	SET LegalName = dbo.fnPeopleOrgName(@PCID, 'LN, |FN |MN, |SX')
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND (
+			LegalName = ''
+			OR LegalName IS NULL
+			)
 
 	COMMIT TRANSACTION PS_updDemographics
 END

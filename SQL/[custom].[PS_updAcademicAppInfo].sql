@@ -12,8 +12,8 @@ GO
 -- Author:		Wyatt Best
 -- Create date: 2016-11-17
 -- Description:	Updates Status and Decision code for application from Slate.
---				Sets ACADEMIC_FLAG, PRIMARY_FLAG, ENROLL_SEPARATION, DEPARTMENT, POPULATION, COUNSELOR, EXTRA_CURRICULAR, COLLEGE_ATTEND, APPLICATION_DATE.
---				Sets ADMIT and MATRIC field groups.
+--				Sets ACADEMIC_FLAG, PRIMARY_FLAG, ENROLL_SEPARATION, COLLEGE, DEPARTMENT, POPULATION, COUNSELOR, EXTRA_CURRICULAR, COLLEGE_ATTEND, APPLICATION_DATE.
+--				Sets ADMIT and MATRIC field groups. Sets PROGRAM_START_DATE.
 --
 -- 2016-12-15 Wyatt Best:	Added 'Defer' ProposedDecision type.
 -- 2016-12-28 Wyatt Best:	Changed translation CODE_APPDECISION for Waiver from 'ACCP' to 'WAIV'
@@ -40,6 +40,8 @@ GO
 --							If ACADEMIC_FLAG isn't yet set to Y, update ACADEMIC.ORG_CODE_ID based on the passed OrganizationId.
 -- 2021-12-13 Wyatt Best:	Ability to set NONTRAD_PROGRAM back to blank (NULL isn't allowed). Formerly, a bad @Nontraditional value later set to NULL in Slate would remain in PowerCampus.
 -- 2023-03-02 Wyatt Best:	Use ADM_APPLICANT_DEFAULT setting instead of STUDENT_CODING_ENROLLED setting for ENROLL_SEPARATION when converting to student.
+-- 2024-05-03 Wyatt Best:	Added @College.
+-- 2024-05-10 Wyatt Best:	Added flag @SetProgramStartDate to default program start date from academic calendar.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -48,6 +50,7 @@ CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Program NVARCHAR(6)
 	,@Degree NVARCHAR(6)
 	,@Curriculum NVARCHAR(6)
+	,@College NVARCHAR(6) NULL
 	,@Department NVARCHAR(10) NULL
 	,@Nontraditional NVARCHAR(6) NULL
 	,@Population NVARCHAR(12) NULL
@@ -62,6 +65,7 @@ CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@CollegeAttend NVARCHAR(4) NULL
 	,@Extracurricular BIT NULL
 	,@CreateDateTime DATETIME --Application creation date
+	,@SetProgramStartDate BIT NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -95,6 +99,25 @@ BEGIN
 	END
 
 	--Error checks
+	IF (
+			@College IS NOT NULL
+			AND NOT EXISTS (
+				SELECT *
+				FROM CODE_COLLEGE
+				WHERE CODE_VALUE_KEY = @College
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@College ''%s'' not found in CODE_COLLEGE.'
+				,11
+				,1
+				,@College
+				)
+
+		RETURN
+	END
+
 	IF (
 			@Department IS NOT NULL
 			AND NOT EXISTS (
@@ -294,6 +317,22 @@ BEGIN
 		AND @AppStatus IS NOT NULL
 		AND @AppDecision IS NOT NULL
 
+	--Update COLLEGE if needed
+	UPDATE ACADEMIC
+	SET COLLEGE = @College
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
+		AND APPLICATION_FLAG = 'Y'
+		AND (
+			COLLEGE <> @College
+			OR COLLEGE IS NULL
+			)
+
 	--Update DEPARTMENT if needed
 	UPDATE ACADEMIC
 	SET DEPARTMENT = @Department
@@ -339,7 +378,7 @@ BEGIN
 			)
 	BEGIN
 		--ENROLL_SEPARATION is only updated if the ACADEMIC_FLAG is toggled, otherwise it's left alone.
-		DECLARE @ConvertedStudentCode NVARCHAR(8) = dbo.fnGetAbtSetting('ADM_APPLICANT_DEFAULT','APPLICANT_SETUP_DEFAULT','CONVERTED_STUDENT_ENROLLSEP')
+		DECLARE @ConvertedStudentCode NVARCHAR(8) = dbo.fnGetAbtSetting('ADM_APPLICANT_DEFAULT', 'APPLICANT_SETUP_DEFAULT', 'CONVERTED_STUDENT_ENROLLSEP')
 			,@NewAcademicFlag NVARCHAR(1) = (
 				SELECT CASE 
 						WHEN EXISTS (
@@ -616,6 +655,20 @@ BEGIN
 		AND CURRICULUM = @Curriculum
 		AND APPLICATION_FLAG = 'Y'
 		AND COALESCE(APPLICATION_DATE, '') <> dbo.fnMakeDate(@CreateDateTime);
+
+	--Update PROGRAM_START_DATE if needed
+	UPDATE ACADEMIC
+	SET PROGRAM_START_DATE = @MatricDate
+	WHERE PEOPLE_CODE_ID = @PCID
+		AND ACADEMIC_YEAR = @Year
+		AND ACADEMIC_TERM = @Term
+		AND ACADEMIC_SESSION = @Session
+		AND PROGRAM = @Program
+		AND DEGREE = @Degree
+		AND CURRICULUM = @Curriculum
+		AND APPLICATION_FLAG = 'Y'
+		AND PROGRAM_START_DATE IS NULL
+		AND @SetProgramStartDate = 1
 
 	COMMIT
 END

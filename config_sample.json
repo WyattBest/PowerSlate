@@ -2,8 +2,11 @@
 	"powercampus": {
 		"api": {
 			"url": "https://webapi.school.edu/",
+			"auth_method": "[token|basic]",
 			"username": "username",
-			"password": "astrongpassword"
+			"password": "astrongpassword",
+			"token": "Bearer [YOUR TOKEN]",
+			"app_form_setting_id": 3
 		},
 		"autoconfigure_mappings": {
 			"enabled": false,
@@ -17,10 +20,6 @@
 				"note_type": "GENRL"
 			}
 		],
-		"logging": {
-			"enabled": true,
-			"log_table": "[SomeDatabase].[dbo].[PowerSlate_AppStatus_Log]"
-		},
 		"user_defined_fields": [
 			{
 				"slate_field": "FirstGeneration",
@@ -32,7 +31,6 @@
 			"READ",
 			"blank"
 		],
-		"app_form_setting_id": 3,
 		"campus_emailtype": "CAMPUS",
 		"database_string": "Driver={ODBC Driver 17 for SQL Server};Server=servername;Database=campus6;Trusted_Connection=yes;ServerSPN=MSSQLSvc/servername.local.domain.edu;",
 		"mapping_file_location": "\\\\servername\\PowerCampus Mapper\\recruiterMapping.xml",
@@ -70,7 +68,8 @@
 			"advisor",
 			"fa_awards",
 			"fa_status",
-			"sso_id"
+			"sso_id",
+			"academic_guid"
 		],
 		"url": "https://apply.school.edu/manage/service/import?cmd=load&format=xxxx",
 		"username": "service_user",
@@ -99,8 +98,8 @@
 	},
 	"teams": {
 		"enabled": false,
-		"webHookURL" : "[YOUR TEAMS WEBHOOK GOES HERE]",
-		"title" : "PowerSlate [Production] Alert"
+		"webHookURL": "[YOUR TEAMS WEBHOOK GOES HERE]",
+		"title": "PowerSlate [Production] Alert"
 	},
 	"scheduled_actions": {
 		"enabled": false,
@@ -117,7 +116,8 @@
 		]
 	},
 	"fa_checklist": {
-		"enabled": true,
+		"enabled": false,
+		"use_finaidmapping": false,
 		"slate_post": {
 			"url": "https://apply.school.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
 			"username": "username",
@@ -125,21 +125,13 @@
 		}
 	},
 	"fa_awards": {
-		"enabled": true
+		"enabled": false,
+		"use_finaidmapping": false
 	},
 	"defaults": {
 		"address_country": null,
 		"phone_country": "US",
 		"phone_type": 1
-	},
-	"msg_strings": {
-		"error_no_apps": "<p><strong>No applications found. Perhaps the application(s) are not submitted or are missing required fields?</strong></p>",
-		"error_no_phones": "Application must have at least one phone number.",
-		"error_academic_row_not_found": "Record not found by Year/Term/Session/Program/Degree/Curriculum.",
-		"error_invalid_college_attend": "College Attend is set to {} in PowerCampus, which is not valid for applicants.",
-		"error_api_missing_database": "The PowerCampus Web API is not functioning properly. You may need to remove and reinstall the application.",
-		"sync_done": "Sync completed with no errors.",
-		"sync_done_not_found": "Sync completed, but one or more applications had integration errors."
 	},
 	"http_port": null,
 	"http_ip": null
