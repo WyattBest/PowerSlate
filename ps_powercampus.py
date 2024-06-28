@@ -602,7 +602,7 @@ def cleanup_actions(
     academic_session,
 ):
     """
-    Delete orphaned Scheduled Actions from PowerCampus.
+    Delete Scheduled Actions from PowerCampus that were created by SLATE but are not in the current list from Slate.
 
     admissions_actions -- list of action_id's to consider
     app_actions -- list of dicts from Slate, each representing a scheduled action
@@ -613,10 +613,11 @@ def cleanup_actions(
     """
 
     # Only keep keys we care about in app_actions
+    # ACTION_NAME is limited to 50 characters. Nothing else should be that long.
     keys = ["action_id", "item"]
     app_actions2 = []
     for action in app_actions:
-        app_actions2.append({k: v for (k, v) in action.items() if k in keys})
+        app_actions2.append({k: v[:50] for (k, v) in action.items() if k in keys})
 
     # Get actions from PowerCampus
     pc_actions = {}
@@ -869,7 +870,7 @@ def pf_get_fachecklist(pcid, govid, appid, year, term, session, use_finaidmappin
     )
 
     columns = [column[0] for column in CURSOR.description]
-    if 'Code' in columns:
+    if "Code" in columns:
         for row in CURSOR.fetchall():
             checklist.append(dict(zip(columns, row)))
 
