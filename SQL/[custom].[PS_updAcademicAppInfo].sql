@@ -41,7 +41,8 @@ GO
 -- 2021-12-13 Wyatt Best:	Ability to set NONTRAD_PROGRAM back to blank (NULL isn't allowed). Formerly, a bad @Nontraditional value later set to NULL in Slate would remain in PowerCampus.
 -- 2023-03-02 Wyatt Best:	Use ADM_APPLICANT_DEFAULT setting instead of STUDENT_CODING_ENROLLED setting for ENROLL_SEPARATION when converting to student.
 -- 2024-05-03 Wyatt Best:	Added @College.
--- 2024-05-10 Wyatt Best:	Added flag @SetProgramStartDate to default program start date from academic calendar.
+-- 2024-05-10 Wyatt Best:	Added flag @SetProgramStartDate to default PROGRAM_START_DATE  from academic calendar.
+-- 2024-07-08 Wyatt Best:	Respect @SetProgramStartDate flag whether or not @Matriculated is true.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAcademicAppInfo] @PCID NVARCHAR(10)
 	,@Year NVARCHAR(4)
@@ -74,10 +75,11 @@ BEGIN
 		,@Now DATETIME = dbo.fnMakeTime(GETDATE())
 		,@OverwritePopulation BIT = 1
 
-	--Setup for Matric and Admit field groups
+	--Setup for Matric and Admit field groups and PROGRAM_START_DATE
 	IF @Matriculated = 1
+		OR @SetProgramStartDate = 1
 	BEGIN
-		DECLARE @MatricDate DATE = (
+		DECLARE @AcalStartDate DATE = (
 				SELECT [START_DATE]
 				FROM ACADEMICCALENDAR
 				WHERE ACADEMIC_YEAR = @Year
@@ -549,7 +551,7 @@ BEGIN
 			END
 		,MATRIC_DATE = CASE @Matriculated
 			WHEN 1
-				THEN dbo.fnMakeDate(@MatricDate)
+				THEN dbo.fnMakeDate(@AcalStartDate)
 			ELSE NULL
 			END
 	WHERE PEOPLE_CODE_ID = @PCID
@@ -566,7 +568,7 @@ BEGIN
 				@Matriculated = 1
 				AND (
 					COALESCE(MATRIC, '') <> 'Y'
-					OR MATRIC_DATE <> @MatricDate
+					OR MATRIC_DATE <> @AcalStartDate
 					OR MATRIC_DATE IS NULL
 					OR MATRIC_YEAR <> @Year
 					OR MATRIC_YEAR IS NULL
@@ -658,7 +660,7 @@ BEGIN
 
 	--Update PROGRAM_START_DATE if needed
 	UPDATE ACADEMIC
-	SET PROGRAM_START_DATE = @MatricDate
+	SET PROGRAM_START_DATE = @AcalStartDate
 	WHERE PEOPLE_CODE_ID = @PCID
 		AND ACADEMIC_YEAR = @Year
 		AND ACADEMIC_TERM = @Term
