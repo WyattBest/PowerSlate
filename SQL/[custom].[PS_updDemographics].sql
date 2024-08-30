@@ -21,7 +21,8 @@ GO
 -- 2021-09-01 Wyatt Best:	Named transaction.
 -- 2023-10-05 Rafael Gomez:	Added @Religion.
 -- 2023-11-09 Wyatt Best:	Updated error message when GOVERNMENT_ID already assigned to other record.
--- 2024-08-30 Wyatt Best:	Default Legal Name if blank.
+-- 2024-04-10 Wyatt Best:	Default Legal Name if blank.
+-- 2024-08-30 Wyatt Best:	Return @ErrorFlag for GOVERNMENT_ID problems instead of throwing fatal errors.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updDemographics] @PCID NVARCHAR(10)
 	,@Opid NVARCHAR(8)
@@ -50,6 +51,8 @@ BEGIN
 
 	DECLARE @PersonId INT = dbo.fnGetPersonId(@PCID)
 		,@getdate DATETIME = getdate()
+		,@ErrorFlag BIT = 0
+		,@ErrorMessage NVARCHAR(max)
 	DECLARE @Today DATETIME = dbo.fnMakeDate(@getdate)
 		,@Now DATETIME = dbo.fnMakeTime(@getdate)
 
@@ -129,23 +132,37 @@ BEGIN
 
 	IF @DupPCID IS NOT NULL
 	BEGIN
-		RAISERROR (
-				'Cannot assign @GovernmentId to %s because it is already assigned to %s.'
-				,11
-				,1
-				,@DupPCID
-				,@PCID
-				)
+		--RAISERROR (
+		--		'Cannot assign @GovernmentId to %s because it is already assigned to %s.'
+		--		,11
+		--		,1
+		--		,@DupPCID
+		--		,@PCID
+		--		)
+		SELECT @ErrorFlag = 1
+			,@ErrorMessage = 'Cannot assign SSN to ' + @DupPCID + ' because it is already assigned to ' + @PCID + '.'
+
+		SELECT @ErrorFlag [ErrorFlag]
+			,@ErrorMessage [ErrorMessage]
+
+		RETURN
 	END
 
 	IF @GovernmentId <> @ExistingGovId
 	BEGIN
-		RAISERROR (
-				'Existing GOVERNMENT_ID for %s does not match @GovernmentId supplied by Slate. Please reconcile manually.'
-				,11
-				,1
-				,@PCID
-				)
+		--RAISERROR (
+		--		'Existing GOVERNMENT_ID for %s does not match @GovernmentId supplied by Slate. Please reconcile manually.'
+		--		,11
+		--		,1
+		--		,@PCID
+		--		)
+		SELECT @ErrorFlag = 1
+			,@ErrorMessage = 'Existing SSN for ' + @PCID + ' does not match SSN supplied by Slate. Please reconcile manually.'
+
+		SELECT @ErrorFlag [ErrorFlag]
+			,@ErrorMessage [ErrorMessage]
+
+		RETURN
 	END
 
 	IF (
@@ -321,6 +338,9 @@ BEGIN
 			)
 
 	COMMIT TRANSACTION PS_updDemographics
+
+	SELECT @ErrorFlag [ErrorFlag]
+		,@ErrorMessage [ErrorMessage]
 END
 GO
 

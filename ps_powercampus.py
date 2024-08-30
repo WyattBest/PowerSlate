@@ -394,13 +394,22 @@ def get_profile(app, campus_email_type, Messages):
     """Fetch ACADEMIC row data and email address from PowerCampus.
 
     Returns:
-    found -- True/False (row exists or not)
+    error_flag -- True/False
+    error_message -- string
     registered -- True/False
     reg_date -- Date
     readmit -- True/False
     withdrawn -- True/False
     credits -- string
     campus_email -- string (None of not registered)
+    advisor -- string
+    sso_id -- string
+    academic_guid -- uniqueidentifier
+    custom_1
+    custom_2
+    custom_3
+    custom_4
+    custom_5
     """
 
     error_flag = True
@@ -525,6 +534,8 @@ def get_profile(app, campus_email_type, Messages):
 
 
 def update_demographics(app):
+    error_flag = True
+    error_message = None
     if PC_GUID_SUPPORT:
         CURSOR.execute(
             "execute [custom].[PS_updDemographics921] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
@@ -548,7 +559,6 @@ def update_demographics(app):
             app["HOME_LANGUAGE"],
             app["GovernmentId"],
         )
-        CNXN.commit()
     else:
         CURSOR.execute(
             "execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
@@ -572,7 +582,12 @@ def update_demographics(app):
             app["HOME_LANGUAGE"],
             app["GovernmentId"],
         )
-        CNXN.commit()
+    row = CURSOR.fetchone()
+    error_flag = row.ErrorFlag
+    error_message = row.ErrorMessage
+    CNXN.commit()
+
+    return error_flag, error_message
 
 
 def update_academic(app):

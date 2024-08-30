@@ -7,7 +7,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-
 -- =============================================
 -- Author:		Wyatt Best
 -- Create date: 2016-11-17
@@ -25,6 +24,7 @@ GO
 -- 2024-04-10 Wyatt Best:	Updated for 9.2.3 changes to [WebServices].[spSetDemographics]'s @Gender parameter.
 --							Default Legal Name if blank.
 -- 2024-08-30 Wyatt Best:	Forked from PS_updDemographics as part of bringing back support for pre-9.2.1 versions.
+-- 2024-08-30 Wyatt Best:	Return @ErrorFlag for GOVERNMENT_ID problems instead of throwing fatal errors.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updDemographics921] @PCID NVARCHAR(10)
 	,@Opid NVARCHAR(8)
@@ -44,8 +44,7 @@ CREATE PROCEDURE [custom].[PS_updDemographics921] @PCID NVARCHAR(10)
 	,@RaceWhite BIT
 	,@PrimaryLanguage NVARCHAR(12) NULL
 	,@HomeLanguage NVARCHAR(12) NULL
-	,@GovernmentId nvarchar(40) NULL
-	
+	,@GovernmentId NVARCHAR(40) NULL
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -54,6 +53,8 @@ BEGIN
 
 	DECLARE @PersonId INT = dbo.fnGetPersonId(@PCID)
 		,@getdate DATETIME = getdate()
+		,@ErrorFlag BIT = 0
+		,@ErrorMessage NVARCHAR(max)
 	DECLARE @Today DATETIME = dbo.fnMakeDate(@getdate)
 		,@Now DATETIME = dbo.fnMakeTime(@getdate)
 
@@ -133,7 +134,7 @@ BEGIN
 
 		RETURN
 	END
-	
+
 	DECLARE @DupPCID NVARCHAR(10) = (
 			SELECT TOP 1 PEOPLE_CODE_ID
 			FROM PEOPLE
@@ -153,31 +154,45 @@ BEGIN
 	FROM CODE_GENDER
 	WHERE GenderId = @GenderId
 
-
 	--Treat blanks as NULL
 	SET @ExistingGovId = NULLIF(@ExistingGovId, '')
-	SET @GovernmentId  = NULLIF(@GovernmentId, '')
+	SET @GovernmentId = NULLIF(@GovernmentId, '')
 
 	IF @DupPCID IS NOT NULL
 	BEGIN
-		RAISERROR (
-				'Cannot assign @GovernmentId to %s because it is already assigned to %s.'
-				,11
-				,1
-				,@DupPCID
-				,@PCID
-				)
+		--RAISERROR (
+		--		'Cannot assign @GovernmentId to %s because it is already assigned to %s.'
+		--		,11
+		--		,1
+		--		,@DupPCID
+		--		,@PCID
+		--		)
+		SELECT @ErrorFlag = 1
+			,@ErrorMessage = 'Cannot assign SSN to ' + @DupPCID + ' because it is already assigned to ' + @PCID + '.'
+
+		SELECT @ErrorFlag [ErrorFlag]
+			,@ErrorMessage [ErrorMessage]
+
+		RETURN
 	END
 
 	IF @GovernmentId <> @ExistingGovId
 	BEGIN
-		RAISERROR (
-				'Existing GOVERNMENT_ID for %s does not match @GovernmentId supplied by Slate. Please reconcile manually.'
-				,11
-				,1
-				,@PCID
-				)
+		--RAISERROR (
+		--		'Existing GOVERNMENT_ID for %s does not match @GovernmentId supplied by Slate. Please reconcile manually.'
+		--		,11
+		--		,1
+		--		,@PCID
+		--		)
+		SELECT @ErrorFlag = 1
+			,@ErrorMessage = 'Existing SSN for ' + @PCID + ' does not match SSN supplied by Slate. Please reconcile manually.'
+
+		SELECT @ErrorFlag [ErrorFlag]
+			,@ErrorMessage [ErrorMessage]
+
+		RETURN
 	END
+
 	IF (
 			@Religion IS NOT NULL
 			AND NOT EXISTS (
@@ -196,33 +211,104 @@ BEGIN
 
 		RETURN
 	END
-	
+
 	--IPEDS Ethnicity
-	IF (@Ethnicity = 1 --Hispanic
-		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
-			FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 1))
-		EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 1;
-	IF (@RaceAmericanIndian = 1
-		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
-			FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 2))
-		EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 2;
-	IF (@RaceAsian = 1
-		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
-			FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 3))
-		EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 3;
-	IF (@RaceAfricanAmerican = 1
-		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
-			FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 4))
-		EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 4;
-	IF (@RaceNativeHawaiian = 1
-		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
-			FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 5))
-		EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 5;
-	IF (@RaceWhite = 1
-		AND NOT EXISTS (SELECT PersonId, IpedsFederalCategoryId
-			FROM PersonEthnicity WHERE PersonId = @PersonId and IpedsFederalCategoryId = 6))
-		EXEC [custom].[PS_insPersonEthnicity] @PersonId, @Opid, @Today, @Now, 6;
-		
+	IF (
+			@Ethnicity = 1 --Hispanic
+			AND NOT EXISTS (
+				SELECT PersonId
+					,IpedsFederalCategoryId
+				FROM PersonEthnicity
+				WHERE PersonId = @PersonId
+					AND IpedsFederalCategoryId = 1
+				)
+			)
+		EXEC [custom].[PS_insPersonEthnicity] @PersonId
+			,@Opid
+			,@Today
+			,@Now
+			,1;
+
+	IF (
+			@RaceAmericanIndian = 1
+			AND NOT EXISTS (
+				SELECT PersonId
+					,IpedsFederalCategoryId
+				FROM PersonEthnicity
+				WHERE PersonId = @PersonId
+					AND IpedsFederalCategoryId = 2
+				)
+			)
+		EXEC [custom].[PS_insPersonEthnicity] @PersonId
+			,@Opid
+			,@Today
+			,@Now
+			,2;
+
+	IF (
+			@RaceAsian = 1
+			AND NOT EXISTS (
+				SELECT PersonId
+					,IpedsFederalCategoryId
+				FROM PersonEthnicity
+				WHERE PersonId = @PersonId
+					AND IpedsFederalCategoryId = 3
+				)
+			)
+		EXEC [custom].[PS_insPersonEthnicity] @PersonId
+			,@Opid
+			,@Today
+			,@Now
+			,3;
+
+	IF (
+			@RaceAfricanAmerican = 1
+			AND NOT EXISTS (
+				SELECT PersonId
+					,IpedsFederalCategoryId
+				FROM PersonEthnicity
+				WHERE PersonId = @PersonId
+					AND IpedsFederalCategoryId = 4
+				)
+			)
+		EXEC [custom].[PS_insPersonEthnicity] @PersonId
+			,@Opid
+			,@Today
+			,@Now
+			,4;
+
+	IF (
+			@RaceNativeHawaiian = 1
+			AND NOT EXISTS (
+				SELECT PersonId
+					,IpedsFederalCategoryId
+				FROM PersonEthnicity
+				WHERE PersonId = @PersonId
+					AND IpedsFederalCategoryId = 5
+				)
+			)
+		EXEC [custom].[PS_insPersonEthnicity] @PersonId
+			,@Opid
+			,@Today
+			,@Now
+			,5;
+
+	IF (
+			@RaceWhite = 1
+			AND NOT EXISTS (
+				SELECT PersonId
+					,IpedsFederalCategoryId
+				FROM PersonEthnicity
+				WHERE PersonId = @PersonId
+					AND IpedsFederalCategoryId = 6
+				)
+			)
+		EXEC [custom].[PS_insPersonEthnicity] @PersonId
+			,@Opid
+			,@Today
+			,@Now
+			,6;
+
 	--Update DEMOGRAPHICS rollup if needed
 	IF NOT EXISTS (
 			SELECT *
@@ -298,6 +384,10 @@ BEGIN
 			)
 
 	COMMIT TRANSACTION PS_updDemographics
+
+	SELECT @ErrorFlag [ErrorFlag]
+		,@ErrorMessage [ErrorMessage]
 END
 GO
+
 

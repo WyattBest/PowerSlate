@@ -306,7 +306,6 @@ def main_sync(pid=None):
     """
     global CURRENT_RECORD
     global RM_MAPPING
-    sync_errors = False
 
     verbose_print("Get applicants from Slate...")
     creds = (
@@ -468,7 +467,14 @@ def main_sync(pid=None):
                 and app_pc["AcademicGUID"] is not None
             ):
                 ps_powercampus.update_academic_key(app_pc)
-            ps_powercampus.update_demographics(app_pc)
+
+            error_flag, error_message = ps_powercampus.update_demographics(app_pc)
+            if error_flag:
+                apps[k]["error_flag"] = error_flag
+                apps[k]["error_message"] = error_message
+                # Stop making PowerCampus updates for this record
+                continue
+
             ps_powercampus.update_academic(app_pc)
             ps_powercampus.update_smsoptin(app_pc)
 
@@ -586,8 +592,6 @@ def main_sync(pid=None):
                     "custom_5": custom_5,
                 }
             )
-            if error_flag == True:
-                sync_errors == True
 
             # Get PowerFAIDS awards and tracking status
             if SETTINGS.fa_awards.enabled:
@@ -643,8 +647,8 @@ def main_sync(pid=None):
 
         slate_post_fa_checklist(slate_upload_list)
 
-    # Warn if any apps returned an error flag from ps_powercampus.get_profile()
-    if sync_errors == True or [k for k in apps if apps[k]["error_flag"] == True]:
+    # Warn if any apps have errors
+    if [k for k in apps if apps[k]["error_flag"] == True]:
         output_msg = SETTINGS.Messages.success.done_with_errors
     else:
         output_msg = SETTINGS.Messages.success.done
