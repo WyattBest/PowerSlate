@@ -459,7 +459,7 @@ def get_profile(app, campus_email_type, Messages):
             academic_guid = row.AcademicGuid
 
     CURSOR.execute(
-        "EXEC [custom].[PS_selProfile] ?, ?, ?, ?, ?, ?, ?, ?, ?",
+        "EXEC [custom].[PS_selProfile] ?, ?, ?, ?, ?, ?, ?, ?",
         app["PEOPLE_CODE_ID"],
         app["ACADEMIC_YEAR"],
         app["ACADEMIC_TERM"],
@@ -468,7 +468,6 @@ def get_profile(app, campus_email_type, Messages):
         app["DEGREE"],
         app["CURRICULUM"],
         campus_email_type,
-        app["AcademicGUID"],
     )
     row = CURSOR.fetchone()
 
@@ -485,7 +484,6 @@ def get_profile(app, campus_email_type, Messages):
         campus_email = row.CampusEmail
         advisor = row.AdvisorUsername
         sso_id = row.Username
-        academic_guid = row.Guid
         custom_1 = row.custom_1
         custom_2 = row.custom_2
         custom_3 = row.custom_3
@@ -527,7 +525,6 @@ def get_profile(app, campus_email_type, Messages):
 
 
 def update_demographics(app):
-    #
     if PC_GUID_SUPPORT:
         CURSOR.execute(
             "execute [custom].[PS_updDemographics921] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
