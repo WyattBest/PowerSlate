@@ -98,8 +98,11 @@
 	},
 	"teams": {
 		"enabled": false,
-		"webHookURL": "[YOUR TEAMS WEBHOOK GOES HERE]",
-		"title": "PowerSlate [Production] Alert"
+		"title": "PowerSlate [Prod] Error",
+		"webHooksURLs": [
+			"[YOUR TEAMS WEBHOOK GOES HERE]",
+			"[ANOTHER TEAMS WEBHOOK, OPTIONALLY]"
+		]
 	},
 	"scheduled_actions": {
 		"enabled": false,
