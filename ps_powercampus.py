@@ -10,6 +10,7 @@ def init(config, verbose):
     global CURSOR
     global CONFIG
     global VERBOSE
+    global PC_GUID_SUPPORT  # PowerCampus 9.2.1 and later has GUID ID's on many tables.
 
     CONFIG = config
     VERBOSE = verbose
@@ -19,11 +20,25 @@ def init(config, verbose):
     CURSOR = CNXN.cursor()
 
     # Print a test of connections
-    r = requests.get(config.api.url + "api/version")
+    r = requests.get(
+        config.api.url + "api/version",
+        auth=config.api.creds,
+        headers=config.api.headers,
+    )
     verbose_print("PowerCampus API Status: " + str(r.status_code))
     verbose_print(r.text)
     r.raise_for_status()
     verbose_print("Database:" + CNXN.getinfo(pyodbc.SQL_DATABASE_NAME))
+
+    # Get database version
+    CURSOR.execute("SELECT dbo.fnGetAbtSetting('SYSADMIN','DATABASE','VERSION')")
+    row = CURSOR.fetchone()
+    db_version = row[0]
+    verbose_print("Database Version: " + db_version)
+    if db_version >= "9.2.1":
+        PC_GUID_SUPPORT = True
+    else:
+        PC_GUID_SUPPORT = False
 
     # Enable ApplicationFormSetting's ProcessAutomatically in case program exited abnormally last time with setting toggled off.
     update_app_form_autoprocess(config.api.app_form_setting_id, True)
@@ -405,6 +420,44 @@ def get_profile(app, campus_email_type, Messages):
     custom_4 = None
     custom_5 = None
 
+    if PC_GUID_SUPPORT:
+        CURSOR.execute(
+            "EXEC [custom].[PS_selAcademicGuid] ?, ?, ?, ?, ?, ?, ?, ?, ?",
+            app["PEOPLE_CODE_ID"],
+            app["ACADEMIC_YEAR"],
+            app["ACADEMIC_TERM"],
+            app["ACADEMIC_SESSION"],
+            app["PROGRAM"],
+            app["DEGREE"],
+            app["CURRICULUM"],
+            campus_email_type,
+            app["AcademicGUID"],
+        )
+        row = CURSOR.fetchone()
+        if row.ErrorFlag == 1:
+            # ACADEMIC row found by GUID but YTSPDC or PCID does not match.
+            error_message = row.ErrorMessage
+            return (
+                error_flag,
+                error_message,
+                registered,
+                reg_date,
+                readmit,
+                withdrawn,
+                credits,
+                campus_email,
+                advisor,
+                sso_id,
+                academic_guid,
+                custom_1,
+                custom_2,
+                custom_3,
+                custom_4,
+                custom_5,
+            )
+        else:
+            academic_guid = row.AcademicGuid
+
     CURSOR.execute(
         "EXEC [custom].[PS_selProfile] ?, ?, ?, ?, ?, ?, ?, ?, ?",
         app["PEOPLE_CODE_ID"],
@@ -423,41 +476,35 @@ def get_profile(app, campus_email_type, Messages):
         # ACADEMIC row not found by YTSPDC or GUID.
         error_message = Messages.error.academic_row_not_found
     else:
-        if row.ErrorFlag == 1:
-            # ACADEMIC row found by GUID but YTSPDC does not match.
-            error_message = row.ErrorMessage
-        else:
-            error_flag = False
-            if row.Registered == "Y":
-                registered = True
-                reg_date = str(row.REG_VAL_DATE)
-                credits = str(row.CREDITS)
+        error_flag = False
+        if row.Registered == "Y":
+            registered = True
+            reg_date = str(row.REG_VAL_DATE)
+            credits = str(row.CREDITS)
 
-            campus_email = row.CampusEmail
-            advisor = row.AdvisorUsername
-            sso_id = row.Username
-            academic_guid = row.Guid
-            custom_1 = row.custom_1
-            custom_2 = row.custom_2
-            custom_3 = row.custom_3
-            custom_4 = row.custom_4
-            custom_5 = row.custom_5
+        campus_email = row.CampusEmail
+        advisor = row.AdvisorUsername
+        sso_id = row.Username
+        academic_guid = row.Guid
+        custom_1 = row.custom_1
+        custom_2 = row.custom_2
+        custom_3 = row.custom_3
+        custom_4 = row.custom_4
+        custom_5 = row.custom_5
 
-            # College Attend and Readmits
-            college_attend = row.COLLEGE_ATTEND
-            if college_attend == CONFIG.readmit_code:
-                readmit = True
-            elif college_attend == "" or college_attend is None:
-                college_attend = "blank"
+        # College Attend and Readmits
+        college_attend = row.COLLEGE_ATTEND
+        if college_attend == CONFIG.readmit_code:
+            readmit = True
+        elif college_attend == "" or college_attend is None:
+            college_attend = "blank"
 
-            if college_attend not in CONFIG.valid_college_attend:
-                error_flag = True
-                error_message = Messages.error.invalid_college_attend.format(
-                    college_attend
-                )
+        if college_attend not in CONFIG.valid_college_attend:
+            error_flag = True
+            error_message = Messages.error.invalid_college_attend.format(college_attend)
 
-            if row.Withdrawn == "Y":
-                withdrawn = True
+        if row.Withdrawn == "Y":
+            withdrawn = True
 
     return (
         error_flag,
@@ -480,29 +527,55 @@ def get_profile(app, campus_email_type, Messages):
 
 
 def update_demographics(app):
-    CURSOR.execute(
-        "execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
-        app["PEOPLE_CODE_ID"],
-        "SLATE",
-        app["GENDER"],
-        app["Ethnicity"],
-        app["DemographicsEthnicity"],
-        app["MARITALSTATUS"],
-        app["Religion"],
-        app["Veteran"],
-        app["PRIMARYCITIZENSHIP"],
-        app["SECONDARYCITIZENSHIP"],
-        app["VISA"],
-        app["RaceAfricanAmerican"],
-        app["RaceAmericanIndian"],
-        app["RaceAsian"],
-        app["RaceNativeHawaiian"],
-        app["RaceWhite"],
-        app["PRIMARY_LANGUAGE"],
-        app["HOME_LANGUAGE"],
-        app["GovernmentId"],
-    )
-    CNXN.commit()
+    #
+    if PC_GUID_SUPPORT:
+        CURSOR.execute(
+            "execute [custom].[PS_updDemographics921] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
+            app["PEOPLE_CODE_ID"],
+            "SLATE",
+            app["GENDER"],
+            app["Ethnicity"],
+            app["DemographicsEthnicity"],
+            app["MARITALSTATUS"],
+            app["Religion"],
+            app["Veteran"],
+            app["PRIMARYCITIZENSHIP"],
+            app["SECONDARYCITIZENSHIP"],
+            app["VISA"],
+            app["RaceAfricanAmerican"],
+            app["RaceAmericanIndian"],
+            app["RaceAsian"],
+            app["RaceNativeHawaiian"],
+            app["RaceWhite"],
+            app["PRIMARY_LANGUAGE"],
+            app["HOME_LANGUAGE"],
+            app["GovernmentId"],
+        )
+        CNXN.commit()
+    else:
+        CURSOR.execute(
+            "execute [custom].[PS_updDemographics] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
+            app["PEOPLE_CODE_ID"],
+            "SLATE",
+            app["GENDER"],
+            app["Ethnicity"],
+            app["DemographicsEthnicity"],
+            app["MARITALSTATUS"],
+            app["Religion"],
+            app["Veteran"],
+            app["PRIMARYCITIZENSHIP"],
+            app["SECONDARYCITIZENSHIP"],
+            app["VISA"],
+            app["RaceAfricanAmerican"],
+            app["RaceAmericanIndian"],
+            app["RaceAsian"],
+            app["RaceNativeHawaiian"],
+            app["RaceWhite"],
+            app["PRIMARY_LANGUAGE"],
+            app["HOME_LANGUAGE"],
+            app["GovernmentId"],
+        )
+        CNXN.commit()
 
 
 def update_academic(app):
@@ -541,21 +614,36 @@ def update_academic(app):
 
 
 def update_academic_key(app):
-    """Track unique row GUID in custom.AcademicKey table and update PROGRAM/DEGREE/CURRICULUM columns in ACADEMIC table.
+    """Update PROGRAM/DEGREE/CURRICULUM columns in ACADEMIC table and set APPLICATION_FLAG if necessary.
     P/C/D will only be updated if application is not registered and does not have an academic plan assigned.
+    Behavior changes based on PowerCampus version.
     """
-    CURSOR.execute(
-        "exec [custom].[PS_updAcademicKey] ?, ?, ?, ?, ?, ?, ?, ?",
-        app["PEOPLE_CODE_ID"],
-        app["ACADEMIC_YEAR"],
-        app["ACADEMIC_TERM"],
-        app["ACADEMIC_SESSION"],
-        app["PROGRAM"],
-        app["DEGREE"],
-        app["CURRICULUM"],
-        app["AcademicGUID"],
-    )
-    CNXN.commit()
+    if PC_GUID_SUPPORT:
+        CURSOR.execute(
+            "exec [custom].[PS_updAcademicKey921] ?, ?, ?, ?, ?, ?, ?, ?",
+            app["PEOPLE_CODE_ID"],
+            app["ACADEMIC_YEAR"],
+            app["ACADEMIC_TERM"],
+            app["ACADEMIC_SESSION"],
+            app["PROGRAM"],
+            app["DEGREE"],
+            app["CURRICULUM"],
+            app["AcademicGUID"],
+        )
+        CNXN.commit()
+    else:
+        CURSOR.execute(
+            "exec [custom].[PS_updAcademicKey] ?, ?, ?, ?, ?, ?, ?, ?",
+            app["PEOPLE_CODE_ID"],
+            app["ACADEMIC_YEAR"],
+            app["ACADEMIC_TERM"],
+            app["ACADEMIC_SESSION"],
+            app["PROGRAM"],
+            app["DEGREE"],
+            app["CURRICULUM"],
+            app["AcademicGUID"],
+        )
+        CNXN.commit()
 
 
 def get_action_definition(action_id):

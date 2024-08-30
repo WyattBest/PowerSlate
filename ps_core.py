@@ -39,6 +39,13 @@ class Settings:
             for d in dicts:
                 setattr(self, d, Settings.FlatDict(config[d]))
 
+            self.api.creds = None
+            self.api.headers = None
+            if self.api.auth_method == "basic":
+                self.api.creds = (self.api.username, self.api.password)
+            elif config.auth_method == "token":
+                self.api.headers = {"Authorization": self.api.token}
+
     class Messages:
         def __init__(self):
             with open("config_messages.json") as file:
