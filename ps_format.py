@@ -147,7 +147,7 @@ def format_str_digits(s):
     return s.translate(non_digits)
 
 
-def format_app_generic(app, cfg_fields, Messages):
+def format_app_generic(app, cfg_fields):
     """Supply missing fields and correct datatypes. Returns a flat dict."""
 
     mapped = format_blank_to_null(app)
@@ -435,13 +435,15 @@ def format_app_sql(app, mapping, config):
             item.update({k: None for k in fields_null if k not in item})
 
     # Pass through arrays implemented as classes
-    if "Stops" in app:
-        mapped["Stops"] = app["Stops"]
+    array_classes = ["Stops", "Scholarships", "Associations"]
+    for array in array_classes:
+        if array in app:
+            mapped[array] = app[array]
 
-    if "Scholarships" in app:
-        mapped["Scholarships"] = app["Scholarships"]
-
-    if "Associations" in app:
-        mapped["Associations"] = app["Associations"]
+    # Look for array names with numbers appended and combine them
+    # Example: "Stops1", "Stops2", "Stops3" become "Stops"
+    array_numbers = [k for k in app if k[-1].isdigit() and k[:-1] in array_classes]
+    for array in array_numbers:
+        mapped[array[:-1]].extend(app[array])
 
     return mapped

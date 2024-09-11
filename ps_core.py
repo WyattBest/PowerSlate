@@ -335,9 +335,7 @@ def main_sync(pid=None):
     verbose_print("Clean up app data from Slate (datatypes, supply nulls, etc.)")
     for k, v in apps.items():
         CURRENT_RECORD = k
-        apps[k] = format_app_generic(
-            v, CONFIG["slate_upload_active"], SETTINGS.Messages
-        )
+        apps[k] = format_app_generic(v, CONFIG["slate_upload_active"])
 
     # Set error flag if one pid has multiple applications with the same YTS + PCD
     duplicates = []
