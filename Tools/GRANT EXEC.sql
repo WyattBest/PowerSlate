@@ -30,4 +30,4 @@ GRANT EXEC ON [custom].[PS_updAssociation] to [$(service_user)]
 GRANT EXEC ON  [custom].[PS_selAcademicGuid] to [$(service_user)]
 GRANT EXEC ON  [custom].[PS_updAcademicKey921] to [$(service_user)]
 GRANT EXEC ON  [custom].[PS_updDemographics921] to [$(service_user)]
-
+GRANT EXEC ON [dbo].[fnGetAbtSetting] to [$(service_user)]
