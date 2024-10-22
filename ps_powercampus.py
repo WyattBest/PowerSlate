@@ -665,7 +665,9 @@ def get_action_definition(action_id):
     return row
 
 
-def update_action(action, pcid, academic_year, academic_term, academic_session):
+def update_action(
+    action, pcid, academic_year, academic_term, academic_session, waive_reason_code, mark_waived_completed
+):
     """Update a Scheduled Action in PowerCampus.
 
     Keyword arguments:
@@ -677,7 +679,7 @@ def update_action(action, pcid, academic_year, academic_term, academic_session):
     """
 
     CURSOR.execute(
-        "EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
+        "EXEC [custom].[PS_updAction] ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
         pcid,
         "SLATE",
         action["action_id"],
@@ -689,6 +691,8 @@ def update_action(action, pcid, academic_year, academic_term, academic_session):
         academic_year,
         academic_term,
         academic_session,
+        waive_reason_code,
+        mark_waived_completed,
     )
     CNXN.commit()
 

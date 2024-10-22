@@ -15,17 +15,37 @@ import ps_powercampus
 
 # The Settings class should replace the CONFIG global in all new code.
 class Settings:
-    class FlatDict:
+    class DictFlat:
         def __init__(self, contents):
             for field in contents:
                 setattr(self, field, contents[field])
 
+    # This could probably replace DictFlat.
+    class DictNested:
+        def __init__(self, contents):
+            for field in contents:
+                value = contents[field]
+                if isinstance(value, dict):
+                    setattr(self, field, self.__class__(value))
+                elif isinstance(value, list):
+                    setattr(
+                        self,
+                        field,
+                        [
+                            (self.__class__(item) if isinstance(item, dict) else item)
+                            for item in value
+                        ],
+                    )
+                else:
+                    setattr(self, field, value)
+
     def __init__(self, config):
-        self.fa_awards = self.FlatDict(config["fa_awards"])
-        self.fa_checklist = self.FlatDict(config["fa_checklist"])
+        self.fa_awards = self.DictFlat(config["fa_awards"])
+        self.fa_checklist = self.DictFlat(config["fa_checklist"])
         self.console_verbose = config["console_verbose"]
-        self.defaults = self.FlatDict(config["defaults"])
+        self.defaults = self.DictFlat(config["defaults"])
         self.PowerCampus = self.PowerCampus(config["powercampus"])
+        self.ScheduledActions = self.DictNested(config["scheduled_actions"])
         self.Messages = self.Messages()
         self.check_api_token()
 
@@ -37,7 +57,7 @@ class Settings:
                     setattr(self, field, config[field])
 
             for d in dicts:
-                setattr(self, d, Settings.FlatDict(config[d]))
+                setattr(self, d, Settings.DictFlat(config[d]))
 
             self.api.creds = None
             self.api.headers = None
@@ -50,8 +70,8 @@ class Settings:
         def __init__(self):
             with open("config_messages.json") as file:
                 messages = json.loads(file.read())
-                self.error = Settings.FlatDict(messages["error"])
-                self.success = Settings.FlatDict(messages["success"])
+                self.error = Settings.DictFlat(messages["error"])
+                self.success = Settings.DictFlat(messages["success"])
 
     def check_api_token(self):
         if (
@@ -116,8 +136,8 @@ def slate_get_actions(apps_list):
     # Set up an HTTP session to use for multiple GET requests.
     http_session = requests.Session()
     http_session.auth = (
-        CONFIG["scheduled_actions"]["slate_get"]["username"],
-        CONFIG["scheduled_actions"]["slate_get"]["password"],
+        SETTINGS.ScheduledActions.slate_get.username,
+        SETTINGS.ScheduledActions.slate_get.password,
     )
 
     actions_list = []
@@ -137,7 +157,7 @@ def slate_get_actions(apps_list):
         qs = ",".join(str(item) for item in ql)
 
         r = http_session.get(
-            CONFIG["scheduled_actions"]["slate_get"]["url"], params={"aids": qs}
+            SETTINGS.ScheduledActions.slate_get.url, params={"aids": qs}
         )
         r.raise_for_status()
         al = json.loads(r.text)
@@ -274,7 +294,7 @@ def slate_post_education_changed(edu_list, config_dict):
 def learn_actions(actions_list):
     global CONFIG
     action_ids = []
-    admissions_action_codes = CONFIG["scheduled_actions"]["admissions_action_codes"]
+    admissions_action_codes = SETTINGS.ScheduledActions.admissions_action_codes
 
     for action_id in actions_list:
         for k, v in action_id.items():
@@ -430,7 +450,7 @@ def main_sync(pid=None):
                 )
                 apps[k]["PEOPLE_CODE_ID"] = pcid
 
-    if CONFIG["scheduled_actions"]["enabled"] == True:
+    if SETTINGS.ScheduledActions.enabled:
         verbose_print("Get scheduled actions from Slate")
         CURRENT_RECORD = None
         # Send list of app GUID's to Slate; get back checklist items
@@ -442,7 +462,7 @@ def main_sync(pid=None):
             ]
         )
 
-        if CONFIG["scheduled_actions"]["autolearn_action_codes"] == True:
+        if SETTINGS.ScheduledActions.autolearn_action_codes:
             learn_actions(actions_list)
 
     verbose_print("Update existing applications in PowerCampus and extract information")
@@ -477,18 +497,24 @@ def main_sync(pid=None):
             ps_powercampus.update_smsoptin(app_pc)
 
             # Update PowerCampus Scheduled Actions
-            if CONFIG["scheduled_actions"]["enabled"] == True:
+            if SETTINGS.ScheduledActions.enabled:
                 app_actions = [
                     k for k in actions_list if k["aid"] == v["aid"] and "action_id" in k
                 ]
 
                 for action in app_actions:
                     ps_powercampus.update_action(
-                        action, pcid, academic_year, academic_term, academic_session
+                        action,
+                        pcid,
+                        academic_year,
+                        academic_term,
+                        academic_session,
+                        SETTINGS.ScheduledActions.waive_reason_code,
+                        SETTINGS.ScheduledActions.mark_waived_completed,
                     )
 
                 ps_powercampus.cleanup_actions(
-                    CONFIG["scheduled_actions"]["admissions_action_codes"],
+                    SETTINGS.ScheduledActions.admissions_action_codes,
                     app_actions,
                     pcid,
                     academic_year,

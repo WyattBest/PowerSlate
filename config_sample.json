@@ -106,12 +106,14 @@
 	},
 	"scheduled_actions": {
 		"enabled": false,
+		"mark_waived_completed": false,
+		"autolearn_action_codes": true,
+		"waive_reason_code": null,
 		"slate_get": {
 			"url": "https://apply.school.edu/manage/query/run?id=xxxx&h=xxxx&cmd=service&output=json",
 			"username": "username",
 			"password": "astrongpassword"
 		},
-		"autolearn_action_codes": true,
 		"admissions_action_codes": [
 			"ADIMMUN",
 			"ADTRANS",
