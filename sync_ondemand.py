@@ -55,11 +55,13 @@ if __name__ == "__main__":
 
         if teams_config["enabled"] == True:
             import pymsteams
-            teamsMsg = pymsteams.connectorcard(teams_config["webHookURL"])
-            teamsMsg.text(body)
-            teamsMsg.title(teams_config["title"])
-            teamsMsg.addLinkButton("Open Slate Record",current_record_link)
-            teamsMsg.send()
+
+            for url in teams_config["webHooksURLs"]:
+                teamsMsg = pymsteams.connectorcard(url)
+                teamsMsg.title(teams_config["title"])
+                teamsMsg.text(body)
+                teamsMsg.addLinkButton("Open Slate Record", current_record_link)
+                teamsMsg.send()
 
         if email_config["method"] == "o365":
             from O365 import Account

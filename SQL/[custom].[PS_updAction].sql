@@ -17,6 +17,9 @@ GO
 --								Fixed the 'updated waived after inserting new' section.
 -- 2019-10-15	Wyatt Best:		Renamed and moved to [custom] schema.
 -- 2021-06-21	Wyatt Best:		Rewrite to remove dependency on MCNY_SP_insert_action. New parameters @Responsible (optional) and @CompletedDate.
+-- 2024-10-18	Wyatt Best:		Renamed @Completed to @Status. Added @MarkWaivedCompleted and @WaivedReason.
+--								If @MarkWaivedCompleted is true, set both COMPLETED and WAIVED to 'Y' when @Status = 'W'.
+--								Added error checks.
 -- =============================================
 CREATE PROCEDURE [custom].[PS_updAction] @PCID NVARCHAR(10)
 	,@Opid NVARCHAR(8)
@@ -24,33 +27,74 @@ CREATE PROCEDURE [custom].[PS_updAction] @PCID NVARCHAR(10)
 	,@ActionName NVARCHAR(50)
 	,@Responsible NVARCHAR(10) = NULL
 	,@ScheduledDate DATE --Slate effective date or application creation date
-	,@Completed NVARCHAR(1) --Y, N, W (waived)
+	,@Status NVARCHAR(1) --Y, N, W (waived)
 	,@CompletedDate DATE --Slate activity date
 	,@AcademicYear NVARCHAR(4)
 	,@AcademicTerm NVARCHAR(10)
 	,@AcademicSession NVARCHAR(10)
+	,@WaivedReason NVARCHAR(6) = NULL
+	,@MarkWaivedCompleted BIT = 0
 AS
 BEGIN
 	SET NOCOUNT ON;
+
+	--Error checks
+	IF (
+			NOT EXISTS (
+				SELECT *
+				FROM [ACTION]
+				WHERE ACTION_ID = @ActionID
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@ActionID ''%s'' not found in ACTION.'
+				,11
+				,1
+				,@ActionID
+				)
+
+		RETURN
+	END
+
+	IF @WaivedReason IS NOT NULL
+		AND (
+			NOT EXISTS (
+				SELECT *
+				FROM CODE_WAIVEDREASON
+				WHERE CODE_VALUE_KEY = @WaivedReason
+				)
+			)
+	BEGIN
+		RAISERROR (
+				'@WaivedReason ''%s'' not found in CODE_WAIVEDREASON.'
+				,11
+				,1
+				,@WaivedReason
+				)
+
+		RETURN
+	END
 
 	DECLARE @getdate DATETIME = GETDATE()
 	DECLARE @Today DATETIME = dbo.fnMakeDate(@getdate)
 		,@Now DATETIME = dbo.fnMakeTime(@getdate)
 		,@Waived NVARCHAR(1) = 'N'
 		,@Actionschedule_Id INT
+		,@Completed NVARCHAR(1) = @Status
 
-	IF @Completed = 'W'
+	IF @Status = 'W'
 	BEGIN
 		SET @Waived = 'Y'
-		SET @Completed = 'N'
+
+		IF @MarkWaivedCompleted = 1
+			SET @Completed = 'Y'
+		ELSE
+			SET @Completed = 'N'
 	END
 
-	DECLARE @WaivedReason NVARCHAR(6) = CASE 
-			WHEN @Waived = 'Y'
-				THEN 'ADMIS'
-			ELSE NULL
-			END
-
+	IF @Waived = 'N'
+		SET @WaivedReason = NULL
 	SET @ScheduledDate = dbo.fnMakeDate(@ScheduledDate)
 	SET @CompletedDate = COALESCE(dbo.fnMakeDate(@CompletedDate), @Today)
 	SET @Responsible = COALESCE(@Responsible, @PCID)

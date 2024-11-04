@@ -15,17 +15,37 @@ import ps_powercampus
 
 # The Settings class should replace the CONFIG global in all new code.
 class Settings:
-    class FlatDict:
+    class DictFlat:
         def __init__(self, contents):
             for field in contents:
                 setattr(self, field, contents[field])
 
+    # This could probably replace DictFlat.
+    class DictNested:
+        def __init__(self, contents):
+            for field in contents:
+                value = contents[field]
+                if isinstance(value, dict):
+                    setattr(self, field, self.__class__(value))
+                elif isinstance(value, list):
+                    setattr(
+                        self,
+                        field,
+                        [
+                            (self.__class__(item) if isinstance(item, dict) else item)
+                            for item in value
+                        ],
+                    )
+                else:
+                    setattr(self, field, value)
+
     def __init__(self, config):
-        self.fa_awards = self.FlatDict(config["fa_awards"])
-        self.fa_checklist = self.FlatDict(config["fa_checklist"])
+        self.fa_awards = self.DictFlat(config["fa_awards"])
+        self.fa_checklist = self.DictFlat(config["fa_checklist"])
         self.console_verbose = config["console_verbose"]
-        self.defaults = self.FlatDict(config["defaults"])
+        self.defaults = self.DictFlat(config["defaults"])
         self.PowerCampus = self.PowerCampus(config["powercampus"])
+        self.ScheduledActions = self.DictNested(config["scheduled_actions"])
         self.Messages = self.Messages()
         self.check_api_token()
 
@@ -37,14 +57,21 @@ class Settings:
                     setattr(self, field, config[field])
 
             for d in dicts:
-                setattr(self, d, Settings.FlatDict(config[d]))
+                setattr(self, d, Settings.DictFlat(config[d]))
+
+            self.api.creds = None
+            self.api.headers = None
+            if self.api.auth_method == "basic":
+                self.api.creds = (self.api.username, self.api.password)
+            elif config.auth_method == "token":
+                self.api.headers = {"Authorization": self.api.token}
 
     class Messages:
         def __init__(self):
             with open("config_messages.json") as file:
                 messages = json.loads(file.read())
-                self.error = Settings.FlatDict(messages["error"])
-                self.success = Settings.FlatDict(messages["success"])
+                self.error = Settings.DictFlat(messages["error"])
+                self.success = Settings.DictFlat(messages["success"])
 
     def check_api_token(self):
         if (
@@ -109,8 +136,8 @@ def slate_get_actions(apps_list):
     # Set up an HTTP session to use for multiple GET requests.
     http_session = requests.Session()
     http_session.auth = (
-        CONFIG["scheduled_actions"]["slate_get"]["username"],
-        CONFIG["scheduled_actions"]["slate_get"]["password"],
+        SETTINGS.ScheduledActions.slate_get.username,
+        SETTINGS.ScheduledActions.slate_get.password,
     )
 
     actions_list = []
@@ -130,7 +157,7 @@ def slate_get_actions(apps_list):
         qs = ",".join(str(item) for item in ql)
 
         r = http_session.get(
-            CONFIG["scheduled_actions"]["slate_get"]["url"], params={"aids": qs}
+            SETTINGS.ScheduledActions.slate_get.url, params={"aids": qs}
         )
         r.raise_for_status()
         al = json.loads(r.text)
@@ -267,7 +294,7 @@ def slate_post_education_changed(edu_list, config_dict):
 def learn_actions(actions_list):
     global CONFIG
     action_ids = []
-    admissions_action_codes = CONFIG["scheduled_actions"]["admissions_action_codes"]
+    admissions_action_codes = SETTINGS.ScheduledActions.admissions_action_codes
 
     for action_id in actions_list:
         for k, v in action_id.items():
@@ -299,7 +326,6 @@ def main_sync(pid=None):
     """
     global CURRENT_RECORD
     global RM_MAPPING
-    sync_errors = False
 
     verbose_print("Get applicants from Slate...")
     creds = (
@@ -329,9 +355,7 @@ def main_sync(pid=None):
     verbose_print("Clean up app data from Slate (datatypes, supply nulls, etc.)")
     for k, v in apps.items():
         CURRENT_RECORD = k
-        apps[k] = format_app_generic(
-            v, CONFIG["slate_upload_active"], SETTINGS.Messages
-        )
+        apps[k] = format_app_generic(v, CONFIG["slate_upload_active"])
 
     # Set error flag if one pid has multiple applications with the same YTS + PCD
     duplicates = []
@@ -426,7 +450,7 @@ def main_sync(pid=None):
                 )
                 apps[k]["PEOPLE_CODE_ID"] = pcid
 
-    if CONFIG["scheduled_actions"]["enabled"] == True:
+    if SETTINGS.ScheduledActions.enabled:
         verbose_print("Get scheduled actions from Slate")
         CURRENT_RECORD = None
         # Send list of app GUID's to Slate; get back checklist items
@@ -438,7 +462,7 @@ def main_sync(pid=None):
             ]
         )
 
-        if CONFIG["scheduled_actions"]["autolearn_action_codes"] == True:
+        if SETTINGS.ScheduledActions.autolearn_action_codes:
             learn_actions(actions_list)
 
     verbose_print("Update existing applications in PowerCampus and extract information")
@@ -461,23 +485,36 @@ def main_sync(pid=None):
                 and app_pc["AcademicGUID"] is not None
             ):
                 ps_powercampus.update_academic_key(app_pc)
-            ps_powercampus.update_demographics(app_pc)
+
+            error_flag, error_message = ps_powercampus.update_demographics(app_pc)
+            if error_flag:
+                apps[k]["error_flag"] = error_flag
+                apps[k]["error_message"] = error_message
+                # Stop making PowerCampus updates for this record
+                continue
+
             ps_powercampus.update_academic(app_pc)
             ps_powercampus.update_smsoptin(app_pc)
 
             # Update PowerCampus Scheduled Actions
-            if CONFIG["scheduled_actions"]["enabled"] == True:
+            if SETTINGS.ScheduledActions.enabled:
                 app_actions = [
                     k for k in actions_list if k["aid"] == v["aid"] and "action_id" in k
                 ]
 
                 for action in app_actions:
                     ps_powercampus.update_action(
-                        action, pcid, academic_year, academic_term, academic_session
+                        action,
+                        pcid,
+                        academic_year,
+                        academic_term,
+                        academic_session,
+                        SETTINGS.ScheduledActions.waive_reason_code,
+                        SETTINGS.ScheduledActions.mark_waived_completed,
                     )
 
                 ps_powercampus.cleanup_actions(
-                    CONFIG["scheduled_actions"]["admissions_action_codes"],
+                    SETTINGS.ScheduledActions.admissions_action_codes,
                     app_actions,
                     pcid,
                     academic_year,
@@ -579,8 +616,6 @@ def main_sync(pid=None):
                     "custom_5": custom_5,
                 }
             )
-            if error_flag == True:
-                sync_errors == True
 
             # Get PowerFAIDS awards and tracking status
             if SETTINGS.fa_awards.enabled:
@@ -636,8 +671,8 @@ def main_sync(pid=None):
 
         slate_post_fa_checklist(slate_upload_list)
 
-    # Warn if any apps returned an error flag from ps_powercampus.get_profile()
-    if sync_errors == True or [k for k in apps if apps[k]["error_flag"] == True]:
+    # Warn if any apps have errors
+    if [k for k in apps if apps[k]["error_flag"] == True]:
         output_msg = SETTINGS.Messages.success.done_with_errors
     else:
         output_msg = SETTINGS.Messages.success.done
