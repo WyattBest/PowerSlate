@@ -441,9 +441,12 @@ def format_app_sql(app, mapping, config):
             mapped[array] = app[array]
 
     # Look for array names with numbers appended and combine them
-    # Example: "Stops1", "Stops2", "Stops3" become "Stops"
+    # Example: "Stops1", "Stops2" become "Stops" up to "Stops9"
     array_numbers = [k for k in app if k[-1].isdigit() and k[:-1] in array_classes]
     for array in array_numbers:
+        # Make sure the base array exists
+        if array[:-1] not in mapped:
+            mapped[array[:-1]] = []
         mapped[array[:-1]].extend(app[array])
 
     return mapped
